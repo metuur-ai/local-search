@@ -1,0 +1,200 @@
+.graph-view {
+  position: relative;
+  width: 100%;
+  /* A dense graph needs vertical room to breathe; fullscreen overrides this. */
+  height: 520px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background:
+    radial-gradient(80% 80% at 50% 40%, rgba(22, 163, 74, 0.04), transparent 70%),
+    var(--surface);
+  overflow: hidden;
+}
+
+.graph-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* Fullscreen overlay — fills the viewport so a dense graph has room to breathe. */
+.graph-view--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: 100vw;
+  height: 100vh;
+  border: none;
+  border-radius: 0;
+}
+
+.graph-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* A cluster of related controls (label modes, zoom) rendered as one connected
+   pill: the shared border reads as a segmented control and saves toolbar width. */
+.graph-tool-group {
+  display: inline-flex;
+  gap: 0;
+}
+
+.graph-tool-group .graph-tool-btn {
+  position: relative;
+  border-radius: 0;
+  border-right-width: 0;
+  box-shadow: none;
+}
+
+/* Lift the hovered/active button so its green border isn't clipped by the
+   neighbor whose left border overlaps it. */
+.graph-tool-group .graph-tool-btn:hover,
+.graph-tool-group .graph-tool-btn.is-active {
+  z-index: 1;
+}
+
+.graph-tool-group .graph-tool-btn:first-child {
+  border-top-left-radius: var(--radius-sm);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.graph-tool-group .graph-tool-btn:last-child {
+  border-right-width: 1px;
+  border-top-right-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+/* The active button in a group must keep its right border so the highlight
+   doesn't collapse against its neighbor. */
+.graph-tool-group .graph-tool-btn.is-active {
+  border-right-width: 1px;
+}
+.graph-tool-group .graph-tool-btn.is-active + .graph-tool-btn {
+  border-left-width: 0;
+}
+
+.graph-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-400);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+/* Icon-only buttons (zoom cluster) — square, no text gap. */
+.graph-tool-btn--icon {
+  gap: 0;
+  padding: 0.35rem 0.55rem;
+  justify-content: center;
+}
+
+.graph-tool-btn:hover {
+  color: #16a34a;
+  border-color: #16a34a;
+}
+
+.graph-tool-btn.is-active {
+  color: #16a34a;
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.08);
+}
+
+/* Legend — bottom-left, over the canvas. Names the document-type colors and
+   the retrieved-source ring so the map is self-explanatory. */
+.graph-legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.7rem;
+  max-width: calc(100% - 20px);
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.68rem;
+  color: var(--ink-400);
+}
+
+.graph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.graph-legend-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* The anchor swatch mirrors the node's gold ring. */
+.graph-legend-swatch--anchor {
+  border: 2px solid #facc15;
+}
+
+/* The source marker is a ring, not a fill — matching the node border. */
+.graph-legend-swatch--source {
+  background: transparent;
+  border: 2px solid #111827;
+}
+
+/* Node hover tooltip — shows the full file path the on-canvas label truncates.
+   Positioned by JS in the node's rendered coordinates; the translate lifts it
+   just above the node and centers it horizontally. */
+.graph-tooltip {
+  position: absolute;
+  z-index: 20;
+  display: none;
+  max-width: min(80%, 520px);
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 12px));
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.25);
+}
+
+.graph-tooltip.is-visible {
+  display: block;
+}
+
+.graph-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  margin: 0;
+  padding: 1rem;
+  color: var(--ink-400);
+  font-style: italic;
+  font-size: 0.9rem;
+}

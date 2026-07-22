@@ -1,0 +1,19 @@
+---
+tags: auth, security, api, tokens
+---
+
+# Authentication API
+
+All API endpoints require authentication via Bearer token.
+
+## Token types
+
+- Access token: short-lived (1 hour)
+- Refresh token: long-lived (30 days)
+- API key: permanent, for server-to-server
+
+## Endpoints
+
+POST /auth/login — returns access + refresh tokens
+POST /auth/refresh — exchange refresh token for new access token
+DELETE /auth/logout — invalidate all tokens

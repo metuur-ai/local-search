@@ -1,0 +1,20 @@
+{
+  "name": "explainable-search",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["backend", "frontend"],
+  "bin": {
+    "explainable-search": "bin/explainable-search.js"
+  },
+  "scripts": {
+    "dev": "node server.js",
+    "start": "npm run build && NODE_ENV=production node server.js",
+    "build": "npm --workspace frontend run build",
+    "logs": "tail -f \"$(ls -t logs/server-*.log 2>/dev/null | head -1)\"",
+    "test": "npm --workspace backend run test && npm --workspace frontend run test"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}

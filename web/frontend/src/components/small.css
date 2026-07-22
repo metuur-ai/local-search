@@ -1,0 +1,122 @@
+/* Shared minimal styles for the small presentational components:
+   ReplyInput, ElapsedTimer, RankedSources. */
+
+/* Reply input appears in the rail once Claude asks a clarification. */
+.reply-input {
+  background: linear-gradient(180deg, var(--ink-800), var(--ink-850));
+  border: 1px solid var(--amber-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), 0 0 0 3px var(--amber-soft);
+  padding: 0.95rem 1rem 1.05rem;
+}
+
+.reply-question {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--amber-bright);
+  margin: 0 0 0.6rem;
+  line-height: 1.5;
+}
+
+.reply-textarea {
+  width: 100%;
+  min-height: 3.5rem;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 0.6rem 0.7rem;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  color: var(--text);
+  background: var(--ink-950);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.reply-send {
+  margin-top: 0.55rem;
+}
+
+/* Elapsed timer — lives under the activity feed in the rail. */
+.elapsed-timer-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line-soft);
+  width: 100%;
+}
+
+.elapsed-timer {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--amber);
+  letter-spacing: 0.02em;
+}
+
+.elapsed-activity {
+  font-family: var(--font-mono);
+  color: var(--text-mut);
+  font-size: 0.74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ranked (fused) sources list. */
+.ranked-sources {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  counter-reset: none;
+}
+
+.ranked-source {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ranked-source:last-child {
+  border-bottom: none;
+}
+
+.ranked-position {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--amber);
+  background: var(--amber-soft);
+  border: 1px solid var(--amber-line);
+  border-radius: 6px;
+}
+
+.ranked-label {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranked-relevance {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-mut);
+}
+
+.ranked-empty {
+  color: var(--text-mut);
+  font-size: 0.82rem;
+  font-style: italic;
+  margin: 0.4rem 0 0;
+}

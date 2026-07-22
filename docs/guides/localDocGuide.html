@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>local-doc: The Missing Search for Your Specs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        
+        pre, code {
+            font-family: 'Fira Code', monospace;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Custom scrollbar for code blocks */
+        pre::-webkit-scrollbar {
+            height: 8px;
+        }
+        pre::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        pre::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .tab-btn.active { 
+            border-bottom: 2px solid #3b82f6; 
+            color: #3b82f6;
+            font-weight: 600;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="antialiased selection:bg-brand-100 selection:text-brand-900">
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="book-open-check" class="text-brand-500 w-6 h-6"></i>
+                    <span class="font-bold text-xl tracking-tight">local-doc</span>
+                </div>
+                <div class="hidden md:flex space-x-8 text-sm font-medium text-slate-600">
+                    <a href="#why" class="hover:text-brand-600 transition">Why use it?</a>
+                    <a href="#setup" class="hover:text-brand-600 transition">Setup</a>
+                    <a href="#usage" class="hover:text-brand-600 transition">How to Use</a>
+                    <a href="#ai" class="hover:text-brand-600 transition">AI Assistant</a>
+                    <a href="#faq" class="hover:text-brand-600 transition">FAQ</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="pt-20 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto text-center">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-600 text-sm font-medium mb-6">
+            <i data-lucide="zap" class="w-4 h-4"></i> Lightning fast offline search
+        </div>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 mb-6">
+            Find the right document, <br class="hidden md:block" />
+            <span class="gradient-text">instantly.</span>
+        </h1>
+        <p class="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Stop digging through folders and clicking around to find specs. <code>local-doc</code> gives you instant, Google-like search across all your project files with a simple 3-word command.
+        </p>
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <a href="#setup" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">
+                <i data-lucide="download" class="w-5 h-5"></i> Get Started
+            </a>
+            <a href="#usage" class="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-lg font-medium transition flex items-center justify-center gap-2">
+                See Examples
+            </a>
+        </div>
+    </header>
+
+    <!-- Why Section -->
+    <section id="why" class="py-16 bg-white border-y border-slate-200">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="p-6 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
+                        <i data-lucide="search" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Search Everything</h3>
+                    <p class="text-slate-600">Searches inside your files, not just titles. Understands what you mean (e.g., searching "refunding" finds "refund").</p>
+                </div>
+                <div class="p-6 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-4">
+                        <i data-lucide="refresh-cw" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Always Up-to-Date</h3>
+                    <p class="text-slate-600">The tool auto-detects when you change, add, or delete files. No manual "refresh" buttons required.</p>
+                </div>
+                <div class="p-6 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
+                        <i data-lucide="bot" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">AI Ready</h3>
+                    <p class="text-slate-600">Plug it into Claude AI so your AI assistant can actually read your company's real documentation to answer questions.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Setup Section -->
+    <section id="setup" class="py-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold mb-4">Setup in 2 Minutes</h2>
+            <p class="text-slate-600 text-lg">You only need to do this once. Open your computer's terminal (Command Prompt/Terminal app) and paste these lines.</p>
+        </div>
+
+        <div class="space-y-8">
+            <!-- Step 1 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex items-center gap-4">
+                    <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-600 font-bold flex items-center justify-center shrink-0">1</div>
+                    <h3 class="text-xl font-semibold">Install the tool</h3>
+                </div>
+                <div class="p-6">
+                    <div class="bg-slate-800 p-4 rounded-xl relative group mb-4">
+                        <button onclick="copyCode(this)" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded transition" title="Copy code">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                        <pre class="text-blue-300 overflow-x-auto text-sm"><code>cp local-doc-tool.sh /usr/local/bin/local-doc
+chmod +x /usr/local/bin/local-doc</code></pre>
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-50 text-sm text-slate-600 border-t border-slate-100">
+                    <i data-lucide="info" class="w-4 h-4 inline text-blue-500 mr-1"></i> Works on Mac and Linux automatically. No extra downloads needed!
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex items-center gap-4">
+                    <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-600 font-bold flex items-center justify-center shrink-0">2</div>
+                    <h3 class="text-xl font-semibold">Tell it where your documents are</h3>
+                </div>
+                <div class="p-6">
+                    <p class="mb-4 text-slate-600">Add the folders on your computer that contain your specs or documents. Give each one a nickname (like "product" or "platform").</p>
+                    <div class="bg-slate-800 p-4 rounded-xl relative group mb-4">
+                        <button onclick="copyCode(this)" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded transition">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                        <pre class="text-blue-300 overflow-x-auto text-sm"><code># Example: local-doc repo add [folder-path] [nickname]
+local-doc repo add ./product-specs product
+local-doc repo add ./platform-docs platform</code></pre>
+                    </div>
+                    <p class="text-sm text-slate-500">It immediately indexes <code>.md</code>, <code>.mdx</code>, and <code>.txt</code> files. Images (<code>.jpg</code>, <code>.png</code>, etc.) and PDFs are also indexed when a companion <code>.md</code> sidecar with the same name exists alongside them.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Usage/Examples Section -->
+    <section id="usage" class="py-20 bg-slate-50 border-t border-slate-200">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="mb-12 text-center">
+                <h2 class="text-3xl font-bold mb-4">Everyday Usage</h2>
+                <p class="text-slate-600 text-lg">Just type <code>local-doc search</code> followed by what you're looking for.</p>
+            </div>
+
+            <!-- Custom Tabs for Examples -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="flex border-b border-slate-200 overflow-x-auto hide-scrollbar">
+                    <button class="tab-btn active px-6 py-4 text-sm font-medium whitespace-nowrap" onclick="switchTab(event, 'tab-search')">Basic Search</button>
+                    <button class="tab-btn px-6 py-4 text-sm font-medium text-slate-500 hover:text-slate-700 whitespace-nowrap" onclick="switchTab(event, 'tab-multi')">Smart Search</button>
+                    <button class="tab-btn px-6 py-4 text-sm font-medium text-slate-500 hover:text-slate-700 whitespace-nowrap" onclick="switchTab(event, 'tab-browse')">Browsing</button>
+                    <button class="tab-btn px-6 py-4 text-sm font-medium text-slate-500 hover:text-slate-700 whitespace-nowrap" onclick="switchTab(event, 'tab-read')">Reading Docs</button>
+                    <button class="tab-btn px-6 py-4 text-sm font-medium text-slate-500 hover:text-slate-700 whitespace-nowrap" onclick="switchTab(event, 'tab-media')">Images &amp; PDFs</button>
+                </div>
+
+                <div class="p-6">
+                    <!-- Basic Search -->
+                    <div id="tab-search" class="tab-content active">
+                        <p class="text-slate-600 mb-4">Find documents containing a specific word, even if it's buried deep inside the file text.</p>
+                        <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                            <div class="text-blue-400 mb-2">$ local-doc search refund</div>
+                            <div class="text-slate-200 mb-2">Results for "refund":</div>
+                            <div class="text-slate-200">
+                                &nbsp;&nbsp;1. <span class="text-emerald-400">[product]</span> payments/refund <span class="text-slate-400">(.md)</span><br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Refund flow<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400">tags: billing, refund, customer, payments</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Smart Search -->
+                    <div id="tab-multi" class="tab-content">
+                        <p class="text-slate-600 mb-4">Use OR to find either word, NOT to exclude words, or filter by a specific project nickname.</p>
+                        <div class="space-y-4">
+                            <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                                <div class="text-slate-400 mb-1"># Search for A or B</div>
+                                <div class="text-blue-400 mb-2">$ local-doc search "refund OR authentication"</div>
+                            </div>
+                            <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                                <div class="text-slate-400 mb-1"># Exclude words</div>
+                                <div class="text-blue-400 mb-2">$ local-doc search "billing NOT fraud"</div>
+                            </div>
+                            <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                                <div class="text-slate-400 mb-1"># Only look inside the 'product' folder</div>
+                                <div class="text-blue-400 mb-2">$ local-doc search "billing" product</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Browsing -->
+                    <div id="tab-browse" class="tab-content">
+                        <p class="text-slate-600 mb-4">Not sure what you're looking for? You can easily list out everything you have.</p>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                                <div class="text-slate-400 mb-1"># See all documents</div>
+                                <div class="text-blue-400 mb-2">$ local-doc list</div>
+                            </div>
+                            <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                                <div class="text-slate-400 mb-1"># See project groups</div>
+                                <div class="text-blue-400 mb-2">$ local-doc projects</div>
+                            </div>
+                            <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                                <div class="text-slate-400 mb-1"># See all tags</div>
+                                <div class="text-blue-400 mb-2">$ local-doc tags</div>
+                            </div>
+                            <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                                <div class="text-slate-400 mb-1"># See stats (how many files)</div>
+                                <div class="text-blue-400 mb-2">$ local-doc stats</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reading Docs -->
+                    <div id="tab-read" class="tab-content">
+                        <p class="text-slate-600 mb-4">Read the full content of a document right inside your terminal.</p>
+                        <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                            <div class="text-slate-400 mb-1"># Print the full document named 'refund'</div>
+                            <div class="text-blue-400 mb-4">$ local-doc read refund</div>
+                            <div class="text-slate-200 opacity-90 border-l-2 border-slate-600 pl-4">
+                                # Refund flow<br><br>
+                                Process for managing customer refunds...<br>
+                                Step 1: Verify eligibility...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Images & PDFs -->
+                    <div id="tab-media" class="tab-content">
+                        <p class="text-slate-600 mb-4">Images and PDFs are indexed via a <strong>companion <code>.md</code> sidecar</strong> with the same base name. Only one result appears per asset — the path points directly to the image or PDF.</p>
+                        <div class="space-y-4">
+                            <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                                <div class="text-slate-400 mb-2"># File layout — sidecar must share the same name</div>
+                                <div class="text-slate-200">diagrams/<br>
+&nbsp;&nbsp;<span class="text-emerald-400">architecture.png</span>  &larr; the image<br>
+&nbsp;&nbsp;<span class="text-yellow-400">architecture.md</span>   &larr; companion (title, tags, description)</div>
+                            </div>
+                            <div class="bg-slate-800 rounded-xl p-5 font-mono text-sm shadow-inner">
+                                <div class="text-slate-400 mb-2"># Search finds it — result path points to the .png</div>
+                                <div class="text-blue-400 mb-2">$ local-doc search architecture</div>
+                                <div class="text-slate-200">
+                                    &nbsp;&nbsp;1. <span class="text-emerald-400">[platform]</span> diagrams/architecture <span class="text-slate-400">(.png)</span><br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System Architecture Diagram<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-300">/path/to/diagrams/architecture.png</span>
+                                </div>
+                            </div>
+                            <div class="bg-amber-50 border border-amber-300 rounded-xl p-4 text-sm text-amber-900 flex gap-3 items-start">
+                                <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5 text-amber-500"></i>
+                                <span>If no companion <code class="bg-amber-100 px-1 rounded text-amber-800">.md</code> exists, the image or PDF is <strong>skipped</strong> and a warning is shown. The sidecar is never shown as a separate result — it only provides metadata for its asset.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Assistant Skill Section -->
+    <section id="ai" class="py-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-slate-800 rounded-3xl overflow-hidden shadow-2xl border border-slate-700">
+            <div class="grid lg:grid-cols-2">
+                <!-- Left Column: The Workflow -->
+                <div class="p-8 md:p-12 text-slate-200 border-b lg:border-b-0 lg:border-r border-slate-700 bg-slate-800">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-indigo-900/40 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-6 border border-indigo-700/50">
+                        <i data-lucide="bot" class="w-4 h-4"></i> Claude Code Skill
+                    </div>
+                    <h2 class="text-3xl font-bold mb-4 text-white">Turn Claude into a domain expert</h2>
+                    <p class="text-slate-400 mb-8 text-lg leading-relaxed">
+                        `local-doc` ships with a custom skill for Claude Code. Instead of guessing or using general knowledge, Claude will follow a strict 3-step workflow to answer questions based on your actual project specs.
+                    </p>
+                    
+                    <!-- The 3 Step Workflow -->
+                    <div class="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-600 before:to-transparent">
+                        
+                        <!-- Step 1 -->
+                        <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-slate-800 bg-indigo-500 text-white font-bold shadow-md shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">1</div>
+                            <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-slate-700/50 border border-slate-600 shadow-sm p-4 rounded-xl">
+                                <h4 class="font-bold text-slate-200 mb-1 flex items-center gap-2"><i data-lucide="search" class="w-4 h-4 text-indigo-400"></i> Search</h4>
+                                <p class="text-sm text-slate-300">Claude extracts domain nouns from your question and searches your index (e.g., <code class="text-xs text-indigo-200 bg-slate-800 border border-slate-600 px-1 rounded">local-doc search "payment eligibility"</code>).</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-slate-800 bg-purple-500 text-white font-bold shadow-md shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">2</div>
+                            <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-slate-700/50 border border-slate-600 shadow-sm p-4 rounded-xl">
+                                <h4 class="font-bold text-slate-200 mb-1 flex items-center gap-2"><i data-lucide="book-open" class="w-4 h-4 text-purple-400"></i> Read</h4>
+                                <p class="text-sm text-slate-300">Claude automatically reads the top 2-4 matching specs to gather exact context, avoiding hallucination.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-slate-800 bg-emerald-500 text-white font-bold shadow-md shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">3</div>
+                            <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-slate-700/50 border border-slate-600 shadow-sm p-4 rounded-xl">
+                                <h4 class="font-bold text-slate-200 mb-1 flex items-center gap-2"><i data-lucide="brain-circuit" class="w-4 h-4 text-emerald-400"></i> Reason</h4>
+                                <p class="text-sm text-slate-300">Claude synthesizes an answer that <strong>cites sources</strong>, connects dots across multiple specs, and explicitly <strong>flags gaps</strong> in your documentation.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t border-slate-700">
+                        <h4 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wider">Install the skill:</h4>
+                        <div class="bg-slate-700 rounded-lg p-4 font-mono text-sm text-slate-300 shadow-inner border border-slate-600">
+                            <div>mkdir -p .claude/skills</div>
+                            <div>cp -r /path/to/local-doc/skills/local-doc .claude/skills/</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Live Example -->
+                <div class="p-8 md:p-12 bg-slate-800 h-full flex flex-col relative overflow-hidden">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-6 uppercase tracking-wider flex items-center gap-2 relative z-10">
+                        <i data-lucide="terminal-square" class="w-5 h-5"></i> Example Interaction
+                    </h3>
+                    
+                    <div class="flex-1 space-y-6 font-mono text-sm relative z-10">
+                        <!-- User Prompt -->
+                        <div class="bg-indigo-800/40 p-5 rounded-xl border border-indigo-600/40 text-indigo-100 shadow-sm">
+                            <div class="flex items-center gap-2 mb-3 text-indigo-300 text-xs font-bold uppercase tracking-widest">
+                                <div class="w-6 h-6 rounded bg-indigo-600 flex items-center justify-center text-white"><i data-lucide="user" class="w-3 h-3"></i></div>
+                                You
+                            </div>
+                            <div class="leading-relaxed">"What's the impact of adding a new rule to the payment eligibility?"</div>
+                        </div>
+
+                        <!-- Claude's internal actions -->
+                        <div class="pl-3 space-y-3 py-1">
+                            <div class="text-slate-400 text-xs flex items-center gap-2 mb-2">
+                                <i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Claude is using local-doc...
+                            </div>
+                            
+                            <div>
+                                <div class="text-indigo-200 text-xs bg-slate-700 px-3 py-2 rounded-md inline-block border border-slate-600 shadow-sm mb-2">
+                                    > local-doc search "payment eligibility" product
+                                </div>
+                                <div class="text-[10px] sm:text-[11px] text-slate-300 bg-slate-800/80 p-3 rounded-lg border border-slate-600 shadow-inner whitespace-pre font-mono leading-relaxed ml-2 border-l-2 border-l-indigo-400/70 overflow-x-auto">Results for "payment eligibility":
+(filtered to repo: product)
+
+  1. <span class="text-emerald-400">[product]</span> payments/refund  <span class="text-slate-400">(.md)</span>
+     Refund flow
+     <span class="text-slate-400">tags: billing, refund, customer, payments</span>
+
+  2. <span class="text-emerald-400">[product]</span> payments/chargeback  <span class="text-slate-400">(.md)</span>
+     Chargeback handling
+     <span class="text-slate-400">tags: disputes, chargeback, fraud</span></div>
+                            </div>
+                            
+                            <div class="text-purple-200 text-xs bg-slate-700 px-3 py-2 rounded-md inline-block border border-slate-600 shadow-sm">
+                                > local-doc read refund
+                            </div>
+                            <br>
+                            <div class="text-purple-200 text-xs bg-slate-700 px-3 py-2 rounded-md inline-block border border-slate-600 shadow-sm">
+                                > local-doc read chargeback
+                            </div>
+                        </div>
+
+                        <!-- Claude's Answer -->
+                        <div class="bg-slate-700/60 p-5 rounded-xl border border-slate-500/50 text-slate-200 leading-relaxed text-sm shadow-sm">
+                            <div class="flex items-center gap-2 mb-4 text-emerald-400 text-xs font-bold uppercase tracking-widest">
+                                <div class="w-6 h-6 rounded bg-emerald-600 flex items-center justify-center text-white"><i data-lucide="bot" class="w-3 h-3"></i></div>
+                                Claude
+                            </div>
+                            <p class="mb-3">Based on the refund flow spec (<span class="text-indigo-300">payments/refund.md</span>), the current eligibility rules are: within 30 days, item not used, original payment method available.</p>
+                            
+                            <p class="mb-2 text-white font-semibold">Adding a new rule would impact:</p>
+                            <ul class="list-disc pl-5 mb-4 space-y-1 text-slate-300 marker:text-slate-400">
+                                <li>The support team's review process (step 2 in the refund flow).</li>
+                                <li>The <span class="text-indigo-300">payments/chargeback.md</span> spec — chargebacks failing the new rule need updated evidence packages.</li>
+                            </ul>
+
+                            <div class="bg-amber-900/40 text-amber-100 p-3 rounded-lg border border-amber-700/60 text-xs flex gap-3 items-start">
+                                <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5 text-amber-400"></i>
+                                <span class="leading-relaxed"><strong>Gap identified:</strong> The specs don't currently cover how eligibility changes are rolled out or communicated to customers. This may need a new spec.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Under the Hood (Technical Details for those interested) -->
+    <section class="py-16 bg-white">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-2xl font-bold mb-8 text-center flex items-center justify-center gap-2">
+                <i data-lucide="settings" class="w-6 h-6 text-slate-400"></i> How it works behind the scenes
+            </h2>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="p-6 border border-slate-200 rounded-2xl">
+                    <h4 class="font-bold text-lg mb-2 flex items-center gap-2"><i data-lucide="file-text" class="text-brand-500"></i> Your files are the boss</h4>
+                    <p class="text-slate-600 text-sm">Your <code>.md</code>, <code>.txt</code>, images, and PDFs are always the source of truth. The database is a disposable cache — delete it any time.</p>
+                </div>
+                <div class="p-6 border border-slate-200 rounded-2xl">
+                    <h4 class="font-bold text-lg mb-2 flex items-center gap-2"><i data-lucide="database" class="text-brand-500"></i> Disposable Cache</h4>
+                    <p class="text-slate-600 text-sm">It creates a tiny database file on your computer to make searches instant (~30 milliseconds). If things act weird, you can delete it safely—it rebuilds automatically.</p>
+                </div>
+                <div class="p-6 border border-slate-200 rounded-2xl">
+                    <h4 class="font-bold text-lg mb-2 flex items-center gap-2"><i data-lucide="git-branch" class="text-brand-500"></i> Smart Git Updates</h4>
+                    <p class="text-slate-600 text-sm">If your folder uses Git, the tool is incredibly fast. Instead of scanning every file every time, it asks Git exactly which files changed and only updates those.</p>
+                </div>
+                <div class="p-6 border border-slate-200 rounded-2xl">
+                    <h4 class="font-bold text-lg mb-2 flex items-center gap-2"><i data-lucide="code" class="text-brand-500"></i> Built for Agents</h4>
+                    <p class="text-slate-600 text-sm">Type `local-doc json search [word]` to get perfect, clean data that automated bots and scripts can read easily.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ & Troubleshooting -->
+    <section id="faq" class="py-20 bg-slate-50 border-t border-slate-200">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold mb-4">Troubleshooting & FAQ</h2>
+                <p class="text-slate-600">Quick answers to common problems.</p>
+            </div>
+
+            <div class="space-y-4">
+                <!-- FAQ Item 1 -->
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <button class="faq-btn w-full px-6 py-4 text-left font-semibold flex justify-between items-center hover:bg-slate-50 transition" onclick="toggleFaq(this)">
+                        <span>I get "No repos added yet"</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-content hidden px-6 py-4 text-slate-600 border-t border-slate-100">
+                        You need to tell the tool where your documents are. Run: <br>
+                        <code class="bg-slate-100 px-2 py-1 rounded text-sm text-slate-800 mt-2 inline-block">local-doc repo add /path/to/your/folder</code>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 2 -->
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <button class="faq-btn w-full px-6 py-4 text-left font-semibold flex justify-between items-center hover:bg-slate-50 transition" onclick="toggleFaq(this)">
+                        <span>Do I need to organize my folders specially?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-content hidden px-6 py-4 text-slate-600 border-t border-slate-100">
+                        No! Flat, nested, messy—it doesn't matter. The tool searches through every sub-folder to find <code>.md</code>, <code>.mdx</code>, <code>.txt</code>, images, and PDFs. Code files like <code>.js</code> or <code>.html</code> are ignored.
+                    </div>
+                </div>
+
+                <!-- FAQ Item: Images & PDFs -->
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <button class="faq-btn w-full px-6 py-4 text-left font-semibold flex justify-between items-center hover:bg-slate-50 transition" onclick="toggleFaq(this)">
+                        <span>How do I index an image or PDF?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-content hidden px-6 py-4 text-slate-600 border-t border-slate-100">
+                        Place a companion <code>.md</code> file with the <strong>same base name</strong> in the same folder. For example, <code>report.pdf</code> needs a <code>report.md</code> next to it containing a description, tags, and any context. The tool indexes the <code>.md</code> content and stores the path to the actual asset so AI agents can open it.
+                        <br><br>
+                        If no companion <code>.md</code> exists, the asset is skipped and a warning is printed.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 3 -->
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <button class="faq-btn w-full px-6 py-4 text-left font-semibold flex justify-between items-center hover:bg-slate-50 transition" onclick="toggleFaq(this)">
+                        <span>The search results seem outdated.</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-content hidden px-6 py-4 text-slate-600 border-t border-slate-100">
+                        It should automatically update, but if it gets stuck, you can force it to rebuild by typing: <br>
+                        <code class="bg-slate-100 px-2 py-1 rounded text-sm text-slate-800 mt-2 inline-block">local-doc scan</code>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 4 -->
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <button class="faq-btn w-full px-6 py-4 text-left font-semibold flex justify-between items-center hover:bg-slate-50 transition" onclick="toggleFaq(this)">
+                        <span>How do I delete everything and start over?</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-content hidden px-6 py-4 text-slate-600 border-t border-slate-100">
+                        This is the "nuclear option". It safely removes your database and settings (but never touches your actual documents). Run: <br>
+                        <code class="bg-slate-100 px-2 py-1 rounded text-sm text-slate-800 mt-2 inline-block">local-doc reset</code>
+                    </div>
+                </div>
+                
+                 <!-- FAQ Item 5 -->
+                 <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <button class="faq-btn w-full px-6 py-4 text-left font-semibold flex justify-between items-center hover:bg-slate-50 transition" onclick="toggleFaq(this)">
+                        <span>Error: sqlite3 not found</span>
+                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-transform"></i>
+                    </button>
+                    <div class="faq-content hidden px-6 py-4 text-slate-600 border-t border-slate-100">
+                        The tool requires a common software called `sqlite3`. It comes pre-installed on Macs. On Linux, you might need to install it by running: <br>
+                        <code class="bg-slate-100 px-2 py-1 rounded text-sm text-slate-800 mt-2 inline-block">sudo apt install sqlite3</code>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-slate-400 py-12 text-center border-t border-slate-700">
+        <div class="max-w-4xl mx-auto px-4 flex flex-col items-center">
+            <div class="flex items-center gap-2 mb-4 text-slate-300">
+                <i data-lucide="book-open-check" class="w-5 h-5 text-brand-500"></i>
+                <span class="font-bold text-lg">local-doc</span>
+            </div>
+            <p class="text-sm mb-6 max-w-md mx-auto">A fast, offline spec registry that searches your project documentation across multiple repos. Zero dependencies beyond sqlite3.</p>
+            <div class="text-xs text-slate-500">
+                Released under the MIT License
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Scripts -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Copy to clipboard function
+        function copyCode(button) {
+            const pre = button.nextElementSibling;
+            const code = pre.innerText;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                button.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-green-400"></i>';
+                lucide.createIcons();
+                
+                // Revert after 2 seconds
+                setTimeout(() => {
+                    button.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>';
+                    lucide.createIcons();
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                // Fallback for older browsers / iframe restrictions
+                const textArea = document.createElement("textarea");
+                textArea.value = code;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    button.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-green-400"></i>';
+                    lucide.createIcons();
+                    setTimeout(() => {
+                        button.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>';
+                        lucide.createIcons();
+                    }, 2000);
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+
+        // Tab Switching function
+        function switchTab(event, tabId) {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            // Remove active state from all buttons
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active', 'text-brand-600');
+                el.classList.add('text-slate-500');
+            });
+            
+            // Show selected content
+            document.getElementById(tabId).classList.add('active');
+            
+            // Highlight selected button
+            event.currentTarget.classList.add('active');
+            event.currentTarget.classList.remove('text-slate-500');
+        }
+
+        // FAQ Toggle function
+        function toggleFaq(button) {
+            const content = button.nextElementSibling;
+            const icon = button.querySelector('svg');
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                if (icon) icon.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
+</body>
+</html>

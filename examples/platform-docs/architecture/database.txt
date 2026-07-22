@@ -1,0 +1,10 @@
+Database Architecture
+
+Primary: PostgreSQL 15
+Read replicas: 2 instances
+Connection pooling: PgBouncer
+
+Tables: users, orders, payments, sessions
+Partitioning: orders table partitioned by month
+
+Backup: daily snapshots to S3, WAL streaming to standby

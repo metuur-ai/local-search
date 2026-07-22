@@ -1,0 +1,2 @@
+# Repos this project searches. Names must match `local-search repo add <path> <NAME>`.
+scope = []
