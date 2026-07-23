@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -106,6 +107,11 @@ func FullScan(db *sql.DB, repoName, repoRoot string, skipDirectories []string) (
 	defer stmt.Close()
 
 	count := 0
+	// Scan-summary aggregates (task 5.1, R-5.1): malformed-frontmatter files
+	// (the R-2.3 warnings) and unrecognized relational-looking field counts
+	// (R-2.4), persisted per repo inside this same tx by writeKGScanStats.
+	var kgMalformed []string
+	kgUnrec := map[string]int{}
 	for r := range resultsCh {
 		if r.sp == nil || r.err != nil {
 			continue
@@ -116,6 +122,15 @@ func FullScan(db *sql.DB, repoName, repoRoot string, skipDirectories []string) (
 			sp.Tags, sp.Summary, sp.FullPath, sp.Modified, sp.ModifiedUnix, sp.Size, sp.Ext, sp.Content,
 		); err != nil {
 			return 0, err
+		}
+		if err := insertKGSpec(tx, sp); err != nil {
+			return 0, err
+		}
+		if sp.FrontmatterMalformed {
+			kgMalformed = append(kgMalformed, sp.Path)
+		}
+		for _, f := range sp.UnrecognizedRelFields {
+			kgUnrec[f]++
 		}
 		count++
 	}
@@ -132,6 +147,19 @@ func FullScan(db *sql.DB, repoName, repoRoot string, skipDirectories []string) (
 		return 0, err
 	}
 	if err := batchInsertVectors(tx, repoName); err != nil {
+		return 0, err
+	}
+	// GLOBAL knowledge-graph resolution over ALL repos' raw declarations, in
+	// the same tx as the scan (R-3.1, task 0.3).
+	if err := resolveKG(tx); err != nil {
+		return 0, err
+	}
+
+	// Persist this repo's scan-summary aggregates in the SAME tx (task 5.1,
+	// R-5.1): the scan command paths (`scan all` → FullScan, `scan <name>` →
+	// ReplaceRepo → FullScan) always re-read the whole repo, so these stats are
+	// fresh whenever the post-scan summary is printed.
+	if err := writeKGScanStats(tx, repoName, kgMalformed, kgUnrec); err != nil {
 		return 0, err
 	}
 
@@ -223,6 +251,14 @@ func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDire
 		return 0, newCommit, nil
 	}
 
+	// Skip files already indexed at the same on-disk (mtime, size) so repeated
+	// runs converge instead of re-indexing untracked/unchanged spec files that
+	// git reports as "changed" on every invocation.
+	storedStat, err := loadStoredStats(db, repoName, changed)
+	if err != nil {
+		return 0, lastCommit, err
+	}
+
 	// Phase 1: read all changed files concurrently OUTSIDE the transaction.
 	type pendingSpec struct {
 		relPath string
@@ -251,6 +287,21 @@ func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDire
 			defer wg.Done()
 			for rel := range relCh {
 				absPath := filepath.Join(repoRoot, filepath.FromSlash(rel))
+				// Fast path: file exists and BOTH its second-granularity mtime
+				// and its size match the indexed copy → treated as unchanged,
+				// nothing to delete or re-insert. This is what makes repeated
+				// incremental runs converge. Size is part of the key because
+				// mtime alone is only second-granular and can collide (old-
+				// commit checkouts, mtime-preserving tools, sub-second edits);
+				// a same-second edit that also preserves byte length is the
+				// remaining accepted false-negative window.
+				if st, ok := storedStat[rel]; ok {
+					if info, e := os.Stat(absPath); e == nil &&
+						info.ModTime().Unix() == st.mtimeUnix && info.Size() == st.size {
+						resCh <- workResult{}
+						continue
+					}
+				}
 				ext := strings.ToLower(filepath.Ext(rel))
 				var res workResult
 				switch {
@@ -327,6 +378,32 @@ func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDire
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// Snapshot the kg contribution of every path this scan touches, BEFORE any
+	// mutation. resolveKG is a pure function of global (kg_decls, kg_edges)
+	// state, and this scan only mutates rows keyed (repoName, path ∈ affected):
+	// if those rows are byte-identical after the re-insert, the global inputs
+	// are unchanged and the full graph rebuild can be skipped. This keeps the
+	// O(entire-graph) resolution pass off the query hot path (resolveScope's
+	// bootstrap IncrementalScan) for the common case — content edits that don't
+	// touch frontmatter identity or typed edges (review fix: unbounded
+	// resolveKG cost on every incidental scan).
+	affected := make(map[string]bool, len(toDelete)+len(toInsert))
+	for _, rel := range toDelete {
+		affected[rel] = true
+	}
+	for _, p := range toInsert {
+		affected[p.relPath] = true
+	}
+	affectedPaths := make([]string, 0, len(affected))
+	for rel := range affected {
+		affectedPaths = append(affectedPaths, rel)
+	}
+	sort.Strings(affectedPaths)
+	kgBefore, err := kgFingerprint(tx, repoName, affectedPaths)
+	if err != nil {
+		return 0, lastCommit, err
+	}
+
 	for _, rel := range toDelete {
 		if err := deleteSpecEntry(tx, repoName, rel); err != nil {
 			return 0, lastCommit, err
@@ -351,6 +428,9 @@ func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDire
 		); err != nil {
 			return 0, lastCommit, err
 		}
+		if err := insertKGSpec(tx, sp); err != nil {
+			return 0, lastCommit, err
+		}
 	}
 
 	// Batch FTS and tags for all newly inserted specs in two SQL passes.
@@ -366,6 +446,20 @@ func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDire
 	}
 	if err := batchInsertVectorsPaths(tx, repoName, insertedPaths); err != nil {
 		return 0, lastCommit, err
+	}
+	// Re-resolve globally so incremental scans land on the same kg_nodes state
+	// a full rescan would produce (R-3.1) — but only when this scan actually
+	// changed some kg-relevant row (see the kgBefore snapshot above). Skipping
+	// on equality is safe because kg_nodes is derived solely from kg_decls +
+	// kg_edges, which are unchanged by definition when the fingerprints match.
+	kgAfter, err := kgFingerprint(tx, repoName, affectedPaths)
+	if err != nil {
+		return 0, lastCommit, err
+	}
+	if kgBefore != kgAfter {
+		if err := resolveKG(tx); err != nil {
+			return 0, lastCommit, err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -398,10 +492,21 @@ func DeleteRepo(db *sql.DB, repoName string) error {
 	if _, err := tx.Exec("DELETE FROM meta WHERE key=?", "git_commit_"+repoName); err != nil {
 		return err
 	}
+	// Purge the repo's scan-summary stats (task 5.1) alongside its other meta.
+	if _, err := tx.Exec("DELETE FROM meta WHERE key=?", kgScanStatsPrefix+repoName); err != nil {
+		return err
+	}
 
 	// deleteRepoEntries already removed only this repo's FTS entries via
 	// "DELETE FROM specs_fts WHERE rowid IN (...)" — remaining repos' FTS data
 	// is intact, so no re-index is needed.
+
+	// Re-resolve the knowledge graph without this repo's declarations so no
+	// orphaned kg rows survive a `repo remove` (task 0.3) and conflict/phantom
+	// state involving the removed repo is recomputed globally (R-3.1).
+	if err := resolveKG(tx); err != nil {
+		return err
+	}
 
 	return tx.Commit()
 }
@@ -589,6 +694,16 @@ func deleteRepoEntries(tx *sql.Tx, repoName string) error {
 		return err
 	}
 	if _, err := tx.Exec("DELETE FROM specs WHERE repo=?", repoName); err != nil {
+		return err
+	}
+	// Clear this repo's RAW kg contributions (declarations + edges) by
+	// (repo,path) provenance. The resolved layer (kg_nodes) is not touched
+	// here: resolveKG rebuilds it from the surviving declarations after the
+	// scan's inserts, inside the same transaction.
+	if _, err := tx.Exec("DELETE FROM kg_edges WHERE repo=?", repoName); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM kg_decls WHERE repo=?", repoName); err != nil {
 		return err
 	}
 	return nil
@@ -823,6 +938,136 @@ func batchInsertVectorsPaths(tx *sql.Tx, repoName string, paths []string) error 
 
 // ── single-file incremental helpers ─────────────────────────────────────────
 
+// specStat is the stored on-disk identity of an indexed file: second-granular
+// mtime plus byte size. Both must match for the incremental fast path to treat
+// a file as unchanged — mtime alone can collide (old-commit checkouts,
+// mtime-preserving tools, same-second edits).
+type specStat struct {
+	mtimeUnix int64
+	size      int64
+}
+
+// loadStoredStats returns the indexed (modified_unix, size) for each given
+// repo-relative path that currently has a spec row. IncrementalScan uses it to
+// skip re-indexing files whose on-disk stat is unchanged.
+func loadStoredStats(db *sql.DB, repoName string, rels []string) (map[string]specStat, error) {
+	out := make(map[string]specStat, len(rels))
+	err := chunkPaths(rels, func(chunk []string) error {
+		placeholders := strings.Repeat("?,", len(chunk))
+		placeholders = placeholders[:len(placeholders)-1]
+		args := make([]any, 0, len(chunk)+1)
+		args = append(args, repoName)
+		for _, p := range chunk {
+			args = append(args, p)
+		}
+		rows, err := db.Query(
+			"SELECT path, modified_unix, size FROM specs WHERE repo=? AND path IN ("+placeholders+")", args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var p string
+			var st specStat
+			if err := rows.Scan(&p, &st.mtimeUnix, &st.size); err != nil {
+				return err
+			}
+			out[p] = st
+		}
+		return rows.Err()
+	})
+	return out, err
+}
+
+// kgFingerprint serializes the raw kg rows (kg_decls + kg_edges) attributed to
+// the given (repo, paths), in a deterministic order. IncrementalScan compares
+// the fingerprint before and after its mutations to decide whether the global
+// resolveKG rebuild can be skipped (see the call sites for the safety
+// argument). Both snapshots use the same sorted path list, so the chunk
+// partition — and therefore row order — is identical across the two calls.
+func kgFingerprint(tx *sql.Tx, repoName string, paths []string) (string, error) {
+	var b strings.Builder
+	err := chunkPaths(paths, func(chunk []string) error {
+		placeholders := strings.Repeat("?,", len(chunk))
+		placeholders = placeholders[:len(placeholders)-1]
+		args := make([]any, 0, len(chunk)+1)
+		args = append(args, repoName)
+		for _, p := range chunk {
+			args = append(args, p)
+		}
+
+		// Materialize each cursor fully before the next query — same
+		// modernc.org/sqlite single-connection discipline as elsewhere.
+		rows, err := tx.Query(
+			"SELECT path, id, kind, title FROM kg_decls WHERE repo=? AND path IN ("+placeholders+") "+
+				"ORDER BY path, id", args...)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var path, id, kind, title string
+			if err := rows.Scan(&path, &id, &kind, &title); err != nil {
+				rows.Close()
+				return err
+			}
+			b.WriteString("d\x00" + path + "\x00" + id + "\x00" + kind + "\x00" + title + "\x1e")
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		rows, err = tx.Query(
+			"SELECT src, dst, type, path, field FROM kg_edges WHERE repo=? AND path IN ("+placeholders+") "+
+				"ORDER BY src, dst, type, path, field", args...)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var src, dst, typ, path, field string
+			if err := rows.Scan(&src, &dst, &typ, &path, &field); err != nil {
+				rows.Close()
+				return err
+			}
+			b.WriteString("e\x00" + src + "\x00" + dst + "\x00" + typ + "\x00" + path + "\x00" + field + "\x1e")
+		}
+		rows.Close()
+		return rows.Err()
+	})
+	return b.String(), err
+}
+
+// insertKGSpec writes one file's RAW knowledge-graph declaration and typed
+// edges inside the scan transaction. Everything is keyed on canonical STRING
+// IDs — never rowids — so graph identity survives delete/re-insert churn
+// (Phase 0).
+//
+// This is the raw layer only: merge (R-1.3), conflict winners (R-1.4), and
+// phantom marking (R-1.5) depend on OTHER repos' declarations, so they are
+// computed by resolveKG — the global post-scan resolution pass (R-3.1) —
+// never incrementally here, where only one file's view is in scope.
+func insertKGSpec(tx *sql.Tx, sp *extract.Spec) error {
+	if _, err := tx.Exec(
+		"INSERT OR REPLACE INTO kg_decls (repo,path,id,kind,title) VALUES (?,?,?,?,?)",
+		sp.Repo, sp.Path, sp.NodeID, sp.Kind, sp.Title,
+	); err != nil {
+		return err
+	}
+
+	// Edges keep full provenance (R-2.1); the six-column PK dedupes repeated
+	// declarations deterministically. Dangling dst IDs (phantoms) are allowed —
+	// nodes may live in repos not yet scanned.
+	for _, e := range sp.Edges {
+		if _, err := tx.Exec(
+			"INSERT OR REPLACE INTO kg_edges (src,dst,type,repo,path,field) VALUES (?,?,?,?,?,?)",
+			e.Src, e.Dst, e.Type, sp.Repo, sp.Path, e.Field,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func deleteSpecEntry(tx *sql.Tx, repoName, relPath string) error {
 	var id int64
 	var repo, name, title, tags, summary, content string
@@ -858,6 +1103,15 @@ func deleteSpecEntry(tx *sql.Tx, repoName, relPath string) error {
 	if _, err := tx.Exec("DELETE FROM spec_edges WHERE src_spec_id=? OR dst_spec_id=?", id, id); err != nil {
 		return err
 	}
+	// Remove this file's RAW kg contributions by provenance (repo,path) — the
+	// declaration it made (canonical or fallback) and every edge it declared.
+	// The resolved kg_nodes layer is rebuilt afterwards by resolveKG (R-3.1).
+	if _, err := tx.Exec("DELETE FROM kg_edges WHERE repo=? AND path=?", repoName, relPath); err != nil {
+		return err
+	}
+	if _, err := tx.Exec("DELETE FROM kg_decls WHERE repo=? AND path=?", repoName, relPath); err != nil {
+		return err
+	}
 	if _, err := tx.Exec("DELETE FROM specs WHERE id=?", id); err != nil {
 		return err
 	}
@@ -866,11 +1120,21 @@ func deleteSpecEntry(tx *sql.Tx, repoName, relPath string) error {
 
 // readMediaForCompanion reads media specs whose sidecar .md just changed.
 // Returns parallel slices of specs and their relative paths.
+//
+// Extensions are visited in sorted order, NOT map-iteration order: this is a
+// kg/spec write path (the returned specs are inserted in this order), and the
+// LLD's "canonical sort everywhere" rule forbids Go map iteration order from
+// reaching any write (task 3.1).
 func readMediaForCompanion(repoName, repoRoot, companionAbsPath string) ([]*extract.Spec, []string, error) {
 	stem := strings.TrimSuffix(companionAbsPath, filepath.Ext(companionAbsPath))
+	exts := make([]string, 0, len(extract.MediaExts))
+	for ext := range extract.MediaExts {
+		exts = append(exts, ext)
+	}
+	sort.Strings(exts)
 	var specs []*extract.Spec
 	var rels []string
-	for ext := range extract.MediaExts {
+	for _, ext := range exts {
 		mediaAbs := stem + ext
 		if _, err := os.Stat(mediaAbs); os.IsNotExist(err) {
 			continue

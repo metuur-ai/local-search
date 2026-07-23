@@ -61,17 +61,25 @@ func ChangedFiles(dir, lastCommit string) ([]string, error) {
 			add(out)
 		}
 	} else if lastCommit != current {
-		// Committed changes since last scan
-		args := append([]string{"diff", "--name-only", lastCommit, current, "--"}, specGlobs...)
+		// Committed changes since last scan.
+		//
+		// --no-renames is load-bearing: with git's default rename detection
+		// (diff.renames=true since git 2.9), a rename emits ONLY the new path
+		// under --name-only, so the old path's index rows would never be
+		// deleted and incremental scans would drift from a full rescan
+		// (R-3.3). Decomposing renames into delete+add reports both paths.
+		args := append([]string{"diff", "--name-only", "--no-renames", lastCommit, current, "--"}, specGlobs...)
 		if out, err := run(dir, args...); err == nil {
 			add(out)
 		}
 	}
 
-	// Always include uncommitted changes (staged and unstaged)
+	// Always include uncommitted changes (staged and unstaged).
+	// --no-renames for the same R-3.3 reason as above: a staged `git mv` must
+	// report the old path too, or its stale rows survive incremental scans.
 	for _, subcmd := range [][]string{
-		{"diff", "--name-only"},
-		{"diff", "--cached", "--name-only"},
+		{"diff", "--name-only", "--no-renames"},
+		{"diff", "--cached", "--name-only", "--no-renames"},
 	} {
 		args := append(subcmd, append([]string{"--"}, specGlobs...)...)
 		if out, err := run(dir, args...); err == nil {
