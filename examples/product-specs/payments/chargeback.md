@@ -1,5 +1,10 @@
 ---
+id: capability://payments/chargeback
 tags: disputes, chargeback, fraud
+upstream:
+  - capability://payments/refund
+implementedBy:
+  - component://disputes-service
 ---
 
 # Chargeback handling

@@ -1,0 +1,67 @@
+{
+  "directed": false,
+  "graph": {
+    "edges": "vector",
+    "repo": "fixture"
+  },
+  "links": [
+    {
+      "source": "n1",
+      "target": "n2",
+      "weight": 0.4515
+    },
+    {
+      "source": "n1",
+      "target": "n3",
+      "weight": 0.378
+    }
+  ],
+  "multigraph": false,
+  "nodes": [
+    {
+      "file_type": "md",
+      "id": "n1",
+      "label": "Alpha Doc",
+      "name": "alpha",
+      "norm_label": "alpha doc",
+      "path": "guides/alpha.md",
+      "project": "guides",
+      "repo": "fixture",
+      "summary": "Alpha paragraph mentions [[Beta Doc]] here.",
+      "tags": [
+        "alpha",
+        "beta",
+        "link:beta-doc"
+      ],
+      "title": "Alpha Doc"
+    },
+    {
+      "file_type": "md",
+      "id": "n2",
+      "label": "Beta Doc",
+      "name": "beta",
+      "norm_label": "beta doc",
+      "path": "guides/beta.md",
+      "project": "guides",
+      "repo": "fixture",
+      "summary": "Beta paragraph with @spec req://core/beta-req body.",
+      "tags": [
+        "beta",
+        "spec:core/beta-req"
+      ],
+      "title": "Beta Doc"
+    },
+    {
+      "file_type": "md",
+      "id": "n3",
+      "label": "Root Doc",
+      "name": "root",
+      "norm_label": "root doc",
+      "path": "root.md",
+      "project": "_root",
+      "repo": "fixture",
+      "summary": "Root content about alpha things.",
+      "title": "Root Doc"
+    }
+  ]
+}

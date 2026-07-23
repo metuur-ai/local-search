@@ -654,6 +654,9 @@ func scanFullRebuild(repos []repoEntry) {
 		fmt.Printf("  %s: %d files indexed\n", r.Name, n)
 		total += n
 
+		// Per-repo knowledge-graph feedback (task 5.1, R-5.1).
+		printKGScanSummary(db, r.Name)
+
 		// Store git commit for incremental detection
 		if git.IsRepo(r.Path) {
 			if commit := git.CurrentCommit(r.Path); commit != "" {
@@ -699,6 +702,9 @@ func scanSurgical(targets []repoEntry) {
 		}
 		fmt.Printf("  %s: %d files indexed\n", r.Name, n)
 		total += n
+
+		// Per-repo knowledge-graph feedback (task 5.1, R-5.1).
+		printKGScanSummary(db, r.Name)
 
 		// R-2.5 + R-3.5: record HEAD for git repos so incremental detection has a
 		// baseline, and so the recorded git_commit_<name> stays consistent with the
@@ -926,9 +932,17 @@ func cmdSearch(args []string) {
 // over the specs carrying a tag ("graph tag <tag>") or as an ego graph seeded
 // by a semantic query ("graph search <query> [--repo <name>]").
 func cmdVectorGraph(args []string) {
-	const usage = "Usage: local-search graph <tag <tag> | search <query> [--repo <name>] | export <repo> [--edges auto|vector|tags|nodes] [--include-content] [--out <file>]>"
+	const usage = "Usage: local-search graph <explain <entity> [--json] | tag <tag> | search <query> [--repo <name>] | export <repo> [--edges auto|vector|tags|nodes] [--include-content] [--out <file>]>"
 	if len(args) == 0 {
 		die(usage)
+	}
+
+	// `graph explain` must never scan implicitly (R-4.5), so it cannot go
+	// through ensureDB below (which auto-scans a missing DB). Dispatch to
+	// graphcmd.go before any DB is opened; all logic lives there.
+	if args[0] == "explain" {
+		cmdGraphExplain(args[1:])
+		return
 	}
 
 	db := ensureDB()

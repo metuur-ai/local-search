@@ -1,5 +1,12 @@
 ---
+id: capability://payments/refund
 tags: billing, refund, customer, payments
+dependsOn:
+  - component://auth-api
+relationships:
+  - capability://payments/chargeback
+linkedSpecs:
+  - req://payments/refund-policy
 ---
 
 # Refund flow

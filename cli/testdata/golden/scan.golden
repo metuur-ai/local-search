@@ -1,0 +1,6 @@
+Scanning repos…
+  fixture: indexing <REPO>…
+  fixture: 3 files indexed
+    kg: structural 3 nodes; typed 0 nodes, 0 edges; conflicts 0, unresolved 0
+
+Done. 3 specs indexed. Run 'local-search search <keyword>' to find specs.

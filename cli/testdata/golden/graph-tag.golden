@@ -1,0 +1,26 @@
+{
+  "directed": false,
+  "graph": {},
+  "links": [
+    {
+      "source": "n1",
+      "target": "n2",
+      "weight": 0.4515
+    }
+  ],
+  "multigraph": false,
+  "nodes": [
+    {
+      "id": "n1",
+      "label": "Alpha Doc",
+      "project": "guides",
+      "repo": "fixture"
+    },
+    {
+      "id": "n2",
+      "label": "Beta Doc",
+      "project": "guides",
+      "repo": "fixture"
+    }
+  ]
+}

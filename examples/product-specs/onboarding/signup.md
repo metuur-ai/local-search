@@ -1,5 +1,8 @@
 ---
+id: capability://onboarding/signup
 tags: registration, user, onboarding
+dependsOn:
+  - component://auth-api
 ---
 
 # Signup flow

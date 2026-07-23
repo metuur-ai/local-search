@@ -1,0 +1,7 @@
+[source=fts · rank=bm25 · repos=1 (0 with graphs)]
+
+Specs (2):
+  [fixture · FTS] guides/alpha.md
+    Alpha Doc  (alpha, beta, link:beta-doc)  .md
+  [fixture · FTS] root.md
+    Root Doc  .md

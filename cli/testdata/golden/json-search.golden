@@ -1,0 +1,24 @@
+[
+  {
+    "repo": "fixture",
+    "project": "guides",
+    "name": "alpha",
+    "title": "Alpha Doc",
+    "tags": "alpha, beta, link:beta-doc",
+    "path": "guides/alpha.md",
+    "fullpath": "<REPO>/guides/alpha.md",
+    "ext": "md",
+    "relevance": -0.0000018640358149560607
+  },
+  {
+    "repo": "fixture",
+    "project": "_root",
+    "name": "root",
+    "title": "Root Doc",
+    "tags": "",
+    "path": "root.md",
+    "fullpath": "<REPO>/root.md",
+    "ext": "md",
+    "relevance": -0.0000015215537659876837
+  }
+]
