@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// explainable-search — global launcher for the explainable-search web server.
+// local-search-ui — global launcher for the local-search-ui web server.
 //
 // Runs the production server (prebuilt frontend/dist, Node built-ins only) from
 // any working directory. Exposed globally two ways:
 //   * `npm install -g .` from web/ (this file is the package "bin"), or
-//   * the `explainable-search` launcher that install.sh drops in ~/.local/bin.
+//   * the `local-search-ui` launcher that install.sh drops in ~/.local/bin.
 //
 // Override the port with PORT (default 8787). Pass --logs/--no-logs through to
 // server.js as usual.

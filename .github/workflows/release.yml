@@ -1,0 +1,40 @@
+name: release
+
+# Push a version tag to cut a release:
+#   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write        # required to create the GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod   # pins the Go version from go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build bundle (CLI binaries + web UI)
+        env:
+          CGO_ENABLED: '0'              # modernc.org/sqlite is pure Go — cross-compile cleanly
+        run: bash scripts/build-bundle.sh
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          # The tarball users install, the standalone one-command installer,
+          # and each platform's binary as a direct download.
+          files: |
+            dist/local-search-bundle.tar.gz
+            install.sh
+            cli/dist/local-search-*
+          generate_release_notes: true

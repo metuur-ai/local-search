@@ -1,7 +1,7 @@
 package main
 
 // local-search init | setup — manage the per-project search-scope file at
-// <project>/.agent/localsearch-config.yaml. This file declares which registered
+// <project>/.agent/local-search-config.yaml. This file declares which registered
 // repositories the LocalSearch skill includes when searching from that project.
 //
 // The command is deliberately NON-interactive: it exposes scriptable primitives
@@ -28,7 +28,7 @@ import (
 
 const (
 	agentDir          = ".agent"
-	projectConfigName = "localsearch-config.yaml"
+	projectConfigName = "local-search-config.yaml"
 )
 
 // initRepo is one registered repo as reported in the --json `available` list.
@@ -211,7 +211,7 @@ func readProjectConfig(path string) ([]string, bool) {
 	return parseProjectYAML(data), true
 }
 
-// writeProjectConfig writes the .agent/localsearch-config.yaml, creating the
+// writeProjectConfig writes the .agent/local-search-config.yaml, creating the
 // .agent/ directory if needed. Existing files are overwritten.
 func writeProjectConfig(path string, repos []string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

@@ -1,4 +1,4 @@
-// SSE + JSON client for the explainable-search backend. Thin wrappers over
+// SSE + JSON client for the local-search-ui backend. Thin wrappers over
 // fetch/EventSource so app.jsx can orchestrate the flow without inlining
 // transport details. All errors carry the server's message so the UI can
 // surface them (R-1.6, R-2.5).

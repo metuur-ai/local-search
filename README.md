@@ -8,35 +8,47 @@ Teams store specs as markdown files scattered across repos. Finding the right sp
 
 ## Install
 
-### Pre-built binary (fastest)
+### One command (recommended)
+
+Installs the **CLI**, the **Claude Code skill**, and the local **web UI** in one shot:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash
+```
+
+It pulls the latest release bundle and installs:
+
+- `local-search` → `~/.local/bin` (the CLI)
+- the Claude skill → `~/.claude/skills/local-search`
+- the web UI + `local-search-ui` launcher → `~/.local/share/local-search/web`
+
+The web UI needs Node ≥ 18; if `node` is missing it's skipped with a warning and the CLI + skill still install. Override locations or skip components with env vars (`INSTALL_DIR`, `SKILLS_DIR`, `WEB_DIR`, `INSTALL_WEB=0`, `INSTALL_SKILLS=0`) — see [`install.sh`](install.sh).
+
+### Pre-built binary (CLI only)
+
+Grab a single binary for your platform from the [latest release](https://github.com/metuur-ai/local-search/releases/latest):
 
 ```bash
 # macOS Apple Silicon
-cp local-search-tool/code/dist/local-search-mac-silicon-darwin-arm64 /usr/local/bin/local-search
+curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-mac-silicon-darwin-arm64 -o /usr/local/bin/local-search
 chmod +x /usr/local/bin/local-search
 
-# macOS Intel
-cp local-search-tool/code/dist/local-search-darwin-amd64 /usr/local/bin/local-search
-chmod +x /usr/local/bin/local-search
-
-# Linux amd64
-cp local-search-tool/code/dist/local-search-linux-amd64 /usr/local/bin/local-search
-chmod +x /usr/local/bin/local-search
-
-# Linux arm64
-cp local-search-tool/code/dist/local-search-linux-arm64 /usr/local/bin/local-search
-chmod +x /usr/local/bin/local-search
+# macOS Intel      → local-search-darwin-amd64
+# Linux  amd64     → local-search-linux-amd64
+# Linux  arm64     → local-search-linux-arm64
+# Windows amd64    → local-search-windows-amd64.exe
 ```
 
 ### Build from source
 
 ```bash
-cd local-search-tool/code
+git clone https://github.com/metuur-ai/local-search.git
+cd local-search/cli
 go build -o local-search .
 cp local-search /usr/local/bin/local-search
 ```
 
-Requirements: Go 1.21+ to build. No runtime dependencies — SQLite is compiled in via `modernc.org/sqlite` (pure Go, no CGO, no C toolchain needed).
+Requirements: Go 1.25+ to build. No runtime dependencies — SQLite is compiled in via `modernc.org/sqlite` (pure Go, no CGO, no C toolchain needed).
 
 ## Quick start
 
@@ -708,18 +720,21 @@ This means questions like "what's the impact of changing payment eligibility rul
 
 ### Installing the skill
 
-Copy or symlink the `skills/local-search/` folder into your project's `.claude/skills/` directory:
+The skill is **embedded in the `local-search` binary** — the one-command installer sets it up automatically. To (re)install it yourself:
 
 ```bash
-# From your project root
-mkdir -p .claude/skills
-cp -r /path/to/local-doc-tool/skills/local-search .claude/skills/
-
-# Or symlink it (stays up to date automatically)
-ln -s /path/to/local-doc-tool/skills/local-search .claude/skills/local-search
+# Writes the skill into ~/.claude/skills/local-search (or $SKILLS_DIR)
+local-search install-skill
 ```
 
-The skill file lives at `.claude/skills/local-search/SKILL.md`.
+To pin it to a single project instead of installing globally:
+
+```bash
+local-search install-skill --local        # into ./.claude/skills
+local-search install-skill --dir <path>   # into a specific skills directory
+```
+
+The skill file then lives at `.claude/skills/local-search/SKILL.md`. (Source: `cli/skilldata/local-search/`.)
 
 ### How Claude uses it
 

@@ -40,7 +40,7 @@ The bash script launched a new `sqlite3` process for every SQL statement — ~20
 
 ```bash
 # Build
-cd local-doc-tool/code
+cd local-search/cli
 go build -o local-search .
 
 # Install globally (optional)
@@ -180,7 +180,7 @@ local-search help                       # Full help text
 
 ### Web UI
 
-Starts the explainable-search web UI as a background daemon. Requires Node.js on
+Starts the local-search-ui web UI as a background daemon. Requires Node.js on
 `PATH` and a built frontend (`cd web/frontend && npm install && npm run build`).
 
 ```bash

@@ -1,4 +1,4 @@
-# Explainable-Search Web UI — Low-Level Design
+# local-search-ui Web UI — Low-Level Design
 
 ## Architecture
 

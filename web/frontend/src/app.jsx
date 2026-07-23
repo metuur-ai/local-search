@@ -1,4 +1,4 @@
-// Single-view shell for the explainable-search web UI. Orchestrates the full
+// Single-view shell for the local-search-ui web UI. Orchestrates the full
 // flow: pick repos, submit a query, open the SSE stream, and fan the streamed
 // events out into the result regions. The layout mirrors the "Local-Search
 // Console" design: a left search console (repos, query, facets, result stream)

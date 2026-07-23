@@ -10,7 +10,7 @@ description: >
   index). Also trigger when the user wants to configure, initialize, or set up which
   repositories this project searches ('set up local search', 'init local search scope',
   'which repos does this project search', 'add/remove a repo from my search scope') —
-  managed via `local-search init`/`setup` and the `.agent/localsearch-config.yaml` file.
+  managed via `local-search init`/`setup` and the `.agent/local-search-config.yaml` file.
   Trigger this skill even if the user doesn't say "spec" explicitly — if their
   question touches a domain that might be documented in spec files (.md, .mdx, .txt),
   search first. Also use when the user says 'what do our docs say about', 'is there
@@ -29,17 +29,17 @@ A CLI tool that indexes `.md`, `.mdx`, and `.txt` spec files across multiple rep
 The `local-search` command must be on your PATH. Build from source:
 
 ```bash
-cd local-doc-tool/code
+cd local-search/cli
 go build -o local-search .
 cp local-search /usr/local/bin/local-search
 ```
 
 Requires Go 1.21+ to build. No runtime dependencies — SQLite is compiled in.
 
-## Project search scope (`.agent/localsearch-config.yaml`)
+## Project search scope (`.agent/local-search-config.yaml`)
 
 Each project declares which registered repositories LocalSearch includes, via
-`<project>/.agent/localsearch-config.yaml`. **Before searching from a project,
+`<project>/.agent/local-search-config.yaml`. **Before searching from a project,
 read its scope from this file and pass it to every search** so results stay inside
 the project's boundary:
 
@@ -77,6 +77,21 @@ Never hand-edit the YAML for the user — always go through `local-search init`.
 ## Core workflow: search, read, reason
 
 When a user asks ANY question that might be answered by specs, follow this pipeline. Specs are the authoritative source of truth for the project — answering from general knowledge when spec content exists risks contradicting what the team has actually agreed on.
+
+### Step 0: Resolve project scope (required)
+
+Before running any search, read the project's configured repositories from
+`.agent/local-search-config.yaml` and pass them to **every** `local-search search`
+via `--repos`:
+
+1. `local-search init --json` → read `repositories` (creates the file if missing).
+2. Join the list comma-separated and append `--repos <repoA,repoB>` to every
+   `local-search search` call in the steps below, so results stay inside the
+   project's boundary.
+3. If `repositories` is empty, configure it (see "Configuring scope" above) or —
+   only with the user's ok — run one-off unscoped searches with `--repos all`.
+
+The `search` examples below omit `--repos <scope>` for brevity — always add it.
 
 ### Step 1: Extract search terms
 
@@ -133,9 +148,9 @@ Answer the user's question using what you found.
 
 User: "What's the impact of adding a new rule to the payment eligibility?"
 
-**You run:**
-1. `local-search search "payment eligibility"`
-2. `local-search search "refund"`
+**You run** (scope `platform,docs`, read from `.agent/local-search-config.yaml`):
+1. `local-search search "payment eligibility" --repos platform,docs`
+2. `local-search search "refund" --repos platform,docs`
 3. `local-search read refund`
 4. `local-search read chargeback`
 5. `local-search related refund`

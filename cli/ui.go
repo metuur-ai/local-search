@@ -1,4 +1,4 @@
-// local-search ui — start/stop the explainable-search web UI as a background
+// local-search ui — start/stop the local-search-ui web UI as a background
 // daemon. `ui` (or `ui start`) spawns the Node backend detached, waits for it
 // to become healthy, and opens the browser. `ui stop` kills it. `ui status`
 // reports whether it is running.
@@ -174,7 +174,7 @@ func resolveWebDir() (string, error) {
 			return filepath.Join(base, "web"), nil
 		}
 	}
-	return "", fmt.Errorf("could not locate the web/ directory. Run from inside the local-doc-tool repo, or set LOCAL_SEARCH_WEB_DIR to the path of its web/ folder")
+	return "", fmt.Errorf("could not locate the web/ directory. Run from inside the local-search repo, or set LOCAL_SEARCH_WEB_DIR to the path of its web/ folder")
 }
 
 // findUpwards walks up from start looking for rel; returns the directory that

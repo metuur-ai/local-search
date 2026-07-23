@@ -1,7 +1,7 @@
-# Explainable-Search Web UI — Tasks
+# local-search-ui Web UI — Tasks
 
 Arrow of intent: HLD → LLD → EARS → **tasks** → code/tests.
-Source of truth: `docs/ears/explainable-search-web-ui.md`. Each story cites its EARS ID.
+Source of truth: `docs/ears/local-search-ui-web-ui.md`. Each story cites its EARS ID.
 Greenfield web layer only — **zero changes to Go `cli/`** (LLD constraint).
 
 ## Unit 0: Scaffolding

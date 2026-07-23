@@ -2,15 +2,15 @@
 # install.sh — install the local-search bundle: CLI + Claude skill + local web UI
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/javierhbr/random-poc/main/local-doc-tool/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash
 #   or from a checkout / unpacked bundle:  bash install.sh
 #
 # What it installs:
 #   1. local-search            -> $INSTALL_DIR (default ~/.local/bin)          [CLI]
 #   2. local-search skill      -> $SKILLS_DIR/local-search (default ~/.claude/skills)
-#   3. web UI + `explainable-search` global launcher -> $WEB_DIR (default ~/.local/share/local-search/web)
-#                                 `explainable-search` lands in $INSTALL_DIR so the web UI
-#                                 runs from anywhere (like `npm install -g explainable-search`).
+#   3. web UI + `local-search-ui` global launcher -> $WEB_DIR (default ~/.local/share/local-search/web)
+#                                 `local-search-ui` lands in $INSTALL_DIR so the web UI
+#                                 runs from anywhere (like `npm install -g local-search-ui`).
 #                                 The web UI needs Node >= 18; it is skipped (with a
 #                                 warning) if `node` is not found — the CLI + skill still install.
 #
@@ -29,7 +29,7 @@ TOOL_NAME="local-search"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 SKILLS_DIR="${SKILLS_DIR:-$HOME/.claude/skills}"
 WEB_DIR="${WEB_DIR:-$HOME/.local/share/local-search/web}"
-BUNDLE_URL="${BUNDLE_URL:-https://raw.githubusercontent.com/javierhbr/random-poc/main/local-doc-tool/dist/local-search-bundle.tar.gz}"
+BUNDLE_URL="${BUNDLE_URL:-https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz}"
 
 INSTALL_CLI="${INSTALL_CLI:-1}"
 INSTALL_SKILLS="${INSTALL_SKILLS:-1}"
@@ -175,7 +175,7 @@ install_skills() {
 }
 
 install_web() {
-  local src="$1" from="$1/web" launcher="$INSTALL_DIR/explainable-search"
+  local src="$1" from="$1/web" launcher="$INSTALL_DIR/local-search-ui"
   [[ -d "$from" ]] || { warn "web/ not found — skipping web UI install"; return; }
   if ! command -v node &>/dev/null; then
     warn "Node not found — skipping web UI. Install Node >= 18, then re-run with INSTALL_CLI=0 INSTALL_SKILLS=0."
@@ -190,22 +190,22 @@ install_web() {
     warn "frontend/dist missing — the UI will 404 until built (cd web && npm ci && npm run build)."
   fi
   # Global launcher: production mode, served by Node's built-ins only (no npm
-  # install needed). Placed in $INSTALL_DIR so `explainable-search` runs from
-  # anywhere, like `npm install -g explainable-search`. Prefers the packaged
+  # install needed). Placed in $INSTALL_DIR so `local-search-ui` runs from
+  # anywhere, like `npm install -g local-search-ui`. Prefers the packaged
   # bin/ entrypoint, falling back to server.js for older bundles.
-  local entry="$WEB_DIR/bin/explainable-search.js"
-  [[ -f "$from/bin/explainable-search.js" ]] || entry="$WEB_DIR/server.js"
+  local entry="$WEB_DIR/bin/local-search-ui.js"
+  [[ -f "$from/bin/local-search-ui.js" ]] || entry="$WEB_DIR/server.js"
   local tmp; tmp="$(mktemp)"
   cat > "$tmp" <<EOF
 #!/usr/bin/env bash
-# explainable-search — launch the explainable-search web UI (installed by install.sh)
+# local-search-ui — launch the local-search-ui web UI (installed by install.sh)
 export NODE_ENV="\${NODE_ENV:-production}"
 exec node "$entry" "\$@"
 EOF
   info "Launch: $launcher"
   install_file "$tmp" "$launcher"
   rm -f "$tmp"
-  green "  installed web UI + explainable-search launcher"
+  green "  installed web UI + local-search-ui launcher"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -226,7 +226,7 @@ main() {
   printf '\n'
   green "Done."
   info "CLI:   local-search help"
-  info "Web:   explainable-search      # runs from anywhere, then open http://localhost:8787"
+  info "Web:   local-search-ui      # runs from anywhere, then open http://localhost:8787"
   info "Skill: available to Claude Code from $SKILLS_DIR/local-search"
 }
 

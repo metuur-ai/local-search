@@ -26,7 +26,7 @@ Prints the current version and exits.
 
 ## 0. Project scope (init / setup)
 
-Manages the per-project scope file `<project>/.agent/localsearch-config.yaml`, which
+Manages the per-project scope file `<project>/.agent/local-search-config.yaml`, which
 declares the registered repositories searched from that project. `init` and `setup`
 are exact aliases. The command is non-interactive — the LocalSearch skill drives the
 interactive add/remove/modify/review flow and calls these primitives.
@@ -43,7 +43,7 @@ local-search init --dir <path>        # operate on a project dir other than CWD
 
 - Only registered repos are accepted; `--add`/`--set` reject unknown names and list
   the valid ones. External graphs are added as `graph:<name>` entries.
-- Any invocation creates `.agent/localsearch-config.yaml` if it does not exist.
+- Any invocation creates `.agent/local-search-config.yaml` if it does not exist.
 - To scope a search from the file (read the list with `local-search init --json`):
   - `local-search search "<query>" --repos repoA,repoB`
   - `local-search find "<query>" --scope repoA,repoB` (also `code`)
@@ -354,6 +354,6 @@ deletes and recreates the DB on its own, so the explicit `rm` is optional.)
 
 | Path | Contents |
 |---|---|
-| `<project>/.agent/localsearch-config.yaml` | Per-project search scope (`repositories:` list). Managed by `local-search init`/`setup`; read by the skill, which passes `--scope` to searches. |
+| `<project>/.agent/local-search-config.yaml` | Per-project search scope (`repositories:` list). Managed by `local-search init`/`setup`; read by the skill, which passes the list to `local-search search` via `--repos` (and to `find`/`code` via `--scope`). |
 | `~/.local-search/repos` | Registered repo list, pipe-delimited per line: `name\|path`, `name\|path\|skip1,skip2`, or with a 4th date-added field `name\|path\|<skip-dirs>\|<added_at>` (empty 3rd field when there are no skip-dirs: `name\|path\|\|<added_at>`). Legacy 2- and 3-field lines still parse. |
 | `~/.local-search/specs.db` | SQLite database (disposable cache — source files are the truth) |

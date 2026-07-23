@@ -1,6 +1,6 @@
 {
-  "name": "explainable-search-frontend",
-  "version": "0.0.0",
+  "name": "local-search-ui-frontend",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

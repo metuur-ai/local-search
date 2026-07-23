@@ -1,4 +1,4 @@
-# Explainable-Search Web UI — EARS Specifications
+# local-search-ui Web UI — EARS Specifications
 
 Arrow of intent: HLD → LLD → **EARS** → code/tests. Each unit below is an implementable slice.
 

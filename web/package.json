@@ -1,11 +1,11 @@
 {
-  "name": "explainable-search",
-  "version": "0.1.0",
+  "name": "local-search-ui",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "workspaces": ["backend", "frontend"],
   "bin": {
-    "explainable-search": "bin/explainable-search.js"
+    "local-search-ui": "bin/local-search-ui.js"
   },
   "scripts": {
     "dev": "node server.js",

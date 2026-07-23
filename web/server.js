@@ -138,7 +138,7 @@ async function probeProvenance() {
 
 server.listen(port, () => {
   const mode = isProd ? 'production' : 'dev';
-  console.log(`explainable-search (${mode}) listening on http://localhost:${port}`);
+  console.log(`local-search-ui (${mode}) listening on http://localhost:${port}`);
   if (logsEnabled) {
     console.log(`CLI interaction log: ${logFile}`);
   } else {

@@ -1,4 +1,4 @@
-# explainable-search
+# local-search-ui
 
 A single Node project (npm workspaces) that runs the Preact frontend and the
 raw-Node HTTP API as **one process**, in two modes.

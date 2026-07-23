@@ -1,4 +1,4 @@
-# Explainable-Search Web UI — High-Level Design
+# local-search-ui Web UI — High-Level Design
 
 ## Overview
 
@@ -11,7 +11,7 @@ visualization of the specs and their similarity relationships.
 The web layer is pure glue. All retrieval data (ranked sources, provenance, node-link graph) is
 already emitted as JSON by the existing `local-search` CLI; the only genuinely new pieces are a thin
 HTTP backend and a Preact frontend. Per the input research
-(`.devlocal/research/2026-07-18-explainable-search-web-ui.md`), no changes to the Go `code/` are
+(`.devlocal/research/2026-07-18-local-search-ui-web-ui.md`), no changes to the Go `code/` are
 required for the POC.
 
 Because the answer is produced **agentically** and a run can take **minutes** (Claude issues several
