@@ -29,13 +29,35 @@ type GraphNode struct {
 	Tags      []string `json:"tags,omitempty"`
 	FileType  string   `json:"file_type,omitempty"`
 	Content   string   `json:"content,omitempty"`
+
+	// Knowledge-graph supplementary-node fields, set ONLY on the extra nodes
+	// RepoGraph emits for typed-link endpoints that have no spec row in the
+	// exported repo (cross-repo definitions and unresolved phantoms). Both are
+	// `omitempty`, so every pre-existing node serializes byte-identically
+	// (R-5.4).
+	Kind  string `json:"kind,omitempty"`  // canonical scheme ('component', 'req', …)
+	Flags string `json:"flags,omitempty"` // '', 'conflict' (R-1.4), 'unresolved' (R-1.5)
 }
 
-// GraphLink is one undirected edge with a similarity weight.
+// GraphLink is one undirected edge with a similarity weight — plus, for TYPED
+// knowledge-graph links only (R-5.2), the four graphify link-schema fields:
+// relation, confidence, source_file, source_location. All four are `omitempty`
+// and left zero on similarity links, so every pre-existing untyped link (and
+// the lean `graph tag`/`graph search` outputs) serializes byte-identically to
+// before (R-4.6, R-5.4). Typed links share ONE node-ID namespace with the
+// untyped families: endpoints that resolve to a spec in the exported repo use
+// that spec's rowid ID; only endpoints resolved elsewhere (cross-repo, phantom)
+// keep their canonical string ID — and those always get a matching
+// supplementary node, so every link endpoint exists in nodes[].
 type GraphLink struct {
 	Source string  `json:"source"`
 	Target string  `json:"target"`
 	Weight float64 `json:"weight"`
+
+	Relation       string  `json:"relation,omitempty"`        // edge type, e.g. depends_on (R-2.1)
+	Confidence     float64 `json:"confidence,omitempty"`      // 1 — declared edges are deterministic extractions
+	SourceFile     string  `json:"source_file,omitempty"`     // repo-relative declaring file (provenance)
+	SourceLocation string  `json:"source_location,omitempty"` // "frontmatter:<field>" locator (provenance)
 }
 
 // NodeLinkGraph is a NetworkX-compatible node-link container.
@@ -346,6 +368,11 @@ func RepoGraph(db *sql.DB, repo, edges string, includeContent bool, minWeight fl
 	}
 	defer rows.Close()
 
+	// path → rowid node ID, so typed knowledge-graph links can resolve their
+	// canonical endpoints onto the SAME nodes the untyped families use (one
+	// node-ID namespace per export — see kgTypedLinks).
+	pathToRowID := make(map[string]string)
+
 	for rows.Next() {
 		var (
 			id                                                          int64
@@ -375,6 +402,7 @@ func RepoGraph(db *sql.DB, repo, edges string, includeContent bool, minWeight fl
 			n.Content = content
 		}
 		g.Nodes = append(g.Nodes, n)
+		pathToRowID[path] = n.ID
 	}
 	if err := rows.Err(); err != nil {
 		return g, err
@@ -411,7 +439,164 @@ func RepoGraph(db *sql.DB, repo, edges string, includeContent bool, minWeight fl
 		return g, fmt.Errorf("unknown edges mode %q (want vector|tags|nodes)", edges)
 	}
 
+	// Typed knowledge-graph links (R-5.2): appended AFTER the untyped families
+	// so every pre-existing link serializes byte-identically (R-5.4), in the
+	// kg_edges primary-key order (canonical-sort discipline, R-3.2). The export
+	// is rebuilt from the tables on every run, so this is fully regenerated
+	// derived output (R-5.3). `--edges nodes` explicitly means "no links", so
+	// typed links are skipped there too. Supplementary nodes (endpoints with no
+	// spec row in this repo) are appended after the spec nodes, in canonical-ID
+	// order, so nodes[] stays a closed set over every link endpoint.
+	if edges != "nodes" {
+		typed, extra, err := kgTypedLinks(db, repo, pathToRowID)
+		if err != nil {
+			return g, err
+		}
+		g.Links = append(g.Links, typed...)
+		g.Nodes = append(g.Nodes, extra...)
+	}
+
 	return g, nil
+}
+
+// kgTypedLinks returns the repo's declared typed edges as graphify-schema
+// links (relation/confidence/source_file/source_location populated), plus the
+// supplementary nodes needed so every link endpoint exists in nodes[].
+//
+// Node-ID unification (review fix): the untyped node/link families key nodes
+// by spec rowid, so typed links resolve each canonical endpoint through
+// kg_nodes and use the SAME rowid ID whenever the endpoint's winning
+// declaration is a spec of the exported repo. Without this the export held two
+// disjoint ID namespaces and NetworkX silently materialized duplicate phantom
+// nodes for every typed endpoint. Endpoints resolved elsewhere — cross-repo
+// definitions and 'unresolved' phantoms (R-1.5) — keep their canonical string
+// ID and are emitted as supplementary GraphNodes (canonical-ID order, R-3.2).
+//
+// One link per declaration row — the same (src,dst,type) declared by two files
+// yields two links, because provenance is per declaration (LLD). Confidence is
+// 1: typed edges are deterministic frontmatter extractions, not inferred
+// similarity.
+func kgTypedLinks(db *sql.DB, repo string, pathToRowID map[string]string) ([]GraphLink, []GraphNode, error) {
+	type kgEdgeRow struct {
+		src, dst, typ, path, field string
+	}
+	rows, err := db.Query(`SELECT src, dst, type, path, field FROM kg_edges
+		WHERE repo=? ORDER BY src, dst, type, repo, path, field`, repo)
+	if err != nil {
+		return nil, nil, err
+	}
+	var edgeRows []kgEdgeRow
+	for rows.Next() {
+		var e kgEdgeRow
+		if err := rows.Scan(&e.src, &e.dst, &e.typ, &e.path, &e.field); err != nil {
+			rows.Close()
+			return nil, nil, err
+		}
+		edgeRows = append(edgeRows, e)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	if len(edgeRows) == 0 {
+		return nil, nil, nil
+	}
+
+	// Distinct endpoints, sorted for deterministic chunking and node order.
+	epSet := make(map[string]bool, len(edgeRows)*2)
+	for _, e := range edgeRows {
+		epSet[e.src] = true
+		epSet[e.dst] = true
+	}
+	eps := make([]string, 0, len(epSet))
+	for ep := range epSet {
+		eps = append(eps, ep)
+	}
+	sort.Strings(eps)
+
+	// Resolve endpoints through the resolved layer (kg_nodes), chunked to stay
+	// within SQLite's variable limit.
+	type kgNodeInfo struct {
+		kind, nrepo, npath, title, flags string
+	}
+	info := make(map[string]kgNodeInfo, len(eps))
+	err = chunkPaths(eps, func(chunk []string) error {
+		placeholders := strings.Repeat("?,", len(chunk))
+		placeholders = placeholders[:len(placeholders)-1]
+		args := make([]any, 0, len(chunk))
+		for _, ep := range chunk {
+			args = append(args, ep)
+		}
+		nrows, err := db.Query(
+			"SELECT id, kind, repo, path, title, flags FROM kg_nodes WHERE id IN ("+placeholders+")",
+			args...)
+		if err != nil {
+			return err
+		}
+		defer nrows.Close()
+		for nrows.Next() {
+			var id string
+			var n kgNodeInfo
+			if err := nrows.Scan(&id, &n.kind, &n.nrepo, &n.npath, &n.title, &n.flags); err != nil {
+				return err
+			}
+			info[id] = n
+		}
+		return nrows.Err()
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// resolveID maps a canonical endpoint onto this repo's spec rowid when its
+	// winning declaration is one of the exported spec rows; otherwise the
+	// canonical ID is kept and a supplementary node is required.
+	resolveID := func(ep string) (string, bool) {
+		if n, ok := info[ep]; ok && n.nrepo == repo {
+			if rid, ok2 := pathToRowID[n.npath]; ok2 {
+				return rid, true
+			}
+		}
+		return ep, false
+	}
+
+	links := make([]GraphLink, 0, len(edgeRows))
+	for _, e := range edgeRows {
+		src, _ := resolveID(e.src)
+		dst, _ := resolveID(e.dst)
+		links = append(links, GraphLink{
+			Source:         src,
+			Target:         dst,
+			Weight:         1,
+			Relation:       e.typ,
+			Confidence:     1,
+			SourceFile:     e.path,
+			SourceLocation: "frontmatter:" + e.field,
+		})
+	}
+
+	var extra []GraphNode
+	for _, ep := range eps {
+		if _, mapped := resolveID(ep); mapped {
+			continue
+		}
+		n := info[ep] // zero value when kg_nodes has no row (defensive; resolveKG guarantees one)
+		label := n.title
+		if label == "" {
+			label = ep
+		}
+		extra = append(extra, GraphNode{
+			ID:        ep,
+			Label:     label,
+			NormLabel: strings.ToLower(label),
+			Repo:      n.nrepo,
+			Path:      n.npath,
+			Title:     n.title,
+			Kind:      n.kind,
+			Flags:     n.flags,
+		})
+	}
+	return links, extra, nil
 }
 
 // tagLinks builds undirected edges between nodes that share tags, weighted by
