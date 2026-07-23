@@ -26,6 +26,8 @@ dist/
 # ── Agent / tooling scratch (personal, regenerable) ───────
 .devlocal/
 graphify-out/
+dist/bundle/
+
 
 # ── Data / caches ─────────────────────────────────────────
 *.db
