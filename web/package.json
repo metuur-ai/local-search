@@ -1,9 +1,12 @@
 {
   "name": "local-search-ui",
-  "version": "1.0.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
-  "workspaces": ["backend", "frontend"],
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "bin": {
     "local-search-ui": "bin/local-search-ui.js"
   },

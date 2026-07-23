@@ -9,6 +9,17 @@
 #
 # Upload the tarball + install.sh to your release host, then users run:
 #   curl -fsSL https://…/install.sh | bash
+#
+# Optionally bump the product version across ALL components before building:
+#   scripts/build-bundle.sh                     # build only (no version change)
+#   scripts/build-bundle.sh --bump patch        # 0.3.0 -> 0.3.1, everywhere, then build
+#   scripts/build-bundle.sh --bump minor        # 0.3.0 -> 0.4.0
+#   scripts/build-bundle.sh --bump major        # 0.3.0 -> 1.0.0
+#   scripts/build-bundle.sh --set-version 1.2.3 # set an explicit version, then build
+#
+# The Go const in cli/main.go is the source of truth (release.sh and
+# `local-search --version` read it); the web package.json files are unified
+# onto that same version.
 
 set -euo pipefail
 
@@ -17,6 +28,61 @@ OUT="$ROOT/dist"
 STAGE="$OUT/bundle"
 
 info() { printf '  %s\n' "$*"; }
+die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+# ── Version bump (optional, runs before the build) ────────────────────────────
+# The Go const carries the product version compiled into every binary; the web
+# workspace (root + backend + frontend + lockfile) is unified onto the same one.
+GO_VERSION_FILE="$ROOT/cli/main.go"
+
+current_version() { sed -n 's/^const Version = "\(.*\)"/\1/p' "$GO_VERSION_FILE"; }
+
+# compute_bump <major|minor|patch> — echo the next version relative to current.
+compute_bump() {
+  local level="$1" cur; cur="$(current_version)"
+  [[ "$cur" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || die "current version '$cur' is not MAJOR.MINOR.PATCH"
+  local M="${BASH_REMATCH[1]}" m="${BASH_REMATCH[2]}" p="${BASH_REMATCH[3]}"
+  case "$level" in
+    major) echo "$((M + 1)).0.0" ;;
+    minor) echo "$M.$((m + 1)).0" ;;
+    patch) echo "$M.$m.$((p + 1))" ;;
+    *)     die "unknown bump level '$level' (use major|minor|patch)" ;;
+  esac
+}
+
+# apply_version <x.y.z> — write the version into every component.
+apply_version() {
+  local new="$1"
+  [[ "$new" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version '$new' must be MAJOR.MINOR.PATCH"
+  info "Bumping version: $(current_version) → $new"
+
+  # Go CLI const — compiled into every binary; the source of truth.
+  sed -i.bak "s/^const Version = \".*\"/const Version = \"$new\"/" "$GO_VERSION_FILE"
+  rm -f "$GO_VERSION_FILE.bak"
+  info "  cli/main.go → $new"
+
+  # Web workspace — root + backend + frontend package.json + package-lock, kept
+  # consistent via npm's own tool so the later `npm ci` stays happy.
+  command -v npm >/dev/null || die "npm is required to bump the web package versions"
+  ( cd "$ROOT/web" && npm version "$new" \
+      --workspaces --include-workspace-root \
+      --no-git-tag-version --allow-same-version >/dev/null )
+  info "  web root + backend + frontend + lockfile → $new"
+}
+
+BUMP_LEVEL="" SET_VERSION=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --bump)        BUMP_LEVEL="${2:-}"; shift 2 ;;
+    --set-version) SET_VERSION="${2:-}"; shift 2 ;;
+    -h|--help)     sed -n '2,20p' "$0"; exit 0 ;;
+    *)             die "unknown argument: $1 (see --help)" ;;
+  esac
+done
+[ -n "$SET_VERSION" ] && [ -n "$BUMP_LEVEL" ] && die "use either --bump or --set-version, not both"
+if   [ -n "$SET_VERSION" ]; then apply_version "$SET_VERSION"
+elif [ -n "$BUMP_LEVEL"  ]; then apply_version "$(compute_bump "$BUMP_LEVEL")"
+fi
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE/bin"
