@@ -24,6 +24,24 @@ It pulls the latest release bundle and installs:
 
 The web UI needs Node ≥ 18; if `node` is missing it's skipped with a warning and the CLI + skill still install. Override locations or skip components with env vars (`INSTALL_DIR`, `SKILLS_DIR`, `WEB_DIR`, `INSTALL_WEB=0`, `INSTALL_SKILLS=0`) — see [`install.sh`](install.sh).
 
+### One command — straight from the latest release bundle
+
+Fetches the latest self-contained release bundle (all platform binaries + the
+prebuilt web UI), unpacks it, and runs its own `install.sh` — everything installs
+out of the box, no build step:
+
+```bash
+tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"
+```
+
+If your shell mangles the pipe, download first, then unpack:
+
+```bash
+tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz -o "$tmp/ls.tgz" && tar -xzf "$tmp/ls.tgz" -C "$tmp" && bash "$tmp/bundle/install.sh"
+```
+
+The same env-var overrides apply — prefix them, e.g. `INSTALL_WEB=0 tmp=$(mktemp -d) && …`.
+
 ### Download a release archive (offline, everything included)
 
 Prefer downloading over `curl | bash`? Grab **`local-search-<version>.zip`** from the
