@@ -926,7 +926,7 @@ func cmdSearch(args []string) {
 // over the specs carrying a tag ("graph tag <tag>") or as an ego graph seeded
 // by a semantic query ("graph search <query> [--repo <name>]").
 func cmdVectorGraph(args []string) {
-	const usage = "Usage: local-search graph <tag <tag> | search <query> [--repo <name>]>"
+	const usage = "Usage: local-search graph <tag <tag> | search <query> [--repo <name>] | export <repo> [--edges auto|vector|tags|nodes] [--include-content] [--out <file>]>"
 	if len(args) == 0 {
 		die(usage)
 	}
@@ -935,6 +935,9 @@ func cmdVectorGraph(args []string) {
 	defer db.Close()
 
 	switch args[0] {
+	case "export":
+		cmdGraphExport(db, args[1:])
+
 	case "tag":
 		if len(args) < 2 || args[1] == "" {
 			die(usage)
@@ -966,6 +969,101 @@ func cmdVectorGraph(args []string) {
 	default:
 		die(usage)
 	}
+}
+
+// cmdGraphExport implements `graph export <repo> [--edges auto|vector|tags|nodes]
+// [--include-content] [--out <file>]`: emit a registered repo's indexed specs as
+// a rich NetworkX node-link JSON graph, importable via `graphs add` (round-trip).
+func cmdGraphExport(db *sql.DB, args []string) {
+	const usage = "Usage: local-search graph export <repo> [--edges auto|vector|tags|nodes] [--include-content] [--out <file>]"
+	var (
+		repo           string
+		edges          = "auto"
+		includeContent bool
+		outPath        string
+	)
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; a {
+		case "--edges":
+			if i+1 >= len(args) {
+				die("--edges needs a value (auto|vector|tags|nodes)")
+			}
+			edges = args[i+1]
+			i++
+		case "--include-content":
+			includeContent = true
+		case "--out", "-o":
+			if i+1 >= len(args) {
+				die("--out needs a file path")
+			}
+			outPath = args[i+1]
+			i++
+		default:
+			if strings.HasPrefix(a, "-") {
+				die("unknown flag for graph export: " + a + "\n" + usage)
+			}
+			if repo != "" {
+				die("graph export takes a single <repo>\n" + usage)
+			}
+			repo = a
+		}
+	}
+	if repo == "" {
+		die(usage)
+	}
+
+	// Validate the repo name against the registry (mirrors init's behaviour).
+	repos, err := localdb.Repos(db)
+	if err != nil {
+		die(err.Error())
+	}
+	known := false
+	names := make([]string, 0, len(repos))
+	for _, r := range repos {
+		names = append(names, r.Name)
+		if r.Name == repo {
+			known = true
+		}
+	}
+	if !known {
+		die("unknown repo: " + repo + "\nRegistered repos: " + strings.Join(names, ", ") +
+			"\n(See `local-search repo list`.)")
+	}
+
+	// Resolve auto → a concrete edge source; note the choice on stderr so stdout
+	// stays clean JSON.
+	switch edges {
+	case "auto":
+		hasVec, err := localdb.RepoHasVectors(db, repo)
+		if err != nil {
+			die(err.Error())
+		}
+		if hasVec {
+			edges = "vector"
+		} else {
+			edges = "tags"
+		}
+		fmt.Fprintf(os.Stderr, "graph export: edges=%s (auto)\n", edges)
+	case "vector", "tags", "nodes":
+		// explicit — nothing to resolve
+	default:
+		die("unknown --edges value: " + edges + " (want auto|vector|tags|nodes)")
+	}
+
+	// minWeight 0.3 / perNodeTopK 8 match the existing `graph tag`/`search` defaults.
+	g, err := localdb.RepoGraph(db, repo, edges, includeContent, 0.3, 8)
+	if err != nil {
+		die(err.Error())
+	}
+
+	if outPath == "" {
+		localdb.PrintJSON(g)
+		return
+	}
+	if err := localdb.WriteJSONFile(outPath, g); err != nil {
+		die("cannot write " + outPath + ": " + err.Error())
+	}
+	fmt.Fprintf(os.Stderr, "wrote %d nodes, %d links → %s\n", len(g.Nodes), len(g.Links), outPath)
 }
 
 // ── Search-plan resolution & helpers ──────────────────────────────────────────
@@ -2265,6 +2363,7 @@ Usage:
   local-search graphs add <name> <path> [--kind K]    Register a standalone graph (K = graphify | code-review-graph)
   local-search graphs remove <name>                   Unregister a standalone graph
   local-search graphs prune                           Forget standalone graphs whose files vanished
+  local-search graph export <repo> [--edges M] [--out F]  Export a repo as node-link JSON (M = auto|vector|tags|nodes); round-trips via graphs add
 
   local-search find <query> [--scope <repos>]         Unified search: specs + graphify + code-review-graph
   local-search code <query> [--scope <repos>]         Search code-review-graph nodes by name

@@ -859,6 +859,15 @@ func PrintJSON(v any) {
 	enc.Encode(v) //nolint:errcheck
 }
 
+// WriteJSONFile serialises v as indented JSON to a file with a trailing newline.
+func WriteJSONFile(path string, v any) error {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(b, '\n'), 0o644)
+}
+
 // ── Inspect ───────────────────────────────────────────────────────────────────
 
 // Inspect dumps all repos, specs, and tags for debugging.
