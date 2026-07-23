@@ -111,6 +111,29 @@ func normalizeGolden(out, home, repoDir, outFile string) string {
 	return out
 }
 
+// normalizeRepoList makes `repo list` output deterministic for goldening. Two
+// sources of nondeterminism are removed: (1) the ADDED and LAST SCAN columns
+// render a wall-clock-relative age (humanAge vs time.Now()) that flips between
+// "—" (sub-second) and "1s" under CPU load; (2) the "—" glyph is 3 bytes but one
+// display column, and fmt pads by byte width, so an "—" cell and a "1s" cell
+// shift the whole row's alignment. Collapsing whitespace runs neutralizes the
+// alignment, and rewriting the two age columns to a stable <AGE> neutralizes the
+// value flip. Scoped to repo list so no other golden is affected.
+func normalizeRepoList(out string) string {
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	for i, ln := range lines {
+		f := strings.Fields(ln)
+		// Data row: NAME ADDED LAST-SCAN LAST-UPDATE COMMIT PATH (6 fields). The
+		// header splits into more fields (spaces inside "LAST SCAN"), so guard on
+		// count and the NAME sentinel to touch only data rows.
+		if len(f) == 6 && f[0] != "NAME" {
+			f[1], f[2] = "<AGE>", "<AGE>"
+		}
+		lines[i] = strings.Join(f, " ")
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
 // canonicalizeGraphJSON parses a NetworkX node-link JSON document and rewrites
 // its rowid-based node ids deterministically: nodes are sorted by (label, path,
 // project), renumbered n1..nN, links re-pointed and sorted. Everything else is
@@ -229,8 +252,12 @@ func TestGoldenOutputs(t *testing.T) {
 	// Setup (not goldened): register the fixture repo.
 	runGolden(t, bin, home, work, "repo", "add", repoDir, "fixture")
 
-	// repo list before any scan: fully deterministic (no scan timestamps).
-	checkGolden(t, "repo-list", norm(runGolden(t, bin, home, work, "repo", "list")))
+	// repo list: the ADDED / LAST SCAN columns render a human-relative age
+	// (humanAge) computed against wall-clock time.Now(). That is NOT stable —
+	// sub-second elapsed renders "—" but ≥1s renders "1s", so under CPU load the
+	// column flips and the diff flakes. Collapse those age tokens back to "—"
+	// (scoped to this check) so the golden pins layout/columns, not machine speed.
+	checkGolden(t, "repo-list", normalizeRepoList(norm(runGolden(t, bin, home, work, "repo", "list"))))
 
 	// First scan of all registered repos.
 	checkGolden(t, "scan", norm(runGolden(t, bin, home, work, "scan", "all")))

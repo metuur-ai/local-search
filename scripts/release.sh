@@ -3,6 +3,7 @@
 #
 # Publishes a release tagged v<VERSION> with the installable assets:
 #   dist/local-search-bundle.tar.gz   the tarball install.sh fetches
+#   dist/local-search-<version>.zip   self-contained download-and-unzip archive
 #   install.sh                        the one-command installer
 #   cli/dist/local-search-*           each platform's binary (direct download)
 #
@@ -65,6 +66,10 @@ fi
 
 # Asset set mirrors .github/workflows/release.yml so local and CI releases match.
 ASSETS=("$TARBALL" "install.sh")
+# Self-contained download-and-unzip archive (built alongside the tarball).
+while IFS= read -r f; do
+  [ -n "$f" ] && ASSETS+=("$f")
+done < <(ls dist/local-search-*.zip 2>/dev/null || true)
 while IFS= read -r f; do
   [ -n "$f" ] && ASSETS+=("$f")
 done < <(ls cli/dist/local-search-* 2>/dev/null || true)

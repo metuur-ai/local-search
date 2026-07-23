@@ -25,7 +25,7 @@ import (
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const Version = "0.3.2"
+const Version = "0.3.3"
 
 var (
 	appDir    = filepath.Join(homeDir(), ".local-search")
@@ -932,7 +932,7 @@ func cmdSearch(args []string) {
 // over the specs carrying a tag ("graph tag <tag>") or as an ego graph seeded
 // by a semantic query ("graph search <query> [--repo <name>]").
 func cmdVectorGraph(args []string) {
-	const usage = "Usage: local-search graph <explain <entity> [--json] | tag <tag> | search <query> [--repo <name>] | export <repo> [--edges auto|vector|tags|nodes] [--include-content] [--out <file>]>"
+	const usage = "Usage: local-search graph <explain <entity> [--json] | tag <tag> | search <query> [--repo <name>] | export <repo> [--edges auto|vector|tags|nodes] [--include-content] [--out <file>] | export-view [--repos a,b | --all] [--edges auto|vector|tags|nodes] [--out <file>]>"
 	if len(args) == 0 {
 		die(usage)
 	}
@@ -951,6 +951,9 @@ func cmdVectorGraph(args []string) {
 	switch args[0] {
 	case "export":
 		cmdGraphExport(db, args[1:])
+
+	case "export-view":
+		cmdGraphExportView(db, args[1:])
 
 	case "tag":
 		if len(args) < 2 || args[1] == "" {

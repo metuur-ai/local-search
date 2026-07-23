@@ -166,6 +166,37 @@ Exports a repo's graph as node-link JSON; round-trips via `graphs add`.
 > exists in the source and in the command's own usage error, but is not listed
 > in the top-level help text.
 
+### `graph export-view [--repos a,b | --all] [--edges auto|vector|tags|nodes] [--out <file>]`
+
+Merges **several** repos' graphs into one viewer-ready node-link JSON (default
+`graph.json`) for a self-hosted graph explorer. Where `graph export` takes a
+single `<repo>`, `export-view` selects many and namespaces every node id by repo
+(`<repo>:<id>`), so per-repo ids can't collide in the merged file.
+
+Repo selection:
+
+- `--repos a,b` or `--all` — non-interactive (scripts / CI).
+- No selection flag **in a terminal** — prints a numbered list of registered
+  repos with their spec counts and prompts `Include (e.g. 1,3 or all): `.
+- No selection flag and **no TTY** — exits with usage; it never blocks waiting
+  on stdin.
+
+`--edges` is resolved per repo exactly like `graph export` (`auto` → `vector`
+when the repo has vectors, else `tags`). Output is deterministic — nodes sorted
+by id, links stably sorted — so repeat runs are byte-identical; the merged file's
+top-level metadata records `{"repos": [<selected names, sorted>]}`. All progress
+notes and the `wrote …` summary go to stderr, so stdout stays clean.
+
+```bash
+$ local-search graph export-view --repos my-project,other-repo --out graph.json
+graph export-view: my-project edges=vector (auto)
+graph export-view: other-repo edges=tags (auto)
+wrote 358 nodes, 12 links from 2 repo(s) → graph.json
+```
+
+Cross-repo canonical nodes (the same `component://…` referenced in two repos)
+stay distinct in v1 — they are namespaced per repo, not merged.
+
 ### `graph tag <tag>`
 
 Builds a kNN vector graph over specs carrying `tag`, printed as NetworkX JSON.

@@ -24,6 +24,23 @@ It pulls the latest release bundle and installs:
 
 The web UI needs Node ≥ 18; if `node` is missing it's skipped with a warning and the CLI + skill still install. Override locations or skip components with env vars (`INSTALL_DIR`, `SKILLS_DIR`, `WEB_DIR`, `INSTALL_WEB=0`, `INSTALL_SKILLS=0`) — see [`install.sh`](install.sh).
 
+### Download a release archive (offline, everything included)
+
+Prefer downloading over `curl | bash`? Grab **`local-search-<version>.zip`** from the
+[latest release](https://github.com/metuur-ai/local-search/releases/latest) — it's
+self-contained (all platform binaries + the prebuilt web UI + `install.sh`), so it
+installs with no build step:
+
+```bash
+unzip local-search-<version>.zip
+cd local-search-<version>
+./install.sh
+```
+
+> Don't use GitHub's auto-generated **"Source code (zip)"** asset — it omits the
+> prebuilt `frontend/dist`, so the web UI 404s. Use `local-search-<version>.zip`
+> (or `local-search-bundle.tar.gz`) instead.
+
 ### Pre-built binary (CLI only)
 
 Grab a single binary for your platform from the [latest release](https://github.com/metuur-ai/local-search/releases/latest):
@@ -469,6 +486,22 @@ local-search inspect                    # Dump full index
 local-search reset                      # Delete everything (prompts for confirmation)
 local-search --version                  # Print version
 ```
+
+### Knowledge graph export (for a self-hosted viewer)
+```bash
+local-search graph export <repo> [--out graph.json]        # One repo → node-link JSON
+local-search graph export-view --repos a,b [--out graph.json]  # Merge several repos → one file
+local-search graph export-view --all                       # Merge every registered repo
+local-search graph export-view                             # Interactive: pick repos in a terminal
+```
+
+`graph export-view` merges multiple repos' graphs into one viewer-ready
+`{nodes, links}` file (default `graph.json`), namespacing node ids by repo
+(`<repo>:<id>`) so they can't collide. Run with no `--repos`/`--all` in a
+terminal to pick from a numbered list; pass the flags for scripts/CI. Output is
+deterministic (byte-identical across runs). See
+[`user-guide/reference/cli-commands.md`](user-guide/reference/cli-commands.md#graph-export-view---repos-ab----all---edges-autovectortagsnodes---out-file)
+for details.
 
 ### Command aliases
 

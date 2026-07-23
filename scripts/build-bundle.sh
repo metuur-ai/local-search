@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # build-bundle.sh — assemble the distributable that install.sh fetches.
 #
-# Produces dist/local-search-bundle.tar.gz containing:
-#   bundle/bin/      all cross-compiled CLI binaries (make -C cli build-all)
-#                    each binary embeds the Claude skill (cli/skilldata)
-#   bundle/web/      the web UI with a prebuilt frontend/dist, minus node_modules
-#   bundle/install.sh
+# Produces two self-contained artifacts in dist/, both carrying the binaries and
+# a prebuilt frontend/dist so install.sh needs no build step:
+#   local-search-bundle.tar.gz   fetched by `curl … install.sh | bash`; top dir bundle/
+#   local-search-<version>.zip   download-and-unzip artifact;      top dir local-search-<version>/
+# Each contains:
+#   bin/         all cross-compiled CLI binaries (make -C cli build-all)
+#                each binary embeds the Claude skill (cli/skilldata)
+#   web/         the web UI with a prebuilt frontend/dist, minus node_modules
+#   install.sh
 #
 # Upload the tarball + install.sh to your release host, then users run:
 #   curl -fsSL https://…/install.sh | bash
@@ -107,5 +111,21 @@ cp "$ROOT/install.sh" "$STAGE/install.sh"
 info "Packing tarball…"
 tar -czf "$OUT/local-search-bundle.tar.gz" -C "$OUT" bundle
 
+# Self-contained versioned zip — the "download, unzip, ./install.sh" artifact.
+# Same payload as the tarball (binaries + web with a prebuilt frontend/dist +
+# install.sh) but as a zip, extracting to local-search-<version>/ so it installs
+# out of the box with no build step. This is what users should grab from the
+# Releases page instead of GitHub's auto-generated "Source code" archive, which
+# omits the (gitignored) frontend/dist build.
+VER="$(current_version)"
+ZIP_DIR="local-search-$VER"
+command -v zip >/dev/null || die "zip is required to build the release zip (install 'zip')"
+rm -rf "${OUT:?}/$ZIP_DIR" "$OUT/$ZIP_DIR.zip"
+cp -R "$STAGE" "$OUT/$ZIP_DIR"
+( cd "$OUT" && zip -r -q "$ZIP_DIR.zip" "$ZIP_DIR" )
+rm -rf "${OUT:?}/$ZIP_DIR"
+
 printf '\nBundle: %s\n' "$OUT/local-search-bundle.tar.gz"
 du -h "$OUT/local-search-bundle.tar.gz" | awk '{print "  size: "$1}'
+printf 'Zip:    %s\n' "$OUT/$ZIP_DIR.zip"
+du -h "$OUT/$ZIP_DIR.zip" | awk '{print "  size: "$1}'

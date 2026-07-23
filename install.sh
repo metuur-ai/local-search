@@ -103,7 +103,8 @@ binary_name() {
 download_bundle() {
   local dest_dir="$1" tmp
   tmp="$(mktemp)"
-  info "Downloading bundle: $BUNDLE_URL"
+  # stderr: stdout is captured by resolve_source's command substitution.
+  info "Downloading bundle: $BUNDLE_URL" >&2
   if command -v curl &>/dev/null; then
     curl -fsSL --progress-bar "$BUNDLE_URL" -o "$tmp" || die "Download failed: $BUNDLE_URL"
   elif command -v wget &>/dev/null; then
@@ -116,11 +117,20 @@ download_bundle() {
   rm -f "$tmp"
 }
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "$PWD")"
+# When piped (`curl … | bash`) there is no script file on disk: BASH_SOURCE[0]
+# is empty and $0 is "bash". In that case SCRIPT_DIR must stay empty so we never
+# mistake the current working directory for a checkout/bundle — we always fetch
+# the release bundle instead. Only a real on-disk install.sh yields a SCRIPT_DIR.
+if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  SCRIPT_DIR=""
+fi
 
 resolve_source() {
-  # A checkout has web/ + cli/; an unpacked bundle has web/ + bin/.
-  if [[ -d "$SCRIPT_DIR/web" && ( -d "$SCRIPT_DIR/bin" || -d "$SCRIPT_DIR/cli" ) ]]; then
+  # A checkout has web/ + cli/; an unpacked bundle has web/ + bin/. Only trust
+  # SCRIPT_DIR when install.sh is a real file there (not a `curl | bash` pipe).
+  if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/web" && ( -d "$SCRIPT_DIR/bin" || -d "$SCRIPT_DIR/cli" ) ]]; then
     echo "$SCRIPT_DIR"
   else
     local tmp

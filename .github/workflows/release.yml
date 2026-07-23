@@ -31,10 +31,12 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          # The tarball users install, the standalone one-command installer,
-          # and each platform's binary as a direct download.
+          # The tarball users install, the self-contained download-and-unzip
+          # archive, the standalone one-command installer, and each platform's
+          # binary as a direct download.
           files: |
             dist/local-search-bundle.tar.gz
+            dist/local-search-*.zip
             install.sh
             cli/dist/local-search-*
           generate_release_notes: true
