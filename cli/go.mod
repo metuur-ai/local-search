@@ -4,6 +4,7 @@ go 1.25.7
 
 require (
 	github.com/BurntSushi/toml v1.4.0
+	github.com/goccy/go-yaml v1.19.2
 	modernc.org/sqlite v1.48.0
 )
 

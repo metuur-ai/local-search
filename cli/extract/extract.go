@@ -38,6 +38,30 @@ type Spec struct {
 	Size         int64
 	Ext          string
 	Content      string
+
+	// Knowledge-graph fields, produced by the same single frontmatter parse
+	// that feeds legacy tag extraction (R-2.2).
+	NodeID                string // canonical ID (R-1.1) or `<repo>:<path>` fallback (R-1.2)
+	CanonicalID           string // "" when the file declares no canonical ID
+	Kind                  string // canonical scheme ("component", "req", …) or "file"
+	Edges                 []Edge // typed, directed edges with field provenance (R-2.1)
+	UnrecognizedRelFields []string // unknown fields with canonical-ID-shaped values (R-2.4)
+	FrontmatterMalformed  bool   // frontmatter present but invalid YAML (R-2.3)
+}
+
+// applyKG fills the knowledge-graph fields of sp from the shared frontmatter
+// parse. Malformed YAML degrades to structural-only indexing (R-2.3): fallback
+// identity, no edges.
+func applyKG(sp *Spec, fm frontmatter) {
+	sp.FrontmatterMalformed = fm.malformed
+	id, kind := canonicalIDFrom(fm.fields)
+	sp.CanonicalID = id
+	if id != "" {
+		sp.NodeID, sp.Kind = id, kind
+	} else {
+		sp.NodeID, sp.Kind = fallbackNodeID(sp.Repo, sp.Path), "file"
+	}
+	sp.Edges, sp.UnrecognizedRelFields = extractEdges(sp.NodeID, fm.fields)
 }
 
 var frontmatterRe = regexp.MustCompile(`(?s)^---\s*\n(.*?)\n---\s*\n`)
@@ -104,21 +128,26 @@ func fromFileInfo(repoName, repoRoot, absPath string, info os.FileInfo) (*Spec, 
 	stem := strings.TrimSuffix(filepath.Base(absPath), filepath.Ext(absPath))
 	project := projectFromRel(rel)
 
-	return &Spec{
+	// The one shared frontmatter parse per file per scan (R-2.2).
+	fm := parseFrontmatter(content)
+
+	sp := &Spec{
 		Repo:         repoName,
 		Path:         filepath.ToSlash(rel),
 		Project:      project,
 		Name:         stem,
 		Title:        extractTitle(content, stem),
-		Tags:         combinedTags(content),
-		Summary:      extractSummary(content),
+		Tags:         combinedTags(fm, content),
+		Summary:      summaryFromBody(content[fm.bodyEnd:]),
 		FullPath:     absPath,
 		Modified:     formatMtime(info),
 		ModifiedUnix: info.ModTime().Unix(),
 		Size:         info.Size(),
 		Ext:          strings.TrimPrefix(ext, "."),
 		Content:      content,
-	}, nil
+	}
+	applyKG(sp, fm)
+	return sp, nil
 }
 
 // FromCompanion extracts a Spec for a media file using its companion .md sidecar.
@@ -166,21 +195,26 @@ func fromCompanionInfo(repoName, repoRoot, mediaAbsPath string, mediaInfo os.Fil
 	stem := strings.TrimSuffix(filepath.Base(mediaAbsPath), filepath.Ext(mediaAbsPath))
 	project := projectFromRel(rel)
 
-	return &Spec{
+	// The one shared frontmatter parse per file per scan (R-2.2).
+	fm := parseFrontmatter(companionContent)
+
+	sp := &Spec{
 		Repo:         repoName,
 		Path:         filepath.ToSlash(rel),
 		Project:      project,
 		Name:         stem,
 		Title:        extractTitle(companionContent, stem),
-		Tags:         combinedTags(companionContent),
-		Summary:      extractSummary(companionContent),
+		Tags:         combinedTags(fm, companionContent),
+		Summary:      summaryFromBody(companionContent[fm.bodyEnd:]),
 		FullPath:     mediaAbsPath,
 		Modified:     formatMtime(mediaInfo),
 		ModifiedUnix: mediaInfo.ModTime().Unix(),
 		Size:         mediaInfo.Size(),
 		Ext:          strings.TrimPrefix(ext, "."),
 		Content:      companionContent,
-	}, nil
+	}
+	applyKG(sp, fm)
+	return sp, nil
 }
 
 // BuildMediaStems returns a set of file stems (without extension) that have a
@@ -284,13 +318,27 @@ func extractTags(content string) string {
 	return ""
 }
 
+// legacyTagsFromRaw extracts the verbatim `tags:` line from the raw
+// frontmatter block — the existing behaviour, unchanged by the shared YAML
+// parse so inherited outputs stay byte-identical (R-5.4).
+func legacyTagsFromRaw(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if m := tagsLineRe.FindStringSubmatch(raw); len(m) > 1 {
+		return strings.TrimSpace(m[1])
+	}
+	return ""
+}
+
 // combinedTags returns the frontmatter tags plus namespaced tags derived from
 // the body: `@spec req://…` references as `spec:<path/id>` and `[[wikilinks]]`
 // as `link:<slug>`. Frontmatter tags are preserved verbatim (existing behaviour);
 // the derived tags are appended, comma-separated, so the existing splitTags path
 // at index time populates spec_tags without any schema or query change.
-func combinedTags(content string) string {
-	base := extractTags(content)
+// It consumes the shared frontmatter parse (R-2.2) instead of re-locating the block.
+func combinedTags(fm frontmatter, content string) string {
+	base := legacyTagsFromRaw(fm.raw)
 	refs := extractRefTags(content)
 	switch {
 	case len(refs) == 0:
@@ -342,7 +390,12 @@ func extractSummary(content string) string {
 	if loc := frontmatterRe.FindStringIndex(content); loc != nil {
 		body = content[loc[1]:]
 	}
+	return summaryFromBody(body)
+}
 
+// summaryFromBody extracts the first-paragraph summary from content that has
+// already had its frontmatter sliced off (via the shared parse's bodyEnd).
+func summaryFromBody(body string) string {
 	var lines []string
 	collecting := false
 

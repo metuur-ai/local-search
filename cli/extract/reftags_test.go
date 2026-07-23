@@ -95,7 +95,7 @@ func TestExtractRefTags_Dedup(t *testing.T) {
 
 func TestCombinedTags_MergesFrontmatterAndRefs(t *testing.T) {
 	content := "---\ntags: go, http\n---\n# Title\n\n@spec req://payments/refund@1.0#R1 and [[Chargeback]]\n"
-	tags := combinedTags(content)
+	tags := combinedTags(parseFrontmatter(content), content)
 	for _, want := range []string{"go", "http", "spec:payments/refund", "link:chargeback"} {
 		if !hasTag(tags, want) {
 			t.Errorf("combined tags %q missing %q", tags, want)
@@ -106,7 +106,7 @@ func TestCombinedTags_MergesFrontmatterAndRefs(t *testing.T) {
 func TestCombinedTags_NoRefsUnchanged(t *testing.T) {
 	// Preserves existing behaviour byte-for-byte when there are no body refs.
 	content := "---\ntags: alpha, beta\n---\n# T\n\nplain body\n"
-	if got, want := combinedTags(content), "alpha, beta"; got != want {
+	if got, want := combinedTags(parseFrontmatter(content), content), "alpha, beta"; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
