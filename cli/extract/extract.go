@@ -44,6 +44,28 @@ var frontmatterRe = regexp.MustCompile(`(?s)^---\s*\n(.*?)\n---\s*\n`)
 var tagsLineRe = regexp.MustCompile(`(?im)^tags:\s*(.+)`)
 var headingRe = regexp.MustCompile(`(?m)^#\s+(.+)`)
 
+// specRefRe matches `@spec req://<path>/<id>@<version>#<clause>` and captures the
+// path/id up to the first `@`, `#`, whitespace or quote. Requiring `req://` skips
+// prose mentions like "@spec annotations".
+var specRefRe = regexp.MustCompile("@spec\\s+req://([^@#\\s\"'`]+)")
+
+// wikilinkRe matches Obsidian-style `[[target]]` / `[[target#heading|alias]]` and
+// captures the target. The first-char and inner classes forbid whitespace and
+// `"`/`$`, so shell test expressions in code (`[[ -d "$x" ]]`) never match.
+var wikilinkRe = regexp.MustCompile(`\[\[([^\s|#"$\[\]][^|#"$\[\]\n]*?)(?:[#|][^\[\]\n]*)?\]\]`)
+
+// fencedCodeRe matches fenced code blocks; they are stripped before ref
+// extraction so bash examples don't leak shell `[[ … ]]` as wikilinks.
+var fencedCodeRe = regexp.MustCompile("(?s)```.*?```|~~~.*?~~~")
+
+// slugStripRe collapses non-alphanumeric runs for wikilink slugs.
+var slugStripRe = regexp.MustCompile(`[^a-z0-9]+`)
+
+// validSpecIDRe accepts a normalized spec path/id (lowercase alnum with /_-). It
+// rejects format-description placeholders like `req://.../<id>@<version>#<clause>`
+// that appear in docs, so those don't become junk tags.
+var validSpecIDRe = regexp.MustCompile(`^[a-z0-9][a-z0-9/_-]*$`)
+
 const maxContentBytes = 10 * 1024 * 1024 // 10 MB cap
 const maxSummaryChars = 300
 
@@ -88,7 +110,7 @@ func fromFileInfo(repoName, repoRoot, absPath string, info os.FileInfo) (*Spec, 
 		Project:      project,
 		Name:         stem,
 		Title:        extractTitle(content, stem),
-		Tags:         extractTags(content),
+		Tags:         combinedTags(content),
 		Summary:      extractSummary(content),
 		FullPath:     absPath,
 		Modified:     formatMtime(info),
@@ -150,7 +172,7 @@ func fromCompanionInfo(repoName, repoRoot, mediaAbsPath string, mediaInfo os.Fil
 		Project:      project,
 		Name:         stem,
 		Title:        extractTitle(companionContent, stem),
-		Tags:         extractTags(companionContent),
+		Tags:         combinedTags(companionContent),
 		Summary:      extractSummary(companionContent),
 		FullPath:     mediaAbsPath,
 		Modified:     formatMtime(mediaInfo),
@@ -260,6 +282,57 @@ func extractTags(content string) string {
 		return strings.TrimSpace(m[1])
 	}
 	return ""
+}
+
+// combinedTags returns the frontmatter tags plus namespaced tags derived from
+// the body: `@spec req://…` references as `spec:<path/id>` and `[[wikilinks]]`
+// as `link:<slug>`. Frontmatter tags are preserved verbatim (existing behaviour);
+// the derived tags are appended, comma-separated, so the existing splitTags path
+// at index time populates spec_tags without any schema or query change.
+func combinedTags(content string) string {
+	base := extractTags(content)
+	refs := extractRefTags(content)
+	switch {
+	case len(refs) == 0:
+		return base
+	case base == "":
+		return strings.Join(refs, ", ")
+	default:
+		return base + ", " + strings.Join(refs, ", ")
+	}
+}
+
+// extractRefTags collects deduped `spec:` and `link:` tags from the content body,
+// after stripping fenced code so bash examples don't leak shell `[[ … ]]`.
+func extractRefTags(content string) []string {
+	prose := fencedCodeRe.ReplaceAllString(content, "")
+	var out []string
+	seen := map[string]bool{}
+	add := func(t string) {
+		if t == "" || seen[t] {
+			return
+		}
+		seen[t] = true
+		out = append(out, t)
+	}
+	for _, m := range specRefRe.FindAllStringSubmatch(prose, -1) {
+		id := strings.ToLower(strings.Trim(m[1], "/"))
+		if validSpecIDRe.MatchString(id) {
+			add("spec:" + id)
+		}
+	}
+	for _, m := range wikilinkRe.FindAllStringSubmatch(prose, -1) {
+		if s := slugify(m[1]); s != "" {
+			add("link:" + s)
+		}
+	}
+	return out
+}
+
+// slugify lowercases and replaces non-alphanumeric runs with single hyphens.
+func slugify(s string) string {
+	s = slugStripRe.ReplaceAllString(strings.ToLower(strings.TrimSpace(s)), "-")
+	return strings.Trim(s, "-")
 }
 
 func extractSummary(content string) string {

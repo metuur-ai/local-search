@@ -109,3 +109,47 @@ func TestApplyIncrementalUpdate_StampsLastIndexUpdateOnlyWhenChanged(t *testing.
 		t.Fatalf("timestamp changed on no-op: was %q now %q", stamp, got)
 	}
 }
+
+// TestApplyIncrementalUpdate_ConvergesOnUntrackedFiles verifies repeated updates
+// converge: an untracked spec file (which git reports as "changed" forever) is
+// indexed once, and a subsequent run with nothing changed on disk is a no-op.
+func TestApplyIncrementalUpdate_ConvergesOnUntrackedFiles(t *testing.T) {
+	repoDir := t.TempDir()
+	gitRun(t, repoDir, "init")
+	writeSpec(t, filepath.Join(repoDir, "a.md"), "# A\n\ninitial\n")
+	gitRun(t, repoDir, "add", ".")
+	gitRun(t, repoDir, "commit", "-m", "init")
+
+	dbPath := filepath.Join(t.TempDir(), "index.db")
+	db, err := localdb.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+	if err := localdb.CreateSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	repo := repoEntry{Name: "docs", Path: repoDir}
+	if _, err := localdb.FullScan(db, repo.Name, repo.Path, nil); err != nil {
+		t.Fatalf("full scan: %v", err)
+	}
+	localdb.SetMeta(db, "git_commit_"+repo.Name, git.CurrentCommit(repo.Path)) //nolint:errcheck
+
+	// Untracked spec file (never committed): git reports it changed on every run.
+	writeSpec(t, filepath.Join(repoDir, "untracked.md"), "# U\n\nuntracked body\n")
+
+	changed1, err := applyIncrementalUpdate(db, repo)
+	if err != nil {
+		t.Fatalf("update1: %v", err)
+	}
+	if !changed1 {
+		t.Fatalf("first update should index the untracked file")
+	}
+	changed2, err := applyIncrementalUpdate(db, repo)
+	if err != nil {
+		t.Fatalf("update2: %v", err)
+	}
+	if changed2 {
+		t.Fatalf("did not converge: untracked file re-indexed though unchanged on disk")
+	}
+}

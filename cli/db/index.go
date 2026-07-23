@@ -524,28 +524,30 @@ func pathHasSkippedDir(relPath string, skipSet map[string]bool) bool {
 // ── batch DB operations ───────────────────────────────────────────────────────
 
 func deleteRepoEntries(tx *sql.Tx, repoName string) error {
-	// FTS5 contentless tables require the 'delete' command with the indexed
-	// fields. We omit the full 'content' column (up to 10 MB per row) and pass
-	// an empty string instead — FTS5 contentless tables do not verify content
-	// on delete, so this is safe and avoids loading large blobs into RAM.
+	// FTS5 contentless (`content=''`) tables require the 'delete' command with
+	// the SAME field values that were indexed on insert — content included —
+	// because 'delete' re-tokenizes them to subtract this rowid's postings.
+	// Passing "" corrupts the index (postings for the real content are never
+	// removed). Content is therefore materialized here; this path only runs on
+	// full rescans / repo replacement, not the per-file incremental hot path.
 	// Materialize all rows first, close the read cursor, then execute writes —
 	// avoids holding a read cursor open while issuing write statements on the
 	// same connection (can serialize or deadlock with modernc.org/sqlite).
 	rows, err := tx.Query(
-		"SELECT id,repo,name,title,tags,summary FROM specs WHERE repo=?", repoName,
+		"SELECT id,repo,name,title,tags,summary,content FROM specs WHERE repo=?", repoName,
 	)
 	if err != nil {
 		return err
 	}
 
 	type specRow struct {
-		id                               int64
-		repo, name, title, tags, summary string
+		id                                        int64
+		repo, name, title, tags, summary, content string
 	}
 	var toDelete []specRow
 	for rows.Next() {
 		var r specRow
-		if err := rows.Scan(&r.id, &r.repo, &r.name, &r.title, &r.tags, &r.summary); err != nil {
+		if err := rows.Scan(&r.id, &r.repo, &r.name, &r.title, &r.tags, &r.summary, &r.content); err != nil {
 			rows.Close()
 			return err
 		}
@@ -566,8 +568,8 @@ func deleteRepoEntries(tx *sql.Tx, repoName string) error {
 	defer ftsStmt.Close()
 
 	for _, r := range toDelete {
-		// Pass "" for content — FTS5 contentless delete does not validate it.
-		if _, err := ftsStmt.Exec(r.id, r.repo, r.name, r.title, r.tags, r.summary, ""); err != nil {
+		// Match the indexed values exactly (content included) — see above.
+		if _, err := ftsStmt.Exec(r.id, r.repo, r.name, r.title, r.tags, r.summary, r.content); err != nil {
 			return err
 		}
 	}
@@ -823,11 +825,11 @@ func batchInsertVectorsPaths(tx *sql.Tx, repoName string, paths []string) error 
 
 func deleteSpecEntry(tx *sql.Tx, repoName, relPath string) error {
 	var id int64
-	var repo, name, title, tags, summary string
+	var repo, name, title, tags, summary, content string
 	err := tx.QueryRow(
-		"SELECT id,repo,name,title,tags,summary FROM specs WHERE repo=? AND path=?",
+		"SELECT id,repo,name,title,tags,summary,content FROM specs WHERE repo=? AND path=?",
 		repoName, relPath,
-	).Scan(&id, &repo, &name, &title, &tags, &summary)
+	).Scan(&id, &repo, &name, &title, &tags, &summary, &content)
 	if err == sql.ErrNoRows {
 		return nil
 	}
@@ -835,11 +837,15 @@ func deleteSpecEntry(tx *sql.Tx, repoName, relPath string) error {
 		return err
 	}
 
-	// Pass "" for content — FTS5 contentless delete does not validate it.
+	// FTS5 contentless (`content=''`) delete re-tokenizes the supplied column
+	// values to subtract this rowid's postings, so they MUST equal what was
+	// indexed on insert — including the full content. Passing "" leaves the
+	// content tokens un-removed and corrupts the index over repeated
+	// delete/insert cycles (the incremental-update churn triggers exactly that).
 	if _, err := tx.Exec(
 		"INSERT INTO specs_fts(specs_fts,rowid,repo,name,title,tags,summary,content) "+
 			"VALUES('delete',?,?,?,?,?,?,?)",
-		id, repo, name, title, tags, summary, "",
+		id, repo, name, title, tags, summary, content,
 	); err != nil {
 		return err
 	}
