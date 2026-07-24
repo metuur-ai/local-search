@@ -65,8 +65,12 @@ async function runRepos() {
   return stdout;
 }
 
+const graphCacheFile = path.resolve(__dirname, 'data', 'graph.json');
+
 const registry = createRegistry();
 const deps = { runRepos };
+deps.runLocalSearch = runLocalSearch;
+deps.graphCacheFile = graphCacheFile;
 if (cliLog) deps.cliLog = cliLog;
 
 // Create the http server FIRST so its instance can be handed to Vite for the

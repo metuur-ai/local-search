@@ -575,6 +575,23 @@ local-search ui stop                    # Stop the daemon
 | `~/.local-search/ui.pid` | PID + port of the running daemon (removed on stop) |
 | `~/.local-search/ui.log` | Server stdout/stderr (truncated on each start) |
 
+**Graph explorer:**
+
+The Web UI also hosts an interactive knowledge-graph explorer at
+[`/graph-explorer.html`](http://localhost:8787/graph-explorer.html) (e.g.
+`http://localhost:8787/graph-explorer.html`). It renders the merged
+`graph export-view` graph, colored by OS layer:
+
+- The graph is **persisted** to `web/data/graph.json` — reloading the page reuses
+  it instantly, no regeneration.
+- Click **⟳ Refresh from repos** to pick which registered repos to include and
+  rebuild the graph on demand (it calls `graph export-view` under the hood and
+  overwrites the cached file).
+
+> The Node server runs whichever `local-search` is on its `PATH`, so the graph
+> explorer's Refresh needs a build that includes `graph export-view` — reinstall
+> or rebuild the CLI if Refresh reports an export error.
+
 ## Search features
 
 | Feature | Example | Description |

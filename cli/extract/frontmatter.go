@@ -41,11 +41,65 @@ func parseFrontmatter(content string) frontmatter {
 	}
 	var parsed map[string]any
 	if err := yaml.Unmarshal([]byte(fm.raw), &parsed); err != nil {
+		// Best-effort recovery for the most common authoring slip: an unquoted
+		// ": " (or trailing ":") inside a plain-scalar value, e.g.
+		//   description: Ingest a file. Usage: /sq-add <path>
+		// YAML reads the inner ": " as a nested mapping and errors. Re-quote
+		// only such top-level scalar values and retry. Genuinely broken YAML
+		// (unclosed flow seqs, non-map blocks) is left untouched → still
+		// malformed, preserving graceful degradation (R-2.3).
+		if relaxed, changed := relaxScalarColons(fm.raw); changed {
+			if err2 := yaml.Unmarshal([]byte(relaxed), &parsed); err2 == nil {
+				fm.fields = parsed
+				return fm
+			}
+		}
 		fm.malformed = true
 		return fm
 	}
 	fm.fields = parsed
 	return fm
+}
+
+// topScalarLineRe matches a column-0 `key: value` frontmatter line with a
+// non-empty inline value. Indented (nested) lines never match, so recovery
+// stays confined to top-level scalars.
+var topScalarLineRe = regexp.MustCompile(`^([A-Za-z0-9_.-]+):[ \t]+(\S.*?)[ \t]*$`)
+
+// relaxScalarColons re-quotes top-level plain-scalar values that contain an
+// unescaped ": " or end with ":", the single most common reason valid-looking
+// frontmatter fails strict YAML. It only rewrites lines whose value is a plain
+// scalar (not already quoted, and not the start of a flow/block/anchor/comment
+// construct), so genuinely malformed YAML is left to fail. Returns the rewritten
+// text and whether anything changed.
+func relaxScalarColons(raw string) (string, bool) {
+	lines := strings.Split(raw, "\n")
+	changed := false
+	for i, line := range lines {
+		m := topScalarLineRe.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		key, val := m[1], m[2]
+		// Only intervene when the value actually carries the colon that trips
+		// YAML; clean values (and legit numbers/bools/IDs) are left alone.
+		if !strings.Contains(val, ": ") && !strings.HasSuffix(val, ":") {
+			continue
+		}
+		// Leave already-quoted values and non-scalar constructs to strict YAML.
+		switch val[0] {
+		case '"', '\'', '[', '{', '|', '>', '&', '*', '!', '#':
+			continue
+		}
+		esc := strings.ReplaceAll(val, `\`, `\\`)
+		esc = strings.ReplaceAll(esc, `"`, `\"`)
+		lines[i] = key + `: "` + esc + `"`
+		changed = true
+	}
+	if !changed {
+		return raw, false
+	}
+	return strings.Join(lines, "\n"), true
 }
 
 // ── canonical node identity (Unit 1) ─────────────────────────────────────────

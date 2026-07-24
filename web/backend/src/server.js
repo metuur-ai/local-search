@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { handleRepos } from './repos.js';
 import { handleQuery, handleStream, handleReply, handleCancel } from './query.js';
+import { handleGraphGet, handleGraphRefresh } from './graphExport.js';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -63,6 +64,16 @@ export function createServer({ staticDir, registry, deps, assetHandler } = {}) {
     // POST /api/query
     if (req.method === 'POST' && pathname === '/api/query') {
       return handleQuery(req, res, { registry, deps });
+    }
+
+    // GET /api/graph — return the persisted graph (or an empty one).
+    if (req.method === 'GET' && pathname === '/api/graph') {
+      return handleGraphGet(req, res, deps);
+    }
+
+    // POST /api/graph/refresh — rebuild + persist the graph from repos.
+    if (req.method === 'POST' && pathname === '/api/graph/refresh') {
+      return handleGraphRefresh(req, res, deps);
     }
 
     // /api/session/:id/{stream,reply,cancel}

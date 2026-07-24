@@ -66,7 +66,6 @@ func uiStart(port int) {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
-	backendDir := filepath.Join(webDir, "backend")
 	distIndex := filepath.Join(webDir, "frontend", "dist", "index.html")
 
 	if _, err := exec.LookPath("node"); err != nil {
@@ -91,9 +90,9 @@ func uiStart(port int) {
 	}
 	defer logF.Close()
 
-	cmd := exec.Command("node", filepath.Join("bin", "serve.js"))
-	cmd.Dir = backendDir
-	cmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", port))
+	cmd := exec.Command("node", "server.js")
+	cmd.Dir = webDir
+	cmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", port), "NODE_ENV=production")
 	cmd.Stdout = logF
 	cmd.Stderr = logF
 	cmd.SysProcAttr = detachSysProcAttr()
@@ -155,12 +154,15 @@ func uiStatus() {
 // env override, then walk up from the executable's dir and the CWD looking for
 // web/backend/bin/serve.js.
 func resolveWebDir() (string, error) {
-	marker := filepath.Join("web", "backend", "bin", "serve.js")
+	// server.js is the web app's entrypoint; its presence marks a usable web/
+	// folder — a repo checkout or the app install.sh drops at its WEB_DIR.
+	entry := "server.js"
+	marker := filepath.Join("web", entry)
 	if env := os.Getenv("LOCAL_SEARCH_WEB_DIR"); env != "" {
-		if _, err := os.Stat(filepath.Join(env, "backend", "bin", "serve.js")); err == nil {
+		if _, err := os.Stat(filepath.Join(env, entry)); err == nil {
 			return env, nil
 		}
-		return "", fmt.Errorf("LOCAL_SEARCH_WEB_DIR=%s does not contain backend/bin/serve.js", env)
+		return "", fmt.Errorf("LOCAL_SEARCH_WEB_DIR=%s does not contain %s", env, entry)
 	}
 	var starts []string
 	if exe, err := os.Executable(); err == nil {
@@ -174,7 +176,22 @@ func resolveWebDir() (string, error) {
 			return filepath.Join(base, "web"), nil
 		}
 	}
-	return "", fmt.Errorf("could not locate the web/ directory. Run from inside the local-search repo, or set LOCAL_SEARCH_WEB_DIR to the path of its web/ folder")
+	// Fall back to the standalone web app that install.sh drops at its WEB_DIR
+	// default (~/.local/share/local-search/web, XDG-aware). This is not an
+	// ancestor of the installed binary, so the walk-up above can't reach it.
+	var installed []string
+	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+		installed = append(installed, filepath.Join(xdg, "local-search", "web"))
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		installed = append(installed, filepath.Join(home, ".local", "share", "local-search", "web"))
+	}
+	for _, w := range installed {
+		if _, err := os.Stat(filepath.Join(w, entry)); err == nil {
+			return w, nil
+		}
+	}
+	return "", fmt.Errorf("could not locate the web/ directory. Install the bundle (see install.sh), run from inside the local-search repo, or set LOCAL_SEARCH_WEB_DIR to the path of its web/ folder")
 }
 
 // findUpwards walks up from start looking for rel; returns the directory that

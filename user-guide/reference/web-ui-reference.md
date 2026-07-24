@@ -159,6 +159,38 @@ Kills the session's subprocess (entire process group) and marks it cancelled.
 | 200 | — |
 | 404 | `{ "error": "no_session" }` |
 
+### `GET /api/graph`
+
+Returns the persisted merged knowledge graph as node-link JSON for the graph
+explorer. Reads the cached file at `web/data/graph.json` (produced by
+`graph export-view`). If no graph has been built yet, returns an empty
+`{ "nodes": [], "links": [] }` (never an error) so the explorer renders and
+prompts a refresh.
+
+### `POST /api/graph/refresh`
+
+Rebuilds and persists the graph from selected repos, then returns it. Body:
+`{ "repos": ["a", "b"] }` — an empty or absent list means **all** repos. Runs
+`local-search graph export-view [--repos a,b | --all] --out web/data/graph.json`
+and responds with the fresh graph JSON.
+
+| Status | Body |
+|---|---|
+| 200 | the merged `{ nodes, links }` graph |
+| 500 | `{ "error": "export_failed", "message": "<stderr>" }` |
+
+> The Node server runs whichever `local-search` is on its `PATH`; Refresh
+> therefore requires a build that includes the `graph export-view` subcommand.
+
+## Graph explorer
+
+Served at `/graph-explorer.html`. A self-contained D3 page that renders the
+merged graph (`GET /api/graph`), colored by OS layer (derived from each node's
+`path`). The **⟳ Refresh from repos** button lists registered repos (`GET
+/api/repos`), lets you pick which to include, and rebuilds the cached graph via
+`POST /api/graph/refresh` without a page reload. Because the graph is persisted
+to `web/data/graph.json`, reopening or refreshing the page reuses it instantly.
+
 ## Claude Code subprocess
 
 In AI mode, the backend spawns:

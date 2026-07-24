@@ -571,6 +571,7 @@ export function App() {
             <span class="brand-title-row">
               <h1 class="brand-title">local-search</h1>
               <span class="brand-badge">explainable retrieval</span>
+              <a class="brand-nav-link" href="/graph-explorer.html">Agent OS Graph →</a>
             </span>
             <span class="brand-sub">grounded retrieval over your local repositories</span>
           </span>

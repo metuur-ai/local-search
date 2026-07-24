@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent OS Graph · Knowledge Atlas</title>
+    <script src="https://unpkg.com/force-graph"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* paper / surfaces */
+            --paper:     #eef1f6;
+            --paper-2:   #e7ebf2;
+            --surface:   #ffffff;
+            --border:    rgba(23, 27, 38, 0.09);
+            --border-2:  rgba(23, 27, 38, 0.16);
+
+            /* ink */
+            --ink:       #191d29;
+            --ink-dim:   #58627a;
+            --ink-faint: #98a1b5;
+
+            /* editorial teal accent */
+            --accent:    #0f766e;
+            --accent-2:  #0d9488;
+            --accent-soft: rgba(15, 118, 110, 0.1);
+            --accent-ring: rgba(15, 118, 110, 0.18);
+
+            /* node categories (deepened for light contrast) */
+            --c-file:    #64748b;
+            --c-project: #d97706;
+            --c-tag:     #7c3aed;
+            --c-repo:    #0369a1;
+
+            --font-display: 'Bricolage Grotesque', sans-serif;
+            --font-sans:    'Hanken Grotesk', sans-serif;
+            --font-mono:    'JetBrains Mono', monospace;
+
+            --r: 10px;
+            --shadow: 0 10px 34px -14px rgba(23, 27, 38, 0.28), 0 2px 8px -4px rgba(23, 27, 38, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0; overflow: hidden;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: var(--font-sans);
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            display: flex; flex-direction: column;
+        }
+        .hidden { display: none !important; }
+
+        /* ---------- TOPBAR ---------- */
+        .topbar {
+            position: relative; z-index: 30; flex-shrink: 0;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 0 rgba(23,27,38,0.02), 0 6px 20px -18px rgba(23,27,38,0.4);
+            animation: fadeDown 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .topbar::after {
+            content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent) 35%, #c2703a 72%, transparent);
+            opacity: 0.5;
+        }
+        .row { display: flex; align-items: center; padding: 14px 22px; gap: 26px; }
+        .row-1 { justify-content: space-between; }
+        .row-2 {
+            justify-content: space-between; padding: 9px 22px;
+            background: var(--paper); border-top: 1px solid var(--border);
+        }
+
+        /* brand */
+        .brand { display: flex; align-items: center; gap: 13px; flex-shrink: 0; }
+        .brand-mark {
+            width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+            display: grid; place-items: center; color: #fff;
+            background: linear-gradient(150deg, var(--accent-2), var(--accent));
+            box-shadow: 0 6px 16px -6px rgba(15,118,110,0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+        }
+        .brand-mark svg { width: 22px; height: 22px; }
+        .brand h1 {
+            margin: 0; font-family: var(--font-display); font-weight: 800;
+            font-size: 17px; letter-spacing: -0.02em; line-height: 1; color: var(--ink);
+        }
+        .brand p {
+            margin: 4px 0 0; font-family: var(--font-mono); font-size: 9.5px;
+            letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500;
+        }
+
+        /* search + switch */
+        .center { display: flex; align-items: center; gap: 22px; flex: 1; max-width: 720px; }
+        .search { position: relative; flex: 1; }
+        .search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--ink-faint); pointer-events: none; }
+        .search input {
+            width: 100%; font-family: var(--font-sans); font-size: 13.5px; color: var(--ink);
+            background: var(--paper); border: 1px solid var(--border);
+            border-radius: var(--r); padding: 10px 14px 10px 38px; outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+        .search input::placeholder { color: var(--ink-faint); }
+        .search input:focus {
+            border-color: var(--accent); background: var(--surface);
+            box-shadow: 0 0 0 3px var(--accent-ring);
+        }
+
+        .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; white-space: nowrap; color: var(--ink-dim); font-weight: 500; font-size: 13px; user-select: none; }
+        .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .switch .track {
+            width: 38px; height: 21px; border-radius: 999px; position: relative;
+            background: #d3d9e4; border: 1px solid var(--border); transition: all 0.25s;
+        }
+        .switch .track::after {
+            content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%;
+            background: #fff; box-shadow: 0 1px 3px rgba(23,27,38,0.3); transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .switch input:checked + .track { background: linear-gradient(90deg, var(--accent-2), var(--accent)); border-color: transparent; }
+        .switch input:checked + .track::after { left: 19px; }
+        .switch:hover { color: var(--ink); }
+
+        /* actions */
+        .actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .btn {
+            font-family: var(--font-sans); font-size: 13px; font-weight: 600; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px; border-radius: var(--r);
+            border: 1px solid var(--border); background: var(--surface); color: var(--ink-dim);
+            box-shadow: 0 1px 2px rgba(23,27,38,0.04);
+            transition: all 0.18s; white-space: nowrap;
+        }
+        .btn svg { width: 15px; height: 15px; }
+        .btn:hover { color: var(--ink); border-color: var(--border-2); transform: translateY(-1px); box-shadow: 0 4px 12px -6px rgba(23,27,38,0.28); }
+        .btn-primary {
+            background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #fff; border-color: transparent;
+            box-shadow: 0 4px 16px -6px rgba(15,118,110,0.6);
+        }
+        .btn-primary:hover { filter: brightness(1.06); box-shadow: 0 6px 20px -6px rgba(15,118,110,0.6); }
+
+        /* ---------- FILTER BAR ---------- */
+        .filters { display: flex; align-items: center; gap: 10px; flex-shrink: 0; position: relative; }
+        .filters-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); margin-right: 4px; font-weight: 500; }
+
+        .select-wrap { position: relative; }
+        .dropdown-trigger {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 138px;
+            font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; color: var(--ink-dim); cursor: pointer;
+            padding: 7px 11px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--surface); box-shadow: 0 1px 2px rgba(23,27,38,0.04); transition: all 0.18s;
+        }
+        .dropdown-trigger:hover { border-color: var(--border-2); color: var(--ink); }
+        .dropdown-trigger svg { width: 14px; height: 14px; color: var(--ink-faint); flex-shrink: 0; }
+        .dropdown-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dropdown-trigger.is-active {
+            border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-ring);
+        }
+
+        .field {
+            font-family: var(--font-sans); font-size: 12.5px; color: var(--ink); width: 148px;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+            padding: 7px 11px; outline: none; box-shadow: 0 1px 2px rgba(23,27,38,0.04); transition: all 0.18s;
+        }
+        .field::placeholder { color: var(--ink-faint); }
+        .field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+
+        /* popover (JS injected) */
+        .popover {
+            position: absolute; top: calc(100% + 8px); left: 0; width: 232px; z-index: 50;
+            background: var(--surface);
+            border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        .popover-search { padding: 9px; border-bottom: 1px solid var(--border); }
+        .popover-search input {
+            width: 100%; font-family: var(--font-sans); font-size: 12px; color: var(--ink);
+            background: var(--paper); border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px; outline: none;
+        }
+        .popover-search input:focus { border-color: var(--accent); }
+        .popover-list { max-height: 244px; overflow-y: auto; padding: 5px; }
+        .opt {
+            display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 7px;
+            font-size: 12.5px; color: var(--ink-dim); cursor: pointer; transition: background 0.12s;
+        }
+        .opt:hover { background: var(--paper); color: var(--ink); }
+        .opt input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+        .opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .popover-enter { animation: popIn 0.16s cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes popIn { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+        /* stats readout */
+        .stats { display: flex; align-items: center; gap: 22px; flex-shrink: 0; }
+        .stat { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+        .stat-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
+        .stat-value { font-family: var(--font-mono); font-weight: 600; font-size: 16px; line-height: 1; font-variant-numeric: tabular-nums; }
+        .v-nodes    { color: var(--ink); }
+        .v-edges    { color: var(--accent); }
+        .v-projects { color: var(--c-project); }
+        .v-tags     { color: var(--c-tag); }
+
+        /* ---------- GRAPH AREA ---------- */
+        #graph-wrapper { flex: 1; position: relative; overflow: hidden; background: var(--paper); }
+        #graph-container { position: absolute; inset: 0; }
+        /* blueprint paper: faint dot-grid + soft edge vignette, above canvas, non-interactive */
+        .graph-vignette {
+            position: absolute; inset: 0; pointer-events: none; z-index: 4;
+            background-image: radial-gradient(rgba(23,27,38,0.05) 1px, transparent 1.6px);
+            background-size: 26px 26px;
+            /* radial edge-vignette painted directly (cheaper than a huge blurred box-shadow) */
+            background-color: transparent;
+            /* promote to its own GPU layer so canvas repaints don't force it to re-composite */
+            transform: translateZ(0);
+            will-change: transform;
+        }
+        .graph-vignette::after {
+            content: ""; position: absolute; inset: 0;
+            background: radial-gradient(130% 100% at 50% 45%, transparent 60%, rgba(23,27,38,0.06) 100%);
+        }
+
+        /* legend */
+        .legend {
+            position: absolute; bottom: 26px; left: 26px; z-index: 10;
+            display: flex; flex-direction: column; gap: 9px; padding: 14px 16px;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+            box-shadow: var(--shadow); min-width: 160px; max-height: 46vh; overflow-y: auto;
+            animation: rise 0.7s 0.15s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        }
+        #legend-items { display: flex; flex-direction: column; gap: 9px; }
+        .legend-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 9px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-dim); font-weight: 500; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 1px 3px rgba(23,27,38,0.25); }
+
+        /* physics dock */
+        .dock {
+            position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); z-index: 10;
+            display: flex; align-items: center; gap: 6px; padding: 8px 10px;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+            box-shadow: var(--shadow);
+            animation: rise 0.7s 0.22s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        }
+        .dock-btn { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: var(--ink-dim); cursor: pointer; border: none; background: transparent; transition: all 0.16s; }
+        .dock-btn:hover { color: var(--ink); background: var(--paper); }
+        .dock-btn svg { width: 19px; height: 19px; }
+        .dock-sep { width: 1px; height: 20px; background: var(--border-2); margin: 0 4px; }
+        .dock-toggle {
+            display: inline-flex; align-items: center; gap: 8px; padding: 0 16px 0 12px; height: 36px; border-radius: 999px;
+            font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; cursor: pointer; border: none;
+            background: var(--accent-soft); color: var(--accent); transition: all 0.16s;
+        }
+        .dock-toggle svg { width: 16px; height: 16px; }
+        .dock-toggle.off { background: var(--paper); color: var(--ink-faint); }
+
+        /* inspector */
+        .inspector {
+            position: absolute; top: 24px; right: 24px; width: 336px; z-index: 20;
+            display: flex; flex-direction: column; max-height: calc(100% - 48px);
+            background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+            box-shadow: var(--shadow);
+            animation: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .inspector-head {
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+            padding: 17px 18px; border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, var(--accent-soft), transparent);
+        }
+        #inspector-type { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+        #inspector-title { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 18px; line-height: 1.2; color: var(--ink); letter-spacing: -0.01em; overflow-wrap: anywhere; }
+        .icon-btn { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; color: var(--ink-faint); cursor: pointer; border: 1px solid transparent; background: transparent; flex-shrink: 0; transition: all 0.16s; }
+        .icon-btn:hover { color: var(--ink); background: var(--paper); border-color: var(--border); }
+        .icon-btn svg { width: 16px; height: 16px; }
+        .inspector-body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+        .section-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; font-weight: 500; }
+        .props { display: flex; flex-direction: column; gap: 9px; padding: 13px; border-radius: 11px; background: var(--paper); border: 1px solid var(--border); margin-bottom: 20px; }
+        .prop { font-size: 13px; color: var(--ink); line-height: 1.45; }
+        .prop-key { color: var(--ink-faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 6px; }
+        .prop-path { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); overflow-wrap: anywhere; }
+        .conns { display: flex; flex-direction: column; gap: 2px; }
+        .conn { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 8px; color: var(--ink-dim); transition: background 0.12s; }
+        .conn:hover { background: var(--paper); color: var(--ink); }
+        .conn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .conn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+        .conn-more { font-size: 11px; color: var(--ink-faint); text-align: center; margin-top: 8px; font-style: italic; }
+        .empty { color: var(--ink-faint); font-style: italic; font-size: 12.5px; }
+
+        /* scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(23,27,38,0.16); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(23,27,38,0.28); }
+
+        @keyframes fadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+        @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <div class="row row-1">
+            <!-- brand -->
+            <div class="brand">
+                <div class="brand-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                        <path d="M12 12 L5 6 M12 12 L19 7 M12 12 L6.5 18 M12 12 L18 17" opacity="0.6"></path>
+                        <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"></circle>
+                        <circle cx="5" cy="6" r="1.7" fill="currentColor" stroke="none"></circle>
+                        <circle cx="19" cy="7" r="1.7" fill="currentColor" stroke="none"></circle>
+                        <circle cx="6.5" cy="18" r="1.7" fill="currentColor" stroke="none"></circle>
+                        <circle cx="18" cy="17" r="1.7" fill="currentColor" stroke="none"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <h1>Agent OS Graph</h1>
+                    <p>Knowledge Atlas</p>
+                </div>
+                <a class="brand-nav-link" href="/">← local-search</a>
+            </div>
+
+            <!-- search + switch -->
+            <div class="center">
+                <div class="search">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" id="search-input" placeholder="Search files, tags, or projects…">
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-labels">
+                    <span class="track"></span>
+                    All labels
+                </label>
+            </div>
+
+            <!-- actions -->
+            <div class="actions">
+                <input type="file" id="file-upload" accept=".json" class="hidden">
+                <button class="btn" onclick="document.getElementById('file-upload').click()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Upload JSON
+                </button>
+                <button id="btn-reset" class="btn btn-primary hidden">Reset</button>
+                <div class="select-wrap" id="refresh-wrap">
+                    <button id="btn-refresh-repos" class="btn">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Refresh from repos
+                    </button>
+                    <div id="refresh-panel" class="popover hidden" style="left:auto; right:0; width:280px;">
+                        <div class="popover-search" style="font-weight:700; color:var(--ink); font-family:var(--font-sans); font-size:12.5px;">Rebuild graph from repos</div>
+                        <div id="refresh-repo-list" style="max-height:240px; overflow:auto; padding:8px 11px; display:flex; flex-direction:column; gap:6px; font-family:var(--font-sans); font-size:12.5px; color:var(--ink);"></div>
+                        <div style="padding:9px 11px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                            <span id="refresh-status" style="font-family:var(--font-sans); font-size:11.5px; color:var(--ink-faint);"></span>
+                            <button id="btn-rebuild-graph" class="btn btn-primary">Rebuild graph</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- <button id="btn-generate" class="btn">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span id="btn-generate-text">Test Scale · 30k</span>
+                </button> -->
+            </div>
+        </div>
+
+        <!-- filters + stats -->
+        <div class="row row-2">
+            <div class="filters">
+                <span class="filters-label">Filters</span>
+
+                <div class="select-wrap" id="dropdown-type">
+                    <button class="dropdown-trigger"><span>All Types</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                </div>
+                <div class="select-wrap" id="dropdown-repo">
+                    <button class="dropdown-trigger"><span>All Repos</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                </div>
+                <div class="select-wrap" id="dropdown-project">
+                    <button class="dropdown-trigger"><span>All Projects</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                </div>
+                <div class="select-wrap" id="dropdown-tag">
+                    <button class="dropdown-trigger"><span>All Tags</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                </div>
+
+                <input type="text" id="filter-name" class="field" placeholder="Name contains…">
+                <input type="text" id="filter-title" class="field" placeholder="Title contains…">
+            </div>
+
+            <div class="stats">
+                <div class="stat"><span class="stat-value v-nodes" id="stat-nodes">0</span><span class="stat-label">Nodes</span></div>
+                <div class="stat"><span class="stat-value v-edges" id="stat-edges">0</span><span class="stat-label">Links</span></div>
+                <div class="stat"><span class="stat-value v-projects" id="stat-projects">0</span><span class="stat-label">Projects</span></div>
+                <div class="stat"><span class="stat-value v-tags" id="stat-tags">0</span><span class="stat-label">Tags</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRAPH -->
+    <div id="graph-wrapper">
+        <div id="graph-container"></div>
+        <div class="graph-vignette"></div>
+
+        <!-- legend -->
+        <div class="legend">
+            <div class="legend-title">Node Types</div>
+            <div id="legend-items"></div>
+        </div>
+
+        <!-- physics dock -->
+        <div class="dock">
+            <button id="btn-zoom-in" class="dock-btn" title="Zoom in"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg></button>
+            <button id="btn-zoom-out" class="dock-btn" title="Zoom out"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path></svg></button>
+            <button id="btn-fit" class="dock-btn" title="Fit to screen"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg></button>
+            <div class="dock-sep"></div>
+            <button id="btn-physics" class="dock-toggle">
+                <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                Physics On
+            </button>
+        </div>
+
+        <!-- inspector -->
+        <div id="inspector-panel" class="inspector hidden">
+            <div class="inspector-head">
+                <div style="min-width:0">
+                    <div id="inspector-type">Type</div>
+                    <h3 id="inspector-title">Node Name</h3>
+                </div>
+                <button id="btn-close-inspector" class="icon-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="inspector-body">
+                <div style="margin-bottom:20px">
+                    <div class="section-label">Properties</div>
+                    <div id="inspector-props" class="props"></div>
+                </div>
+                <div>
+                    <div class="section-label">Connections · <span id="inspector-conn-count">0</span></div>
+                    <div id="inspector-conns" class="conns"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let graph;
+        let originalData = { nodes: [], links: [] };
+        let activeData = { nodes: [], links: [] };
+
+        // High-Performance O(1) Lookups
+        let neighborNodesMap = new Map();
+        let nodeLinksMap = new Map();
+        let nodeByIdMap = new Map();
+
+        let hoverNode = null;
+        let selectedNode = null;
+        let highlightNodes = new Set();
+        let highlightLinks = new Set();
+
+        let isPhysicsRunning = true;
+        let showLabelsGlobally = false;
+        let glowEnabled = true; // soft node shadows; disabled automatically on huge graphs for performance
+        let hasFitted = false;  // one-time auto zoom-to-fit after first layout settle
+
+        const multiSelectState = { type: new Set(), repo: new Set(), project: new Set(), tag: new Set() };
+
+        // Light-theme palette (kept keyed by node.type)
+        const colors = {
+            file:    '#64748b',
+            project: '#d97706',
+            tag:     '#7c3aed',
+            repo:    '#0369a1'
+        };
+
+        // Hub node types that get labels earlier + a shadow (hoisted out of the render loop)
+        const COMMUNITY = new Set(['repo', 'project', 'tag']);
+
+        // Colors for graph-export nodes, keyed by the OS layer derived from their path
+        const LAYER_COLORS = {
+            platform: '#2563eb', team: '#ea580c', ontology: '#9333ea', prd: '#db2777',
+            standard: '#0d9488', research: '#16a34a', doc: '#ca8a04', other: '#94a3b8'
+        };
+
+        // renderColor -> human label, drives the dynamic legend for both data shapes
+        const COLOR_NAMES = {
+            '#64748b': 'Files', '#d97706': 'Projects', '#7c3aed': 'Tags', '#0369a1': 'Repos',
+            '#2563eb': 'Platform', '#ea580c': 'Team', '#9333ea': 'Ontology', '#db2777': 'PRD',
+            '#0d9488': 'Standards', '#16a34a': 'Research', '#ca8a04': 'Docs', '#94a3b8': 'Other'
+        };
+
+        // Map a graph-export node's repo-relative path to an OS layer bucket.
+        function layerOf(p) {
+            p = p || '';
+            const has = s => p.indexOf(s) !== -1;
+            if (has('/platforms/') || p.indexOf('platforms/') === 0) {
+                return (has('change-records') || has('archive/prds')) ? 'prd' : 'platform';
+            }
+            if (has('/teams/') || p.indexOf('teams/') === 0) return 'team';
+            if (has('company-ontology')) return 'ontology';
+            if (has('company-os/') || has('company-os-starter/company-os')) return 'standard';
+            if (p.indexOf('docs/') === 0 || has('company-os-starter/docs')) return 'doc';
+            if (p.indexOf('.devlocal') === 0) return 'research';
+            return 'other';
+        }
+
+        // Rebuild the legend from whatever render colors are actually on screen.
+        function renderLegend() {
+            const el = document.getElementById('legend-items');
+            if (!el) return;
+            const groups = new Map();
+            activeData.nodes.forEach(n => {
+                const c = n.renderColor || colors[n.type] || colors.file;
+                groups.set(c, (groups.get(c) || 0) + 1);
+            });
+            el.innerHTML = [...groups.entries()].sort((a, b) => b[1] - a[1]).map(([c, ct]) => `
+                <div class="legend-item">
+                    <span class="legend-dot" style="background:${c}"></span>
+                    ${COLOR_NAMES[c] || 'Nodes'}
+                    <span style="color:var(--ink-faint);font-family:var(--font-mono);font-size:10px;margin-left:auto">${ct}</span>
+                </div>`).join('');
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => { clearTimeout(timeout); func(...args); };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // --- DATA LOGIC ---
+        function synthesizeGraphData(rawData) {
+            const nodes = [], links = [];
+            const projects = new Map(), tags = new Map(), repos = new Map();
+
+            rawData.forEach((item, index) => {
+                const nodeId = item.id || `file_${index}`;
+                nodes.push({
+                    id: nodeId, name: item.name || 'Unknown Node', title: item.title,
+                    type: item.type || 'file', repo: item.repo, project: item.project,
+                    val: item.val || 4, raw: item,
+                    renderColor: colors[item.type || 'file'] || colors.file
+                });
+
+                if (item.repo) {
+                    if (!repos.has(item.repo)) repos.set(item.repo, { id: `repo_${item.repo}`, name: item.repo, type: 'repo', val: 12, renderColor: colors.repo });
+                    links.push({ source: nodeId, target: `repo_${item.repo}` });
+                }
+                if (item.project) {
+                    if (!projects.has(item.project)) projects.set(item.project, { id: `proj_${item.project}`, name: item.project, type: 'project', val: 8, renderColor: colors.project });
+                    links.push({ source: nodeId, target: `proj_${item.project}` });
+                }
+                if (item.tags) {
+                    let cleanTags = [];
+                    if (typeof item.tags === 'string') cleanTags = item.tags.replace(/\[|\]/g, '').split(',').map(t => t.trim()).filter(t => t.length > 0);
+                    else if (Array.isArray(item.tags)) cleanTags = item.tags;
+                    cleanTags.forEach(tag => {
+                        if (!tags.has(tag)) tags.set(tag, { id: `tag_${tag}`, name: `#${tag}`, type: 'tag', val: 6, renderColor: colors.tag });
+                        links.push({ source: nodeId, target: `tag_${tag}` });
+                    });
+                }
+            });
+            return { nodes: [...nodes, ...repos.values(), ...projects.values(), ...tags.values()], links };
+        }
+
+        function buildPerformanceMaps(data) {
+            neighborNodesMap.clear(); nodeLinksMap.clear(); nodeByIdMap.clear();
+            data.nodes.forEach(n => { nodeByIdMap.set(n.id, n); neighborNodesMap.set(n.id, new Set()); nodeLinksMap.set(n.id, []); });
+            data.links.forEach(l => {
+                const s = typeof l.source === 'object' ? l.source.id : l.source;
+                const t = typeof l.target === 'object' ? l.target.id : l.target;
+                if (neighborNodesMap.has(s)) neighborNodesMap.get(s).add(t);
+                if (neighborNodesMap.has(t)) neighborNodesMap.get(t).add(s);
+                if (nodeLinksMap.has(s)) nodeLinksMap.get(s).push(l);
+                if (nodeLinksMap.has(t)) nodeLinksMap.get(t).push(l);
+            });
+        }
+
+        function loadData(graphData, isNewUpload = true) {
+            if (isNewUpload) {
+                originalData = JSON.parse(JSON.stringify(graphData));
+                activeData = graphData;
+                buildPerformanceMaps(activeData);
+                initDropdowns();
+                hasFitted = false; // re-fit the view for each newly loaded dataset
+            } else {
+                buildPerformanceMaps(graphData);
+            }
+            selectedNode = null; hoverNode = null;
+            highlightNodes.clear(); highlightLinks.clear();
+            document.getElementById('inspector-panel').classList.add('hidden');
+
+            glowEnabled = activeData.nodes.length <= 2500; // keep soft shadows only where they stay smooth
+            graph.graphData(activeData);
+            updateStats();
+            renderLegend();
+        }
+
+        // --- CUSTOM MULTI-SELECT DROPDOWNS ---
+        let activeDropdown = null;
+
+        function createDropdownUI(id, label, options, typeKey) {
+            const container = document.getElementById(id);
+            const btn = container.querySelector('.dropdown-trigger');
+            const existingPopover = container.querySelector('.popover');
+            if (existingPopover) existingPopover.remove();
+
+            const popover = document.createElement('div');
+            popover.className = 'popover popover-enter hidden';
+
+            const searchHtml = `
+                <div class="popover-search">
+                    <input type="text" placeholder="Search ${label}…" oninput="filterDropdownOptions(this, '${id}')">
+                </div>`;
+            const optionsHtml = options.map(opt => `
+                <label class="opt dropdown-option" title="${opt}">
+                    <input type="checkbox" value="${opt}" onchange="handleDropdownChange('${typeKey}', '${opt}', this.checked); applyFiltersDebounced();">
+                    <span>${opt}</span>
+                </label>`).join('');
+
+            popover.innerHTML = searchHtml + `<div class="popover-list" id="${id}-list">${optionsHtml}</div>`;
+            container.appendChild(popover);
+
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                if (activeDropdown && activeDropdown !== popover) activeDropdown.classList.add('hidden');
+                popover.classList.toggle('hidden');
+                activeDropdown = popover.classList.contains('hidden') ? null : popover;
+            };
+        }
+
+        window.filterDropdownOptions = function(inputEl, containerId) {
+            const term = inputEl.value.toLowerCase();
+            document.querySelectorAll(`#${containerId}-list .dropdown-option`).forEach(label => {
+                label.style.display = label.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+            });
+        };
+
+        window.handleDropdownChange = function(typeKey, value, isChecked) {
+            if (isChecked) multiSelectState[typeKey].add(value);
+            else multiSelectState[typeKey].delete(value);
+
+            const trigger = document.querySelector(`#dropdown-${typeKey} .dropdown-trigger`);
+            const labelSpan = trigger.querySelector('span');
+            const count = multiSelectState[typeKey].size;
+            labelSpan.textContent = count === 0 ? `All ${typeKey.charAt(0).toUpperCase() + typeKey.slice(1)}s` : `${count} Selected`;
+            trigger.classList.toggle('is-active', count > 0);
+        };
+
+        // Node tags arrive as an array or a "[a, b]" / "a,b" string. Some exports leave
+        // YAML flow-sequence brackets on the first/last token ("[workflow" … "thinking]"),
+        // so strip a leading '[' and trailing ']' per token and drop empties.
+        function parseNodeTags(raw) {
+            let arr;
+            if (Array.isArray(raw)) arr = raw;
+            else if (typeof raw === 'string') arr = raw.split(',');
+            else return [];
+            return arr.map(t => String(t).trim().replace(/^\[/, '').replace(/\]$/, '').trim()).filter(Boolean);
+        }
+
+        function initDropdowns() {
+            const repos = new Set(), projects = new Set(), tags = new Set(), types = new Set();
+            originalData.nodes.forEach(n => {
+                if (n.repo) repos.add(n.repo);
+                if (n.project) projects.add(n.project);
+                parseNodeTags(n.tags).forEach(t => tags.add(t));
+                if (n.type) types.add(n.type);
+            });
+            createDropdownUI('dropdown-type', 'Types', Array.from(types).sort(), 'type');
+            createDropdownUI('dropdown-repo', 'Repos', Array.from(repos).sort(), 'repo');
+            createDropdownUI('dropdown-project', 'Projects', Array.from(projects).sort(), 'project');
+            createDropdownUI('dropdown-tag', 'Tags', Array.from(tags).sort(), 'tag');
+            Object.keys(multiSelectState).forEach(k => multiSelectState[k].clear());
+        }
+
+        document.addEventListener('click', (e) => {
+            if (activeDropdown && !activeDropdown.contains(e.target)) {
+                activeDropdown.classList.add('hidden');
+                activeDropdown = null;
+            }
+        });
+
+        // --- RENDERING & PHYSICS ---
+        function initGraph() {
+            const elem = document.getElementById('graph-container');
+
+            graph = ForceGraph()(elem)
+                .backgroundColor('#eef1f6')
+                .nodeRelSize(4)
+                .nodeVal(node => node.val || 4)
+                .nodeColor(node => node.renderColor)
+                .linkColor(link => highlightLinks.has(link) ? 'rgba(15,118,110,0.9)' : 'rgba(23,27,38,0.22)')
+                .linkWidth(link => highlightLinks.has(link) ? 2.4 : 1.2)
+                // No directional particles — they force a continuous 60fps repaint of the
+                // whole graph while hovering. Highlight is shown via link color/width instead.
+                .linkDirectionalParticles(0)
+                // Cheap hit-area for hover detection — keeps the pointer canvas from
+                // re-running the expensive shadow/label paint on every mouse move.
+                .nodePointerAreaPaint((node, color, ctx) => {
+                    const r = Math.sqrt(Math.max(0, node.val || 4)) * graph.nodeRelSize();
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, r + 2, 0, 2 * Math.PI, false);
+                    ctx.fill();
+                })
+                .nodeCanvasObject((node, ctx, globalScale) => {
+                    if (node.x === undefined || node.y === undefined) return;
+
+                    const r = Math.sqrt(Math.max(0, node.val || 4)) * graph.nodeRelSize();
+                    const isHighlight = highlightNodes.has(node) || node === selectedNode || node === hoverNode;
+                    const isMuted = (selectedNode || hoverNode) && !isHighlight;
+                    const isCommunity = COMMUNITY.has(node.type);
+
+                    ctx.globalAlpha = isMuted ? 0.16 : 1;
+
+                    // soft drop shadow lifts the dot off the paper — only on the few
+                    // hub / highlighted nodes, since shadowBlur is the costliest per-node op
+                    const withShadow = glowEnabled && !isMuted && (isHighlight || isCommunity);
+                    if (withShadow) {
+                        ctx.shadowColor = 'rgba(23,27,38,0.28)';
+                        ctx.shadowBlur = isHighlight ? 12 : 9;
+                        ctx.shadowOffsetY = 1.5;
+                    }
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = node.renderColor;
+                    ctx.fill();
+                    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+                    // glossy top-left highlight — only on hub/highlighted nodes, so the
+                    // per-frame draw stays cheap when the whole graph repaints
+                    if (withShadow) {
+                        ctx.beginPath();
+                        ctx.arc(node.x - r * 0.3, node.y - r * 0.3, r * 0.4, 0, 2 * Math.PI, false);
+                        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                        ctx.fill();
+                    }
+
+                    // selection / hover ring
+                    if (node === selectedNode || (isHighlight && node === hoverNode)) {
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, r + 3 / globalScale, 0, 2 * Math.PI, false);
+                        ctx.lineWidth = 1.8 / globalScale;
+                        ctx.strokeStyle = node === selectedNode ? '#0f766e' : 'rgba(23,27,38,0.35)';
+                        ctx.stroke();
+                    }
+                    ctx.globalAlpha = 1;
+
+                    // LEVEL OF DETAIL labels
+                    let shouldDrawLabel = false;
+                    if (showLabelsGlobally) {
+                        shouldDrawLabel = globalScale > 0.3;
+                    } else {
+                        shouldDrawLabel = (isCommunity && globalScale > 0.7 && !isMuted) || (isHighlight && !isMuted);
+                    }
+
+                    if (shouldDrawLabel) {
+                        const label = node.name || node.id;
+                        const fontSize = isCommunity ? 12.5 / globalScale : 10.5 / globalScale;
+                        ctx.font = `${isCommunity ? '600' : '500'} ${fontSize}px 'JetBrains Mono', monospace`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const textY = node.y + r + (8 / globalScale) + (fontSize / 2);
+
+                        ctx.lineWidth = 3.5 / globalScale;
+                        ctx.strokeStyle = 'rgba(238,241,246,0.95)';
+                        ctx.strokeText(label, node.x, textY);
+                        ctx.fillStyle = isCommunity ? node.renderColor : '#485061';
+                        ctx.fillText(label, node.x, textY);
+                    }
+                })
+                .onNodeHover(node => {
+                    elem.style.cursor = node ? 'pointer' : null;
+                    if (selectedNode) return;
+                    hoverNode = node;
+                    updateHighlight();
+                })
+                .onNodeClick(node => {
+                    if (selectedNode === node) {
+                        selectedNode = null;
+                        document.getElementById('inspector-panel').classList.add('hidden');
+                    } else {
+                        selectedNode = node;
+                        populateInspector(node);
+                        document.getElementById('inspector-panel').classList.remove('hidden');
+                        graph.centerAt(node.x, node.y, 1000);
+                        graph.zoom(6, 1500);
+                    }
+                    updateHighlight();
+                })
+                .onBackgroundClick(() => {
+                    selectedNode = null; hoverNode = null;
+                    updateHighlight();
+                    document.getElementById('inspector-panel').classList.add('hidden');
+                });
+
+            graph.d3Force('charge').strength(-40).distanceMax(300);
+            graph.d3Force('link').distance(35);
+            graph.d3AlphaDecay(0.05).d3VelocityDecay(0.5);
+            graph.cooldownTicks(150);
+            graph.onEngineStop(() => {
+                isPhysicsRunning = false;
+                updatePhysicsBtnUI();
+                if (!hasFitted) { hasFitted = true; graph.zoomToFit(600, 70); }
+            });
+        }
+
+        function updateHighlight() {
+            highlightNodes.clear(); highlightLinks.clear();
+            const activeCenter = selectedNode || hoverNode;
+            if (activeCenter) {
+                highlightNodes.add(activeCenter);
+                (nodeLinksMap.get(activeCenter.id) || []).forEach(link => {
+                    highlightLinks.add(link);
+                    const sid = typeof link.source === 'object' ? link.source.id : link.source;
+                    const tid = typeof link.target === 'object' ? link.target.id : link.target;
+                    highlightNodes.add(nodeByIdMap.get(sid));
+                    highlightNodes.add(nodeByIdMap.get(tid));
+                });
+            }
+            graph.nodeColor(graph.nodeColor());
+            graph.linkWidth(graph.linkWidth());
+        }
+
+        function populateInspector(node) {
+            document.getElementById('inspector-title').textContent = node.name || node.id;
+            const badge = document.getElementById('inspector-type');
+            badge.textContent = node.type;
+            badge.style.color = node.renderColor || colors[node.type] || 'var(--accent)';
+
+            const propsHtml = [];
+            if (node.title) propsHtml.push(`<div class="prop"><span class="prop-key">Title</span>${node.title}</div>`);
+            if (node.repo) propsHtml.push(`<div class="prop"><span class="prop-key">Repo</span>${node.repo}</div>`);
+            if (node.project) propsHtml.push(`<div class="prop"><span class="prop-key">Project</span>${node.project}</div>`);
+            const path = (node.raw && node.raw.path) || node.path;
+            if (path) propsHtml.push(`<div class="prop"><span class="prop-key">Path</span><span class="prop-path">${path}</span></div>`);
+            document.getElementById('inspector-props').innerHTML = propsHtml.length ? propsHtml.join('') : '<div class="empty">No extra properties</div>';
+
+            const connections = [];
+            (neighborNodesMap.get(node.id) || new Set()).forEach(nId => {
+                const t = nodeByIdMap.get(nId);
+                if (t) connections.push({ name: t.name || t.id, color: t.renderColor || colors[t.type] || colors.file });
+            });
+            document.getElementById('inspector-conn-count').textContent = connections.length;
+
+            const connsHtml = connections.slice(0, 100).map(c => `
+                <div class="conn">
+                    <span class="conn-dot" style="background:${c.color}"></span>
+                    <span title="${c.name}">${c.name}</span>
+                </div>`).join('');
+            document.getElementById('inspector-conns').innerHTML = connsHtml + (connections.length > 100 ? '<div class="conn-more">…and more</div>' : '');
+        }
+
+        function updateStats() {
+            document.getElementById('stat-nodes').textContent = activeData.nodes.length.toLocaleString();
+            document.getElementById('stat-edges').textContent = activeData.links.length.toLocaleString();
+            document.getElementById('stat-projects').textContent = activeData.nodes.filter(n => n.type === 'project').length.toLocaleString();
+            document.getElementById('stat-tags').textContent = activeData.nodes.filter(n => n.type === 'tag').length.toLocaleString();
+        }
+
+        const applyFiltersDebounced = debounce(() => {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const nameFilter = document.getElementById('filter-name').value.toLowerCase();
+            const titleFilter = document.getElementById('filter-title').value.toLowerCase();
+
+            const filteredNodes = originalData.nodes.filter(node => {
+                if (searchTerm) {
+                    const nameMatch = (node.name || '').toLowerCase().includes(searchTerm);
+                    const titleMatch = (node.title || '').toLowerCase().includes(searchTerm);
+                    if (!nameMatch && !titleMatch) return false;
+                }
+                if (nameFilter && !(node.name || '').toLowerCase().includes(nameFilter)) return false;
+                if (titleFilter && !(node.title || '').toLowerCase().includes(titleFilter)) return false;
+                if (multiSelectState.type.size > 0 && !multiSelectState.type.has(node.type)) return false;
+                // repo/project are node PROPERTIES here (nodes are colored by OS layer from `path`,
+                // not a synthetic 'file' node type). Filter any node that carries the property;
+                // nodes without it are left unaffected.
+                if (multiSelectState.repo.size > 0 && node.repo && !multiSelectState.repo.has(node.repo)) return false;
+                if (multiSelectState.project.size > 0 && node.project && !multiSelectState.project.has(node.project)) return false;
+                return true;
+            });
+
+            const validNodeIds = new Set(filteredNodes.map(n => n.id));
+
+            if (multiSelectState.tag.size > 0) {
+                // Tags are a node property (array, or a "[a, b]"/"a,b" string), not synthetic tag_* nodes.
+                for (let id of [...validNodeIds]) {
+                    const n = filteredNodes.find(x => x.id === id);
+                    if (!n) continue;
+                    const tags = parseNodeTags(n.tags);
+                    if (tags.length > 0 && !tags.some(t => multiSelectState.tag.has(t))) validNodeIds.delete(id);
+                }
+            }
+
+            const filteredLinks = originalData.links.filter(link => {
+                const s = typeof link.source === 'object' ? link.source.id : link.source;
+                const t = typeof link.target === 'object' ? link.target.id : link.target;
+                return validNodeIds.has(s) && validNodeIds.has(t);
+            });
+
+            activeData = { nodes: originalData.nodes.filter(n => validNodeIds.has(n.id)), links: filteredLinks };
+            loadData(activeData, false);
+            graph.d3ReheatSimulation();
+            graph.cooldownTicks(60);
+        }, 300);
+
+        function updatePhysicsBtnUI() {
+            const btn = document.getElementById('btn-physics');
+            if (isPhysicsRunning) {
+                btn.innerHTML = '<svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg> Physics On';
+                btn.classList.remove('off');
+            } else {
+                btn.innerHTML = '<svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 002 0V8a1 1 0 00-1-1zm4 0a1 1 0 00-1 1v4a1 1 0 002 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg> Physics Off';
+                btn.classList.add('off');
+            }
+        }
+
+        function generateMassiveData() {
+            const btnText = document.getElementById('btn-generate-text');
+            btnText.textContent = "Generating…";
+            setTimeout(() => {
+                const nodes = [], links = [];
+                const projectCount = 50, tagCount = 100, fileCount = 30000;
+                for (let i = 0; i < projectCount; i++) nodes.push({ id: `proj_${i}`, name: `Project-${i}`, type: 'project', val: 15, renderColor: colors.project });
+                for (let i = 0; i < tagCount; i++) nodes.push({ id: `tag_${i}`, name: `#tag_${i}`, type: 'tag', val: 8, renderColor: colors.tag });
+                for (let i = 0; i < fileCount; i++) {
+                    const nodeId = `file_${i}`;
+                    nodes.push({ id: nodeId, name: `SynthFile_${i}.md`, title: `Massive File ${i}`, type: 'file', val: 2, renderColor: colors.file });
+                    links.push({ source: nodeId, target: `proj_${Math.floor(Math.random() * projectCount)}` });
+                    const numTags = Math.floor(Math.random() * 3);
+                    for (let t = 0; t < numTags; t++) links.push({ source: nodeId, target: `tag_${Math.floor(Math.random() * tagCount)}` });
+                }
+                loadData({ nodes, links });
+                document.getElementById('btn-reset').classList.remove('hidden');
+                document.getElementById('btn-generate').classList.add('hidden');
+                btnText.textContent = "Test Scale · 30k";
+            }, 100);
+        }
+
+        // --- LIFECYCLE ---
+        window.onload = function() {
+            initGraph();
+
+            document.getElementById('btn-zoom-in').onclick = () => graph.zoom(graph.zoom() * 1.3, 400);
+            document.getElementById('btn-zoom-out').onclick = () => graph.zoom(graph.zoom() / 1.3, 400);
+            document.getElementById('btn-fit').onclick = () => graph.zoomToFit(400, 60);
+
+            document.getElementById('btn-physics').onclick = () => {
+                if (isPhysicsRunning) { graph.d3Force('charge').strength(0); graph.cooldownTicks(0); }
+                else { graph.d3Force('charge').strength(-40); graph.d3ReheatSimulation(); graph.cooldownTicks(150); }
+                isPhysicsRunning = !isPhysicsRunning;
+                updatePhysicsBtnUI();
+            };
+
+            document.getElementById('btn-close-inspector').addEventListener('click', () => {
+                selectedNode = null; updateHighlight();
+                document.getElementById('inspector-panel').classList.add('hidden');
+            });
+
+            const toggleLabelsEl = document.getElementById('toggle-labels');
+            if (toggleLabelsEl) toggleLabelsEl.addEventListener('change', (e) => { showLabelsGlobally = e.target.checked; updateHighlight(); });
+
+            ['search-input', 'filter-name', 'filter-title'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', applyFiltersDebounced);
+            });
+
+            document.getElementById('btn-generate')?.addEventListener('click', generateMassiveData);
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                fetch('/api/graph').then(res => res.json())
+                    .then(data => loadData(Array.isArray(data) ? synthesizeGraphData(data) : normalizeGraph(data)))
+                    .catch(() => loadData(synthesizeGraphData([])));
+                document.getElementById('btn-reset').classList.add('hidden');
+                document.getElementById('btn-generate')?.classList.remove('hidden');
+            });
+
+            document.getElementById('file-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const json = JSON.parse(event.target.result);
+                        let graphData;
+                        if (Array.isArray(json)) graphData = synthesizeGraphData(json);
+                        else if (json.nodes && (json.edges || json.links)) graphData = normalizeGraph(json);
+                        else throw new Error("Format must be flat array or {nodes, links}");
+                        loadData(graphData);
+                        document.getElementById('btn-reset').classList.remove('hidden');
+                    } catch (err) {
+                        alert("Error parsing JSON: " + err.message);
+                    } finally { e.target.value = ''; }
+                };
+                reader.readAsText(file);
+            });
+
+            // Initial load: flat array (hub graph) OR {nodes,links} (graph export)
+            fetch('/api/graph').then(res => res.json())
+                .then(data => {
+                    const g = Array.isArray(data) ? synthesizeGraphData(data) : normalizeGraph(data);
+                    loadData(g);
+                    if (!g.nodes || g.nodes.length === 0) showGraphNotice();
+                })
+                .catch(() => console.log("Upload a file or use Test Scale to start."));
+
+            // ---------- Refresh-from-repos panel ----------
+            const refreshWrap   = document.getElementById('refresh-wrap');
+            const refreshBtn    = document.getElementById('btn-refresh-repos');
+            const refreshPanel  = document.getElementById('refresh-panel');
+            const refreshList   = document.getElementById('refresh-repo-list');
+            const refreshStatus = document.getElementById('refresh-status');
+            const rebuildBtn    = document.getElementById('btn-rebuild-graph');
+
+            function showGraphNotice() {
+                refreshStatus.textContent = '';
+                refreshStatus.style.color = 'var(--ink-faint)';
+                let notice = document.getElementById('graph-empty-notice');
+                if (!notice) {
+                    notice = document.createElement('div');
+                    notice.id = 'graph-empty-notice';
+                    notice.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:15; padding:16px 22px; border-radius:12px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow); font-family:var(--font-sans); font-size:13px; color:var(--ink-dim); text-align:center;';
+                    notice.innerHTML = 'No cached graph yet. Click <b>Refresh from repos</b> to build one.';
+                    document.getElementById('graph-container').appendChild(notice);
+                }
+            }
+            function hideGraphNotice() {
+                const notice = document.getElementById('graph-empty-notice');
+                if (notice) notice.remove();
+            }
+
+            async function loadRepoCheckboxes() {
+                refreshList.innerHTML = '<span style="color:var(--ink-faint);">Loading repos…</span>';
+                try {
+                    const res = await fetch('/api/repos');
+                    const data = await res.json();
+                    if (!res.ok || (data && data.error)) {
+                        refreshList.innerHTML = '';
+                        refreshStatus.style.color = '#c0392b';
+                        refreshStatus.textContent = (data && data.message) || 'Failed to load repos';
+                        return;
+                    }
+                    const rows = Array.isArray(data) ? data : (data.repos || []);
+                    if (rows.length === 0) {
+                        refreshList.innerHTML = '<span style="color:var(--ink-faint);">No repos found. Rebuild will use all repos.</span>';
+                        return;
+                    }
+                    refreshList.innerHTML = '';
+                    rows.forEach(row => {
+                        const name = row.repo;
+                        const count = row.spec_count != null ? row.spec_count : 0;
+                        const label = document.createElement('label');
+                        label.style.cssText = 'display:flex; align-items:center; gap:8px; cursor:pointer;';
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.value = name;
+                        cb.className = 'refresh-repo-cb';
+                        const span = document.createElement('span');
+                        span.textContent = `${name}  (${count} specs)`;
+                        label.appendChild(cb);
+                        label.appendChild(span);
+                        refreshList.appendChild(label);
+                    });
+                } catch (err) {
+                    refreshList.innerHTML = '';
+                    refreshStatus.style.color = '#c0392b';
+                    refreshStatus.textContent = 'Failed to load repos: ' + err.message;
+                }
+            }
+
+            refreshBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const willOpen = refreshPanel.classList.contains('hidden');
+                refreshPanel.classList.toggle('hidden');
+                if (willOpen) {
+                    refreshStatus.textContent = '';
+                    loadRepoCheckboxes();
+                }
+            });
+            document.addEventListener('click', (e) => {
+                if (!refreshWrap.contains(e.target)) refreshPanel.classList.add('hidden');
+            });
+
+            rebuildBtn.addEventListener('click', async () => {
+                const repos = Array.from(refreshList.querySelectorAll('.refresh-repo-cb'))
+                    .filter(cb => cb.checked).map(cb => cb.value);
+                rebuildBtn.disabled = true;
+                refreshStatus.style.color = 'var(--ink-faint)';
+                refreshStatus.textContent = 'Rebuilding…';
+                try {
+                    const res = await fetch('/api/graph/refresh', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ repos }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok || (data && data.error)) {
+                        refreshStatus.style.color = '#c0392b';
+                        refreshStatus.textContent = (data && data.message) || 'Rebuild failed';
+                        return;
+                    }
+                    const g = Array.isArray(data) ? synthesizeGraphData(data) : normalizeGraph(data);
+                    hideGraphNotice();
+                    loadData(g);
+                    if (!g.nodes || g.nodes.length === 0) {
+                        showGraphNotice();
+                        refreshStatus.style.color = 'var(--ink-faint)';
+                        refreshStatus.textContent = 'Graph is empty.';
+                    } else {
+                        refreshStatus.style.color = 'var(--ink-faint)';
+                        refreshStatus.textContent = `Loaded ${g.nodes.length} nodes.`;
+                        document.getElementById('btn-reset').classList.remove('hidden');
+                    }
+                } catch (err) {
+                    refreshStatus.style.color = '#c0392b';
+                    refreshStatus.textContent = 'Rebuild failed: ' + err.message;
+                } finally {
+                    rebuildBtn.disabled = false;
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                const c = document.getElementById('graph-container');
+                graph.width(c.clientWidth).height(c.clientHeight);
+            });
+        };
+
+        // Accept a pre-built {nodes, links|edges} graph and give every node a render color
+        // so exporter output (which lacks node.type) still renders on the paper canvas.
+        function normalizeGraph(json) {
+            const nodes = (json.nodes || []).map(n => {
+                // Prefer an explicit type; otherwise classify by OS layer from the path.
+                const type = n.type || layerOf(n.path || '');
+                return {
+                    ...n,
+                    type,
+                    name: n.name || n.label || n.title || n.id,
+                    renderColor: n.renderColor || colors[type] || LAYER_COLORS[type] || colors.file
+                };
+            });
+            return { nodes, links: json.links || json.edges || [] };
+        }
+    </script>
+</body>
+</html>
