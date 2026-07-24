@@ -20,7 +20,7 @@ are accepted identically.
 
 ## Repos
 
-### `repo add <folder> [name] [--skip-directory <name>]`
+### `repo add [folder] [name] [--skip-directory <name>]`
 
 Registers a folder as a searchable repo and scans it immediately — there is no
 separate index step.
@@ -31,6 +31,23 @@ Added repo "my-project" (/abs/path/to/docs)
 Scanning…
   my-project: 42 files indexed
 ```
+
+**No folder given?** `repo add` (run with no path) infers the **current
+directory** as the path and its folder name as the repo name — then asks you to
+confirm before registering:
+
+```bash
+$ cd ~/work/my-project
+$ local-search repo add
+Add the current directory as a repo?
+  name: my-project
+  path: /Users/you/work/my-project
+Continue? [y/N]
+```
+
+The prompt only appears for the inferred case; passing a folder explicitly adds it
+without asking. When stdin isn't a terminal (a script or a pipe), the inferred
+form declines rather than guess — pass the folder explicitly there.
 
 Every scan also skips the directory patterns found in the repo's `.gitignore`
 and `.graphifyignore` (e.g. `node_modules/`, `dist/`, `graphify-out/`), so those

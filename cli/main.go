@@ -146,6 +146,18 @@ func repoAdd(args []string) {
 		die(err.Error())
 	}
 
+	// No folder given → infer the current directory (path) and its basename (name).
+	// Because that's a guess, we confirm with the user before registering (below).
+	inferred := false
+	if dirArg == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			die("Cannot determine current directory: " + err.Error())
+		}
+		dirArg = cwd
+		inferred = true
+	}
+
 	dir, err := filepath.Abs(dirArg)
 	if err != nil {
 		die("Cannot resolve path: " + dirArg)
@@ -163,9 +175,16 @@ func repoAdd(args []string) {
 		die(err.Error())
 	}
 
-	// Check duplicate
+	// Check duplicate (before prompting, so a re-run fails fast instead of asking).
 	if repos := loadRepos(); repoExists(repos, name, dir) {
 		die(fmt.Sprintf("Repo %q already registered", name))
+	}
+
+	// Inferred path → confirm before registering. Declines (without hanging) when
+	// stdin is not a TTY, so a scripted `repo add` with no folder never guesses.
+	if inferred && !confirmRepoAdd(name, dir) {
+		fmt.Println("Cancelled.")
+		return
 	}
 
 	// R-3.1: stamp the registration time; it flows through formatRepoEntryLine's
@@ -197,11 +216,29 @@ func repoAdd(args []string) {
 	scanSurgical([]repoEntry{newEntry})
 }
 
-func parseRepoAddArgs(args []string) (dir, name string, skipDirs []string, err error) {
-	if len(args) == 0 {
-		return "", "", nil, fmt.Errorf("Usage: local-search repo add <folder> [name] [--skip-directory <folder-name>]...")
+// confirmRepoAdd asks the user to confirm registering an inferred repo — used when
+// `repo add` is run with no folder argument, so the current directory and its
+// basename are only a guess. Returns true only on an explicit "y". When stdin is
+// not a TTY it declines without reading (mirroring the export-view prompt), so a
+// non-interactive `repo add` with no path never hangs or silently registers.
+func confirmRepoAdd(name, dir string) bool {
+	fi, _ := os.Stdin.Stat()
+	isTTY := fi != nil && fi.Mode()&os.ModeCharDevice != 0
+	if !isTTY {
+		fmt.Fprintln(os.Stderr,
+			"repo add: refusing to infer the current directory non-interactively — "+
+				"pass the folder explicitly: local-search repo add <folder> [name]")
+		return false
 	}
+	fmt.Printf("Add the current directory as a repo?\n  name: %s\n  path: %s\nContinue? [y/N] ", name, dir)
+	answer, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	return strings.ToLower(strings.TrimSpace(answer)) == "y"
+}
 
+func parseRepoAddArgs(args []string) (dir, name string, skipDirs []string, err error) {
+	// No positional folder is allowed: repoAdd then infers the current directory
+	// (with a confirmation prompt). Flag parsing still runs so
+	// `repo add --skip-directory x` works against the inferred cwd.
 	var positional []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -221,11 +258,8 @@ func parseRepoAddArgs(args []string) (dir, name string, skipDirs []string, err e
 		}
 	}
 
-	if len(positional) == 0 {
-		return "", "", nil, fmt.Errorf("Usage: local-search repo add <folder> [name] [--skip-directory <folder-name>]...")
-	}
 	if len(positional) > 2 {
-		return "", "", nil, fmt.Errorf("Usage: local-search repo add <folder> [name] [--skip-directory <folder-name>]...")
+		return "", "", nil, fmt.Errorf("Usage: local-search repo add [folder] [name] [--skip-directory <folder-name>]...")
 	}
 
 	normalized, err := normalizeSkipDirectoryNames(skipDirs)
@@ -233,7 +267,9 @@ func parseRepoAddArgs(args []string) (dir, name string, skipDirs []string, err e
 		return "", "", nil, err
 	}
 
-	dir = positional[0]
+	if len(positional) >= 1 {
+		dir = positional[0] // "" when omitted → repoAdd infers the cwd
+	}
 	if len(positional) == 2 {
 		name = positional[1]
 	}
@@ -2547,7 +2583,7 @@ func cmdHelp() {
 	fmt.Print(`local-search — search your project specs across multiple repos
 
 Usage:
-	local-search repo add <folder> [name] [--skip-directory <folder-name>]   Register a spec repo
+	local-search repo add [folder] [name] [--skip-directory <folder-name>]   Register a spec repo (folder defaults to the current directory, with a confirmation prompt)
   local-search repo remove <name>         Remove a repo
   local-search repo list                  Show all repos
 

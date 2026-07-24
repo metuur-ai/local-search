@@ -342,6 +342,9 @@
         .prop-path { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); overflow-wrap: anywhere; }
         .prop-tags { display: inline-flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; vertical-align: top; }
         .tag-chip { font-family: var(--font-mono); font-size: 10.5px; line-height: 1; padding: 4px 8px; border-radius: 999px; background: rgba(124, 58, 237, 0.12); color: var(--c-tag); border: 1px solid rgba(124, 58, 237, 0.28); }
+        /* namespaced tag groups: spec: (teal) and link: (blue), matching node palette */
+        .tag-chip-spec { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-ring); }
+        .tag-chip-link { background: rgba(3, 105, 161, 0.10); color: var(--c-repo); border-color: rgba(3, 105, 161, 0.28); }
         .conns { display: flex; flex-direction: column; gap: 2px; }
         .conn { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 8px; color: var(--ink-dim); transition: background 0.12s; }
         .conn:hover { background: var(--paper); color: var(--ink); }
@@ -1155,8 +1158,24 @@
             if (typeof rawTags === 'string') tagList = rawTags.split(',').map(cleanTag).filter(Boolean);
             else if (Array.isArray(rawTags)) tagList = rawTags.map(cleanTag).filter(Boolean);
             if (tagList.length) {
-                const chips = tagList.map(t => `<span class="tag-chip">${t}</span>`).join('');
-                propsHtml.push(`<div class="prop"><span class="prop-key">Tags</span><span class="prop-tags">${chips}</span></div>`);
+                // Namespaced tags (spec:foo, link:bar) get their own labeled rows so
+                // spec/link references read as first-class groups instead of being lost
+                // among plain frontmatter tags. The row label carries the namespace, so
+                // the prefix is stripped from each chip.
+                const groups = { spec: [], link: [], plain: [] };
+                tagList.forEach(t => {
+                    const m = /^(spec|link):(.+)$/i.exec(t);
+                    if (m) groups[m[1].toLowerCase()].push(m[2].trim());
+                    else groups.plain.push(t);
+                });
+                const tagRow = (label, cls, list) => {
+                    if (!list.length) return;
+                    const chips = list.map(t => `<span class="tag-chip ${cls}">${t}</span>`).join('');
+                    propsHtml.push(`<div class="prop"><span class="prop-key">${label}</span><span class="prop-tags">${chips}</span></div>`);
+                };
+                tagRow('Tags', '', groups.plain);
+                tagRow('Specs', 'tag-chip-spec', groups.spec);
+                tagRow('Links', 'tag-chip-link', groups.link);
             }
             document.getElementById('inspector-props').innerHTML = propsHtml.length ? propsHtml.join('') : '<div class="empty">No extra properties</div>';
 

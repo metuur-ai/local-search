@@ -31,6 +31,34 @@ func TestParseRepoAddArgs_FlagsBeforePositionals(t *testing.T) {
 	}
 }
 
+func TestParseRepoAddArgs_NoPositionalInfers(t *testing.T) {
+	// No folder → empty dir/name, which signals repoAdd to infer the cwd.
+	dir, name, skips, err := parseRepoAddArgs([]string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if dir != "" || name != "" {
+		t.Fatalf("expected empty dir/name (infer signal), got dir=%q name=%q", dir, name)
+	}
+	if len(skips) != 0 {
+		t.Fatalf("unexpected skips: %v", skips)
+	}
+}
+
+func TestParseRepoAddArgs_FlagsOnlyStillInfers(t *testing.T) {
+	// Flags but no folder → still infer cwd, with the skip dir applied.
+	dir, name, skips, err := parseRepoAddArgs([]string{"--skip-directory", "vendor"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if dir != "" || name != "" {
+		t.Fatalf("expected empty dir/name, got dir=%q name=%q", dir, name)
+	}
+	if len(skips) != 1 || skips[0] != "vendor" {
+		t.Fatalf("unexpected skips: %v", skips)
+	}
+}
+
 func TestParseRepoAddArgs_RejectsPathForSkipDirectory(t *testing.T) {
 	_, _, _, err := parseRepoAddArgs([]string{"./specs", "--skip-directory", "dir/subdir"})
 	if err == nil {
