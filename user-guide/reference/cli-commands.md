@@ -32,8 +32,11 @@ Scanning…
   my-project: 42 files indexed
 ```
 
-`--skip-directory <name>` (repeatable) excludes a subfolder by name (e.g.
-`node_modules`) from scanning.
+Every scan also skips the directory patterns found in the repo's `.gitignore`
+and `.graphifyignore` (e.g. `node_modules/`, `dist/`, `graphify-out/`), so those
+are excluded without any flags. `--skip-directory <name>` (repeatable) excludes
+an additional subfolder by name (e.g. `node_modules`) for anything not covered
+by those ignore files.
 
 ### `repo remove <name>`
 

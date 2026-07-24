@@ -30,7 +30,11 @@ Adding a repo scans it immediately — there's no separate "index now" step to r
 
 ## Skip noisy subfolders
 
-Big repos often have folders you never want indexed — `node_modules`, a `dist` build output, a vendored `.devlocal` scratch area. Exclude them at registration time with `--skip-directory` (repeatable):
+Big repos often have folders you never want indexed — `node_modules`, a `dist` build output, a vendored `.devlocal` scratch area. Most of the time you don't have to name them: **every scan already skips the directories your repo's `.gitignore` and `.graphifyignore` exclude.** So if `node_modules/`, `dist/`, and `graphify-out/` are in `.gitignore`, they're skipped automatically — no flags needed. This is applied at scan time, so editing `.gitignore` and rescanning takes effect immediately, and repos added before this behavior existed pick it up on their next scan.
+
+Only directory-style ignore patterns are honored (`node_modules/`, `build/`, or a bare `vendor`); file globs like `*.log`, negations (`!keep/`), and multi-segment paths (`web/frontend/dist`) are left to the file-level scanner.
+
+For anything not covered by an ignore file, exclude it at registration time with `--skip-directory` (repeatable):
 
 ```bash
 local-search repo add /path/to/monorepo \

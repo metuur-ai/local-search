@@ -157,6 +157,7 @@ export function App() {
   const [done, setDone] = useState(false);
 
   // Display / client-side-only view state (does not touch the backend).
+  const [showHelp, setShowHelp] = useState(false);
   const [inspectorTab, setInspectorTab] = useState('ai');
   const [fileFilter, setFileFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
@@ -589,6 +590,16 @@ export function App() {
             <span class="status-dot" aria-hidden="true" />
             {status.label}
           </span>
+          <button
+            type="button"
+            class="help-btn"
+            title="How to use this page"
+            aria-label="Help"
+            data-testid="help-open"
+            onClick={() => setShowHelp(true)}
+          >
+            <i class="fa-solid fa-circle-question" />
+          </button>
         </div>
       </header>
 
@@ -1161,6 +1172,97 @@ export function App() {
           </a>
         </span>
       </footer>
+
+      {/* Help modal — how to use this page, install, and docs link. */}
+      {showHelp &&
+        createPortal(
+          <div
+            class="alert-modal"
+            data-testid="help-modal"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowHelp(false);
+            }}
+          >
+            <div class="help-panel" role="dialog" aria-modal="true" aria-label="Help">
+              <div class="help-head">
+                <h3 class="help-title">
+                  <i class="fa-solid fa-wand-magic-sparkles" /> Local-Search Console
+                </h3>
+                <button
+                  type="button"
+                  class="help-close"
+                  aria-label="Close help"
+                  data-testid="help-close"
+                  onClick={() => setShowHelp(false)}
+                >
+                  <i class="fa-solid fa-xmark" />
+                </button>
+              </div>
+              <div class="help-body">
+                <p class="help-lead">
+                  Grounded retrieval over your local repositories — pick repos, ask a
+                  question, and watch sources, an AI answer, and a knowledge graph
+                  stream in.
+                </p>
+
+                <h4 class="help-section">
+                  <i class="fa-solid fa-list-ol" /> How to use
+                </h4>
+                <ol class="help-list">
+                  <li>Select one or more <strong>target repositories</strong>.</li>
+                  <li>Type your question in the search bar.</li>
+                  <li>
+                    Pick a <strong>search mode</strong>: <em>AI Answer</em> synthesizes a
+                    grounded answer (slower); <em>Graph only</em> hits the graph DB
+                    directly (no model, ~a second).
+                  </li>
+                  <li>Hit <strong>Search</strong>, then narrow results with the file and tag facets.</li>
+                  <li>
+                    Inspect on the right: <strong>AI Answer</strong>,{' '}
+                    <strong>Sources &amp; Provenance</strong>,{' '}
+                    <strong>Neighborhood Map</strong>, and <strong>Top Tags</strong>.
+                  </li>
+                </ol>
+
+                <h4 class="help-section">
+                  <i class="fa-solid fa-download" /> Install
+                </h4>
+                <p class="help-text">One command installs the CLI, the Claude skill, and this web UI:</p>
+                <pre class="help-code"><code>curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash</code></pre>
+                <p class="help-text">Then launch the UI (needs Node ≥ 18):</p>
+                <pre class="help-code"><code>local-search ui</code></pre>
+                <p class="help-text">
+                  More install options (release bundle, prebuilt binary, build from
+                  source) on{' '}
+                  <a
+                    href="https://github.com/metuur-ai/local-search/blob/main/README.md#install"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    the install guide <i class="fa-solid fa-arrow-up-right-from-square" />
+                  </a>
+                  .
+                </p>
+
+                <h4 class="help-section">
+                  <i class="fa-solid fa-book" /> More documentation
+                </h4>
+                <p class="help-text">
+                  Full guide, search syntax, and configuration on{' '}
+                  <a
+                    href="https://github.com/metuur-ai/local-search/blob/main/user-guide/index.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    GitHub <i class="fa-solid fa-arrow-up-right-from-square" />
+                  </a>
+                  .
+                </p>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Rollover alert — shown the first time a follow-up would push past the
           3-version window, explaining that the oldest answer is dropped. */}

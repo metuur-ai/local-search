@@ -358,6 +358,60 @@
 
         @keyframes fadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
         @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ---------- HELP BUTTON + MODAL ---------- */
+        .help-btn {
+            display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0;
+            border-radius: 10px; border: 1px solid var(--border); background: var(--surface);
+            color: var(--ink-dim); cursor: pointer; box-shadow: 0 1px 2px rgba(23,27,38,0.04);
+            transition: all 0.18s;
+        }
+        .help-btn svg { width: 18px; height: 18px; }
+        .help-btn:hover { color: var(--accent); border-color: var(--accent-ring); transform: translateY(-1px); box-shadow: 0 4px 12px -6px rgba(15,118,110,0.4); }
+
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: center; padding: 24px;
+            background: rgba(23, 27, 38, 0.5); backdrop-filter: blur(2px);
+            animation: fadeDown 0.2s ease;
+        }
+        .modal-panel {
+            width: min(560px, 100%); max-height: min(80vh, 720px);
+            display: flex; flex-direction: column; overflow: hidden;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+            box-shadow: var(--shadow);
+        }
+        .modal-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 16px 20px; border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, var(--accent-soft), transparent);
+        }
+        .modal-head h2 {
+            display: flex; align-items: center; gap: 9px; margin: 0;
+            font-family: var(--font-display); font-weight: 800; font-size: 17px; color: var(--ink);
+        }
+        .modal-head h2 svg { width: 19px; height: 19px; color: var(--accent); }
+        .modal-body { padding: 18px 20px 22px; overflow-y: auto; }
+        .modal-lead { margin: 0 0 16px; font-size: 13.5px; line-height: 1.55; color: var(--ink-dim); }
+        .modal-section {
+            display: flex; align-items: center; gap: 7px; margin: 20px 0 9px;
+            font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em;
+            text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+        }
+        .modal-section:first-of-type { margin-top: 0; }
+        .modal-section svg { width: 14px; height: 14px; }
+        .modal-body ol { margin: 0; padding-left: 19px; display: flex; flex-direction: column; gap: 7px; }
+        .modal-body li { font-size: 13px; line-height: 1.5; color: var(--ink-dim); }
+        .modal-body p { margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: var(--ink-dim); }
+        .modal-body strong { color: var(--ink); }
+        .modal-body code.block {
+            display: block; margin: 0 0 8px; padding: 10px 12px;
+            font-family: var(--font-mono); font-size: 12px; line-height: 1.5; color: var(--ink);
+            background: var(--paper-2); border: 1px solid var(--border); border-radius: 8px;
+            overflow-x: auto; white-space: pre;
+        }
+        .modal-body a { color: var(--accent); text-decoration: none; font-weight: 600; }
+        .modal-body a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -423,6 +477,9 @@
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     <span id="btn-generate-text">Test Scale · 30k</span>
                 </button> -->
+                <button id="btn-help" class="help-btn" title="How to use this page" aria-label="Help">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </button>
             </div>
         </div>
 
@@ -528,6 +585,65 @@
             </a>
         </span>
     </footer>
+
+    <!-- HELP MODAL -->
+    <div id="help-modal" class="modal-overlay hidden">
+        <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Help">
+            <div class="modal-head">
+                <h2>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"></circle><circle cx="5" cy="6" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="19" cy="7" r="1.5" fill="currentColor" stroke="none"></circle><path d="M12 12 L5 6 M12 12 L19 7" opacity="0.6"></path></svg>
+                    Agent OS Graph
+                </h2>
+                <button id="btn-close-help" class="icon-btn" aria-label="Close help"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-lead">An interactive knowledge atlas of your registered repositories — files, tags, projects, and repos rendered as a force-directed graph you can search, filter, and inspect.</p>
+
+                <div class="modal-section">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    How to use
+                </div>
+                <ol>
+                    <li><strong>Search</strong> files, tags, or projects from the top bar to spotlight matches.</li>
+                    <li><strong>Filter</strong> by file type, repo, directory, or tag — active filters show as removable chips.</li>
+                    <li><strong>Click a node</strong> to open the inspector with its properties and connections.</li>
+                    <li>Use the dock to <strong>zoom</strong>, <strong>fit to screen</strong>, or pause <strong>physics</strong>; toggle <strong>All labels</strong> to reveal every name.</li>
+                    <li><strong>Refresh from repos</strong> rebuilds the graph from selected repos, or <strong>Upload JSON</strong> to load your own export.</li>
+                </ol>
+
+                <div class="modal-section">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Install
+                </div>
+                <p>One command installs the CLI, the Claude skill, and this web UI:</p>
+                <code class="block">curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash</code>
+                <p>Then launch the UI (needs Node ≥ 18) and open the graph explorer:</p>
+                <code class="block">local-search ui</code>
+                <p>More install options (release bundle, prebuilt binary, build from source) on <a href="https://github.com/metuur-ai/local-search/blob/main/README.md#install" target="_blank" rel="noopener noreferrer">the install guide ↗</a>.</p>
+
+                <div class="modal-section">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.247m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.247"></path></svg>
+                    More documentation
+                </div>
+                <p>Full guide, search syntax, and configuration on <a href="https://github.com/metuur-ai/local-search/blob/main/user-guide/index.md" target="_blank" rel="noopener noreferrer">GitHub ↗</a>.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Help modal open/close (button, backdrop click, Escape).
+        (function initHelpModal() {
+            const modal = document.getElementById('help-modal');
+            const open = () => modal.classList.remove('hidden');
+            const close = () => modal.classList.add('hidden');
+            document.getElementById('btn-help').addEventListener('click', open);
+            document.getElementById('btn-close-help').addEventListener('click', close);
+            modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) close();
+            });
+        })();
+    </script>
 
     <script>
         // State Management

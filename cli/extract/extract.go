@@ -78,6 +78,14 @@ var specRefRe = regexp.MustCompile("@spec\\s+req://([^@#\\s\"'`]+)")
 // `"`/`$`, so shell test expressions in code (`[[ -d "$x" ]]`) never match.
 var wikilinkRe = regexp.MustCompile(`\[\[([^\s|#"$\[\]][^|#"$\[\]\n]*?)(?:[#|][^\[\]\n]*)?\]\]`)
 
+// graphifyNavRe matches graphify's synthetic navigation wikilinks — anchors like
+// `[[_COMMUNITY_Community 12]]` that graphify writes into graphify-out/GRAPH_REPORT.md
+// to link its auto-numbered cluster hubs. They are machine-generated navigation, not
+// content references, and would otherwise slugify into noise tags (e.g.
+// `link:community-community-12`) that flood the tag facets. The `_UPPER_` prefix is
+// graphify's convention for such synthetic nodes, so match the whole family.
+var graphifyNavRe = regexp.MustCompile(`^_[A-Z]+_`)
+
 // fencedCodeRe matches fenced code blocks; they are stripped before ref
 // extraction so bash examples don't leak shell `[[ … ]]` as wikilinks.
 var fencedCodeRe = regexp.MustCompile("(?s)```.*?```|~~~.*?~~~")
@@ -370,6 +378,11 @@ func extractRefTags(content string) []string {
 		}
 	}
 	for _, m := range wikilinkRe.FindAllStringSubmatch(prose, -1) {
+		// Skip graphify's synthetic cluster-nav anchors (`[[_COMMUNITY_…]]`) so they
+		// don't become `link:community-community-N` tags.
+		if graphifyNavRe.MatchString(m[1]) {
+			continue
+		}
 		if s := slugify(m[1]); s != "" {
 			add("link:" + s)
 		}

@@ -25,7 +25,7 @@ import (
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const Version = "0.3.3"
+const Version = "0.3.4"
 
 var (
 	appDir    = filepath.Join(homeDir(), ".local-search")
@@ -184,6 +184,13 @@ func repoAdd(args []string) {
 	if len(skipDirs) > 0 {
 		fmt.Printf("Skipping directories by name: %s\n", strings.Join(skipDirs, ", "))
 	}
+	// Surface the folders the scan will skip by default because .gitignore /
+	// .graphifyignore already exclude them (applied at scan time, not persisted).
+	// Show only names that are real top-level directories here, so harmless
+	// file-pattern entries (.env, .DS_Store) don't read as "directories".
+	if shown := ignoredDirsForDisplay(dir); len(shown) > 0 {
+		fmt.Printf("Ignoring directories from .gitignore/.graphifyignore: %s\n", strings.Join(shown, ", "))
+	}
 	fmt.Println("Scanning…")
 	// R-6.3: surgically index ONLY the newly added repo — no DB deletion and no
 	// re-scan of the other registered repos.
@@ -277,7 +284,7 @@ func deriveIgnoredDirs(repoPath string) []string {
 			continue
 		}
 		for _, raw := range strings.Split(string(data), "\n") {
-			if d, ok := ignoreLineToSkipDir(raw); ok {
+			if d, _, ok := ignoreLineToSkipDir(raw); ok {
 				out = append(out, d)
 			}
 		}
@@ -295,10 +302,14 @@ func deriveIgnoredDirs(repoPath string) []string {
 // and reject comments, negations, globs (*.exe), multi-segment paths
 // (web/frontend/dist), and root-anchored bare entries (/local-search) that may
 // be files and would over-skip same-named directories elsewhere.
-func ignoreLineToSkipDir(raw string) (string, bool) {
+//
+// explicitDir reports whether the pattern was written as an unambiguous
+// directory (a trailing-slash `dir/`), which callers use to distinguish it from
+// a bare name (`node_modules`) that may actually denote a file.
+func ignoreLineToSkipDir(raw string) (name string, explicitDir bool, ok bool) {
 	line := strings.TrimSpace(raw)
 	if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "!") {
-		return "", false
+		return "", false, false
 	}
 	// This repo's own .gitignore uses (non-standard) trailing "# comments"; take
 	// the first whitespace-delimited field so `dist/   # note` yields `dist`.
@@ -310,22 +321,22 @@ func ignoreLineToSkipDir(raw string) (string, bool) {
 	line = strings.TrimPrefix(line, "/")
 	line = strings.TrimSuffix(line, "/")
 	if line == "" || line == "." || line == ".." {
-		return "", false
+		return "", false, false
 	}
 	// A remaining separator means a path (web/frontend/dist), not a bare name.
 	if strings.ContainsAny(line, "/\\") {
-		return "", false
+		return "", false, false
 	}
 	// Glob/alternation can't be expressed as a single directory name.
 	if strings.ContainsAny(line, "*?[]|,") {
-		return "", false
+		return "", false, false
 	}
 	// A root-anchored bare entry (`/local-search`) targets one specific root
 	// entry that may be a file; skipping that name everywhere would over-skip.
 	if anchored && !isDir {
-		return "", false
+		return "", false, false
 	}
-	return line, true
+	return line, isDir, true
 }
 
 // effectiveSkipDirs merges a repo's explicitly configured skip directories with
@@ -334,6 +345,45 @@ func ignoreLineToSkipDir(raw string) (string, bool) {
 // .graphifyignore take effect on the next scan, and repos registered before this
 // behavior existed gain it automatically. Ignore-file parsing must never fail a
 // scan, so a normalization error falls back to the explicit list.
+// ignoredDirsForDisplay returns the ignore-file-derived skip names worth showing
+// in the `repo add` message, sorted and deduped. The scan-time skip set
+// (effectiveSkipDirs) still matches every derived name at any depth; this is
+// purely cosmetic — it keeps no-op file patterns (`.env`, `.DS_Store`) out of a
+// message that calls them "directories" by including a bare name only when a
+// same-named folder actually exists at the repo root. Explicit `dir/` patterns
+// are always shown: the user wrote them as directories, and they may live nested
+// (e.g. a monorepo's `node_modules/` under a subpackage).
+func ignoredDirsForDisplay(repoPath string) []string {
+	rootDirs := make(map[string]bool)
+	if entries, err := os.ReadDir(repoPath); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				rootDirs[e.Name()] = true
+			}
+		}
+	}
+	seen := make(map[string]bool)
+	var show []string
+	for _, name := range ignoreFileNames {
+		data, err := os.ReadFile(filepath.Join(repoPath, name))
+		if err != nil {
+			continue
+		}
+		for _, raw := range strings.Split(string(data), "\n") {
+			d, explicitDir, ok := ignoreLineToSkipDir(raw)
+			if !ok || seen[d] {
+				continue
+			}
+			if explicitDir || rootDirs[d] {
+				seen[d] = true
+				show = append(show, d)
+			}
+		}
+	}
+	sort.Strings(show)
+	return show
+}
+
 func effectiveSkipDirs(r repoEntry) []string {
 	derived := deriveIgnoredDirs(r.Path)
 	if len(derived) == 0 {
@@ -2017,7 +2067,7 @@ func applyIncrementalUpdate(db *sql.DB, repo repoEntry) (changed bool, err error
 		return false, nil
 	}
 	fmt.Fprintf(os.Stderr, "(%s: git changes detected — incremental update…)\n\n", repo.Name)
-	n, newCommit, err := localdb.IncrementalScan(db, repo.Name, repo.Path, lastCommit, repo.SkipDirectories)
+	n, newCommit, err := localdb.IncrementalScan(db, repo.Name, repo.Path, lastCommit, effectiveSkipDirs(repo))
 	if err != nil {
 		return false, err
 	}

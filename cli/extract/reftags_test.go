@@ -53,6 +53,25 @@ func TestExtractRefTags_WikilinkAliasAndHeading(t *testing.T) {
 	}
 }
 
+func TestExtractRefTags_GraphifyNavLinksSkipped(t *testing.T) {
+	// graphify's GRAPH_REPORT.md "Community Hubs" nav links must not become tags —
+	// they slugify to noise like `link:community-community-12`. Real wikilinks in
+	// the same doc still count.
+	content := "## Community Hubs (Navigation)\n" +
+		"- [[_COMMUNITY_Community 0|Community 0]]\n" +
+		"- [[_COMMUNITY_Community 12|Community 12]]\n\n" +
+		"See also [[Refund Policy]].\n"
+	got := extractRefTags(content)
+	for _, bad := range got {
+		if strings.HasPrefix(bad, "link:community-community") {
+			t.Fatalf("graphify nav link leaked as tag: %v", got)
+		}
+	}
+	if !contains(got, "link:refund-policy") {
+		t.Fatalf("real wikilink dropped: %v", got)
+	}
+}
+
 func TestExtractRefTags_ShellTestNotAWikilink(t *testing.T) {
 	// A bash code fence with shell [[ … ]] must not yield link: tags.
 	content := "Install:\n\n```bash\nif [[ -d \"$dir\" ]]; then echo hi; fi\n[[ -f \"$p\" ]] && run\n```\n"
