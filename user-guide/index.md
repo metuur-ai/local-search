@@ -64,6 +64,10 @@ Complete, source-verified lookup material.
   environment variable.
 - [Web UI reference](reference/web-ui-reference.md) — screens, controls, HTTP
   API, SSE events, and error codes.
+- [EARS spec annotations](reference/ears-spec-annotations.md) — the `@spec <ID>`
+  convention that turns requirement IDs into browsable `spec:` tags.
+- [FAQ](reference/faq.md) — quick answers to the questions that come up most,
+  each linking to the page that covers it in full.
 - [Troubleshooting](reference/troubleshooting.md) — symptom → cause → fix,
   including the known `local-search ui` startup issue.
 

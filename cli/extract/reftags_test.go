@@ -53,6 +53,46 @@ func TestExtractRefTags_WikilinkAliasAndHeading(t *testing.T) {
 	}
 }
 
+func TestExtractRefTags_SpecBareID(t *testing.T) {
+	got := extractRefTags("Implements @spec R-1.3 for the bind address.")
+	if len(got) != 1 || got[0] != "spec:r-1.3" {
+		t.Fatalf("got %v, want [spec:r-1.3]", got)
+	}
+}
+
+func TestExtractRefTags_SpecBareIDList(t *testing.T) {
+	// The `@spec ID, ID` reference form used in code and EARS tables.
+	got := extractRefTags("// @spec TASKS-012, HEALTH-007")
+	if !contains(got, "spec:tasks-012") || !contains(got, "spec:health-007") {
+		t.Fatalf("got %v, want tasks-012 + health-007", got)
+	}
+}
+
+func TestExtractRefTags_SpecBareIDInTableRow(t *testing.T) {
+	got := extractRefTags("| @spec R-1.3 | WHEN X THE SYSTEM SHALL Y |")
+	if len(got) != 1 || got[0] != "spec:r-1.3" {
+		t.Fatalf("got %v, want [spec:r-1.3]", got)
+	}
+}
+
+func TestExtractRefTags_SpecBareIDCoexistsWithURIForm(t *testing.T) {
+	// The bare-ID form must not disturb the existing req:// form.
+	got := extractRefTags("@spec req://payments/refund@1.0#R1 and @spec R-2.2")
+	if !contains(got, "spec:payments/refund") || !contains(got, "spec:r-2.2") {
+		t.Fatalf("got %v, want both forms, got %v", got, got)
+	}
+}
+
+func TestExtractRefTags_BareIDProseMentionIgnored(t *testing.T) {
+	// An EARS id without the explicit `@spec` marker must not be tagged — this is
+	// what keeps prose mentions and unrelated table rows out of the facets.
+	for _, c := range []string{"see R-1.3 for details", "the TASKS-012 requirement", "banner (R-1.3)"} {
+		if got := extractRefTags(c); len(got) != 0 {
+			t.Errorf("%q: expected no tags, got %v", c, got)
+		}
+	}
+}
+
 func TestExtractRefTags_GraphifyNavLinksSkipped(t *testing.T) {
 	// graphify's GRAPH_REPORT.md "Community Hubs" nav links must not become tags —
 	// they slugify to noise like `link:community-community-12`. Real wikilinks in

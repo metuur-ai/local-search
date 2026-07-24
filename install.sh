@@ -193,8 +193,10 @@ install_web() {
   fi
   info "Web:    $WEB_DIR"
   mkdir -p "$WEB_DIR"
-  # Copy the app without the (build-time only) node_modules / logs / scratch dirs.
-  ( cd "$from" && tar --exclude=node_modules --exclude=logs --exclude=.devlocal -cf - . ) \
+  # Copy the app without the machine-local node_modules / logs / data (runtime
+  # graph.json cache) / scratch dirs. Matters when installing from a checkout,
+  # where those exist on disk; tar does not honour .gitignore.
+  ( cd "$from" && tar --exclude=node_modules --exclude=logs --exclude=data --exclude=.devlocal -cf - . ) \
     | ( tar -xf - -C "$WEB_DIR" )
   if [[ ! -f "$WEB_DIR/frontend/dist/index.html" ]]; then
     warn "frontend/dist missing — the UI will 404 until built (cd web && npm ci && npm run build)."

@@ -126,7 +126,13 @@ local-search recent 3        # just the last 3
 ```bash
 local-search tags            # every tag in use, with counts
 local-search tags billing    # every spec tagged "billing"
+local-search tags spec:r-1.3 # every doc that annotates @spec R-1.3
 ```
+
+Tags come from a spec's frontmatter *and* from markers in its body. In particular,
+an `@spec <ID>` annotation (e.g. `@spec R-1.3`, `@spec TASKS-012`) becomes a
+`spec:<id>` tag, so you can trace a requirement to every doc that references it. See
+[EARS spec annotations](../reference/ears-spec-annotations.md) for the convention.
 
 **Browse by project (folder grouping) or repo:**
 

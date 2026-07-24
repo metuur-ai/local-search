@@ -73,6 +73,19 @@ var headingRe = regexp.MustCompile(`(?m)^#\s+(.+)`)
 // prose mentions like "@spec annotations".
 var specRefRe = regexp.MustCompile("@spec\\s+req://([^@#\\s\"'`]+)")
 
+// specIDRefRe matches the bare-ID EARS annotation form — `@spec R-1.3` or a
+// comma-separated list `@spec TASKS-012, HEALTH-007` — the convention codebases
+// actually use (see user-guide/reference/ears-spec-annotations.md). It captures the
+// whole ID list; individual IDs are split and validated against specIDRe. The
+// explicit `@spec ` marker is what makes this safe: a bare `R-1.3` sitting in prose
+// or a table of unrelated rows is never tagged. Distinct from the `req://` form above
+// (which begins `req://`, so the two patterns never overlap).
+var specIDRefRe = regexp.MustCompile(`@spec\s+([A-Za-z]+-[0-9]+(?:\.[0-9]+)*(?:\s*,\s*[A-Za-z]+-[0-9]+(?:\.[0-9]+)*)*)`)
+
+// specIDRe validates one lowercased EARS requirement id: an alpha area prefix, a
+// hyphen, then a dotted numeric part — e.g. `r-1.3`, `tasks-012`, `health-007`.
+var specIDRe = regexp.MustCompile(`^[a-z]+-[0-9]+(?:\.[0-9]+)*$`)
+
 // wikilinkRe matches Obsidian-style `[[target]]` / `[[target#heading|alias]]` and
 // captures the target. The first-char and inner classes forbid whitespace and
 // `"`/`$`, so shell test expressions in code (`[[ -d "$x" ]]`) never match.
@@ -375,6 +388,15 @@ func extractRefTags(content string) []string {
 		id := strings.ToLower(strings.Trim(m[1], "/"))
 		if validSpecIDRe.MatchString(id) {
 			add("spec:" + id)
+		}
+	}
+	// Bare-ID form: `@spec R-1.3` / `@spec TASKS-012, HEALTH-007` → one tag per id.
+	for _, m := range specIDRefRe.FindAllStringSubmatch(prose, -1) {
+		for _, part := range strings.Split(m[1], ",") {
+			id := strings.ToLower(strings.TrimSpace(part))
+			if specIDRe.MatchString(id) {
+				add("spec:" + id)
+			}
 		}
 	}
 	for _, m := range wikilinkRe.FindAllStringSubmatch(prose, -1) {

@@ -101,9 +101,12 @@ info "Building frontend…"
 # No separate skill staging: the skill is embedded in each CLI binary
 # (cli/skilldata) and installed via `local-search install-skill`.
 
-info "Staging web UI (excluding node_modules/logs)…"
+info "Staging web UI (excluding node_modules/logs/data)…"
 mkdir -p "$STAGE/web"
-( cd "$ROOT/web" && tar --exclude=node_modules --exclude=logs --exclude=.devlocal -cf - . ) \
+# data/ holds the runtime graph.json cache (gitignored, machine-local). tar does
+# not honour .gitignore, so exclude it explicitly — otherwise the build machine's
+# own cached graph leaks into every published bundle.
+( cd "$ROOT/web" && tar --exclude=node_modules --exclude=logs --exclude=data --exclude=.devlocal -cf - . ) \
   | ( tar -xf - -C "$STAGE/web" )
 
 cp "$ROOT/install.sh" "$STAGE/install.sh"

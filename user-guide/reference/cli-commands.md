@@ -141,6 +141,10 @@ Lists the `n` most recently modified specs (default 10).
 With no argument, lists every tag across the index with its usage count. With a
 tag argument, lists specs carrying that tag.
 
+Tags include frontmatter tags plus body-derived ones: `@spec <ID>` annotations
+become `spec:<id>` tags (e.g. `tags spec:tasks-012`). See
+[EARS spec annotations](ears-spec-annotations.md).
+
 ## Knowledge graph
 
 ### `graphs`
