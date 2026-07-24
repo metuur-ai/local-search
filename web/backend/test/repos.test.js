@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseReposStdout, handleRepos } from '../src/repos.js';
+import {
+  parseReposStdout,
+  handleRepos,
+  parseRepoListTable,
+  specCountsFromInit,
+  mergeRepoRows,
+} from '../src/repos.js';
 
 function fakeRes() {
   return {
@@ -43,4 +49,49 @@ test('R-1.6: handleRepos with rejecting runRepos -> 500 explicit error JSON', as
   const body = JSON.parse(res.body);
   assert.equal(body.error, 'repos_failed');
   assert.match(body.message, /local-search not found/);
+});
+
+// `repo list` columnar output (2+ spaces between columns; "—" = no graph).
+const REPO_LIST_TABLE = [
+  'NAME                  ADDED       LAST SCAN    LAST UPDATE  COMMIT    GRAPH         PATH',
+  'team-os-example-repo  2d          1d           —            —         —             /Users/x/team-os-example-repo',
+  'squirrel              14h         14h          2h           ec80049   graphify+crg  /Users/x/squirrel',
+  '',
+].join('\n');
+
+test('parseRepoListTable: extracts name/path and graph presence, skips header', () => {
+  assert.deepEqual(parseRepoListTable(REPO_LIST_TABLE), [
+    { name: 'team-os-example-repo', path: '/Users/x/team-os-example-repo', has_graph: false },
+    { name: 'squirrel', path: '/Users/x/squirrel', has_graph: true },
+  ]);
+});
+
+test('parseRepoListTable: drops CLI progress noise lines', () => {
+  const noisy = '(squirrel: git changes detected — incremental update…)\n\n' + REPO_LIST_TABLE;
+  assert.equal(parseRepoListTable(noisy).length, 2);
+});
+
+test('specCountsFromInit: unions repositories + available by name', () => {
+  const init = JSON.stringify({
+    repositories: [{ name: 'squirrel', spec_count: 361 }],
+    available: [{ name: 'team-os-example-repo', spec_count: 195 }],
+  });
+  const map = specCountsFromInit(init);
+  assert.equal(map.get('squirrel'), 361);
+  assert.equal(map.get('team-os-example-repo'), 195);
+});
+
+test('specCountsFromInit: malformed JSON -> empty map (no throw)', () => {
+  assert.equal(specCountsFromInit('{not json').size, 0);
+});
+
+test('mergeRepoRows: enriches repo-list rows with init spec counts', () => {
+  const init = JSON.stringify({
+    repositories: [],
+    available: [{ name: 'squirrel', spec_count: 361 }],
+  });
+  assert.deepEqual(mergeRepoRows(REPO_LIST_TABLE, init), [
+    { name: 'team-os-example-repo', path: '/Users/x/team-os-example-repo', spec_count: 0, has_graph: false },
+    { name: 'squirrel', path: '/Users/x/squirrel', spec_count: 361, has_graph: true },
+  ]);
 });

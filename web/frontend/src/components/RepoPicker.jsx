@@ -21,7 +21,9 @@ export function canSubmit(selectedNames) {
   return Array.isArray(selectedNames) && selectedNames.length >= 1;
 }
 
-const hasGraphOf = (r) => (r?.graph_node_count || 0) > 0;
+// The fast listing path (`repo list`) sets a boolean `has_graph`; the older
+// `json repos` shape (and stale cache entries) carry a `graph_node_count`.
+const hasGraphOf = (r) => r?.has_graph ?? (r?.graph_node_count || 0) > 0;
 const specCountOf = (r) => r?.spec_count || 0;
 
 // List order: selected first (easy to unpick), then graph-backed, then

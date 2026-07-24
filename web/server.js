@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createServer } from './backend/src/server.js';
 import { createRegistry } from './backend/src/sessions.js';
-import { parseReposStdout } from './backend/src/repos.js';
+import { parseReposStdout, mergeRepoRows } from './backend/src/repos.js';
 import { probeJsonContext } from './backend/src/smoke.js';
 import { createCliLog, tapChild } from './backend/src/cliLog.js';
 
@@ -56,13 +56,26 @@ function runLocalSearch(args) {
   });
 }
 
-// deps.runRepos resolves the raw stdout string (repos.js parses it).
+// deps.runRepos resolves a JSON stdout string (repos.js parses it).
+// Fast path: `repo list` (registered repos + graph column) and `init --json`
+// (spec counts) both read the existing index WITHOUT the git incremental reindex
+// that `json repos` forces on every call — the slow part users saw on each page
+// load. The index stays fresh via search, not listing.
 async function runRepos() {
-  const { stdout, stderr, code } = await runLocalSearch(['json', 'repos']);
-  if (code !== 0) {
-    throw new Error(`local-search json repos exited ${code}: ${stderr.trim()}`);
+  const listed = await runLocalSearch(['repo', 'list']);
+  if (listed.code !== 0) {
+    throw new Error(`local-search repo list exited ${listed.code}: ${listed.stderr.trim()}`);
   }
-  return stdout;
+  // Spec counts are best-effort enrichment — an init failure must not blank the
+  // list, so the repos still render (with 0 counts) from `repo list` alone.
+  let initStdout = '';
+  try {
+    const init = await runLocalSearch(['init', '--json']);
+    if (init.code === 0) initStdout = init.stdout;
+  } catch {
+    /* leave counts at 0 */
+  }
+  return JSON.stringify(mergeRepoRows(listed.stdout, initStdout));
 }
 
 const graphCacheFile = path.resolve(__dirname, 'data', 'graph.json');

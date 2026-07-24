@@ -27,6 +27,7 @@ dist/
 .devlocal/
 graphify-out/
 dist/bundle/
+.playwright-mcp/
 
 
 # ── Data / caches ─────────────────────────────────────────
