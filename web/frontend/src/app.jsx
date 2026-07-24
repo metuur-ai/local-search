@@ -164,6 +164,9 @@ export function App() {
 
   // Display / client-side-only view state (does not touch the backend).
   const [showHelp, setShowHelp] = useState(false);
+  // Gate shown when "New search" is pressed mid-run: confirm before discarding
+  // the active search.
+  const [showNewSearchConfirm, setShowNewSearchConfirm] = useState(false);
   const [inspectorTab, setInspectorTab] = useState('ai');
   const [fileFilter, setFileFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
@@ -175,6 +178,7 @@ export function App() {
   const savedIdsRef = useRef(new Set());
 
   const streamRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   // Fetch the repo list live, persist it to the cache, and reconcile: any
   // selected repo that no longer exists is dropped so a stale pick can't be
@@ -298,10 +302,11 @@ export function App() {
     [appendActivity, closeStream]
   );
 
-  const onSubmit = useCallback(async () => {
-    if (!canSubmit(selected) || running) return;
-
-    // Reset run-scoped state for a fresh query.
+  // Clear all run-scoped result state (answer, sources, provenance, graph,
+  // activity, error/flags) back to a blank slate. Used by both a fresh submit
+  // and the "New search" action. Leaves the query, selected repos, session, and
+  // saved history untouched — callers decide what else to clear.
+  const resetRunState = useCallback(() => {
     setActivityEvents([]);
     setAnswerMarkdown('');
     setTurns([]);
@@ -319,6 +324,13 @@ export function App() {
     setModel(null);
     setPhase('idle');
     setActiveSourceIdx(null);
+  }, []);
+
+  const onSubmit = useCallback(async () => {
+    if (!canSubmit(selected) || running) return;
+
+    // Reset run-scoped state for a fresh query.
+    resetRunState();
 
     const mode = searchMode;
     setRanMode(mode);
@@ -342,7 +354,7 @@ export function App() {
     setStartedAt(Date.now());
 
     streamRef.current = openStream(id, buildHandlers(mode));
-  }, [selected, running, q, searchMode, buildHandlers]);
+  }, [selected, running, q, searchMode, buildHandlers, resetRunState]);
 
   const onReply = useCallback(
     (text) => {
@@ -441,6 +453,39 @@ export function App() {
     setErrorMsg(null);
   }, [blockedBy]);
 
+  // Wipe the current run back to a blank console and refocus the query box.
+  // Kills any in-flight session (best-effort) so it isn't orphaned, but keeps
+  // the selected repos and saved history so the user can re-query.
+  const performNewSearch = useCallback(() => {
+    closeStream();
+    if (sessionId) postCancel(sessionId).catch(() => {});
+    resetRunState();
+    setQ('');
+    setSessionId(null);
+    setRunning(false);
+    setStartedAt(null);
+    setShowHistory(false);
+    setInspectorTab('ai');
+    searchInputRef.current?.focus();
+  }, [closeStream, sessionId, resetRunState]);
+
+  // "New search" entry point: if a run is still in progress, confirm before
+  // discarding it (the confirm cancels the active search); otherwise clear now.
+  const newSearch = useCallback(() => {
+    if (running) {
+      setShowNewSearchConfirm(true);
+      return;
+    }
+    performNewSearch();
+  }, [running, performNewSearch]);
+
+  const confirmNewSearch = useCallback(() => {
+    setShowNewSearchConfirm(false);
+    performNewSearch();
+  }, [performNewSearch]);
+
+  const cancelNewSearchConfirm = useCallback(() => setShowNewSearchConfirm(false), []);
+
   const currentActivity = (() => {
     for (let i = activityEvents.length - 1; i >= 0; i--) {
       const ev = activityEvents[i];
@@ -450,6 +495,17 @@ export function App() {
   })();
 
   const submitDisabled = !canSubmit(selected) || running;
+
+  // "New search" is only meaningful once a run is in progress or has produced
+  // something to clear — hide it on the pristine, first-load console.
+  const hasActivity =
+    running ||
+    done ||
+    !!sessionId ||
+    !!q.trim() ||
+    !!errorMsg ||
+    sources.length > 0 ||
+    activityEvents.length > 0;
 
   // Derive the always-visible run status shown in the topbar pill.
   const status = errorMsg
@@ -612,6 +668,17 @@ export function App() {
         </div>
 
         <div class="topbar-meta">
+          {hasActivity && (
+            <button
+              type="button"
+              class="new-search-btn"
+              title="Clear results and start a new search"
+              data-testid="new-search"
+              onClick={newSearch}
+            >
+              <i class="fa-solid fa-plus" /> New search
+            </button>
+          )}
           {model && (
             <span class="app-model" data-testid="app-model">
               <i class="fa-solid fa-microchip" /> {model}
@@ -643,6 +710,7 @@ export function App() {
             <div class="search-bar">
               <i class="fa-solid fa-magnifying-glass search-bar-icon" aria-hidden="true" />
               <input
+                ref={searchInputRef}
                 type="text"
                 class="search-input"
                 placeholder="Ask a question about your code and docs…"
@@ -1328,6 +1396,48 @@ export function App() {
                   </a>
                   .
                 </p>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* New-search confirm — shown when "New search" is pressed while a run is
+          still in progress. Confirming cancels the active search. */}
+      {showNewSearchConfirm &&
+        createPortal(
+          <div
+            class="alert-modal"
+            data-testid="new-search-modal"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) cancelNewSearchConfirm();
+            }}
+          >
+            <div class="alert-modal-panel" role="alertdialog" aria-modal="true">
+              <h3 class="alert-modal-title">
+                <i class="fa-solid fa-triangle-exclamation" /> A search is in progress
+              </h3>
+              <p class="alert-modal-text">
+                Starting a new search will <strong>cancel</strong> the run currently in
+                progress and clear its results. Continue?
+              </p>
+              <div class="alert-modal-actions">
+                <button
+                  type="button"
+                  class="btn-ghost"
+                  data-testid="new-search-keep"
+                  onClick={cancelNewSearchConfirm}
+                >
+                  Keep searching
+                </button>
+                <button
+                  type="button"
+                  class="btn-danger"
+                  data-testid="new-search-confirm"
+                  onClick={confirmNewSearch}
+                >
+                  Cancel &amp; start new
+                </button>
               </div>
             </div>
           </div>,
