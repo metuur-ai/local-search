@@ -1379,6 +1379,44 @@ body {
   text-decoration: underline;
 }
 
+.help-cmds {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.help-cmds li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.help-cmds code {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text);
+  background: var(--paper-2, #f1f5f9);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 6px);
+  padding: 0.12rem 0.4rem;
+}
+
+.help-cmds span {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.help-cmds span code {
+  align-self: auto;
+  padding: 0 0.25rem;
+  font-size: 0.72rem;
+}
+
 /* ---------------------------------------------------------- Responsiveness */
 
 @media (max-width: 960px) {

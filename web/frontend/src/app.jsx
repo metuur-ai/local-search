@@ -1297,6 +1297,24 @@ export function App() {
                 </p>
 
                 <h4 class="help-section">
+                  <i class="fa-solid fa-terminal" /> Handy CLI commands
+                </h4>
+                <ul class="help-cmds">
+                  <li>
+                    <code>local-search doctor</code>
+                    <span>Diagnose install, DB health, and stale-index drift.</span>
+                  </li>
+                  <li>
+                    <code>local-search size</code>
+                    <span>DB file size and a per-repo index breakdown.</span>
+                  </li>
+                  <li>
+                    <code>local-search scan</code>
+                    <span>Re-index repos when <code>doctor</code> reports drift.</span>
+                  </li>
+                </ul>
+
+                <h4 class="help-section">
                   <i class="fa-solid fa-book" /> More documentation
                 </h4>
                 <p class="help-text">

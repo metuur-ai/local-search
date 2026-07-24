@@ -86,6 +86,10 @@ func main() {
 		cmdTags(args)
 	case "stats":
 		cmdStats()
+	case "size":
+		cmdSize(args)
+	case "doctor", "diagnose", "health":
+		cmdDoctor(args)
 	case "db":
 		fmt.Println(dbFile)
 	case "inspect", "dump", "debug":
@@ -2645,6 +2649,8 @@ Usage:
   local-search ui status                  Show whether the web UI is running
 
   local-search stats                      Index statistics
+  local-search size [--by repo|project]   DB file size + per-repo index breakdown (--json)
+  local-search doctor                     Diagnose install, DB health, and index staleness (--json)
   local-search db                         Print database file path
   local-search inspect                    Dump full index
   local-search reset                      Delete everything and start over
