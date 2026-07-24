@@ -66,10 +66,15 @@ fi
 
 # Asset set mirrors .github/workflows/release.yml so local and CI releases match.
 ASSETS=("$TARBALL" "install.sh")
-# Self-contained download-and-unzip archive (built alongside the tarball).
-while IFS= read -r f; do
-  [ -n "$f" ] && ASSETS+=("$f")
-done < <(ls dist/local-search-*.zip 2>/dev/null || true)
+# Self-contained download-and-unzip archive for THIS version only. dist/ keeps
+# every version's zip (build-bundle.sh never prunes them), so glob the matching
+# one — never `local-search-*.zip`, which would attach all historical zips.
+VERSION_ZIP="dist/local-search-${TAG#v}.zip"
+if [ -f "$VERSION_ZIP" ]; then
+  ASSETS+=("$VERSION_ZIP")
+else
+  info "note: $VERSION_ZIP not found — run scripts/build-bundle.sh to produce it"
+fi
 while IFS= read -r f; do
   [ -n "$f" ] && ASSETS+=("$f")
 done < <(ls cli/dist/local-search-* 2>/dev/null || true)

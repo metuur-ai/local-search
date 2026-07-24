@@ -123,10 +123,10 @@ func normalizeRepoList(out string) string {
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
 	for i, ln := range lines {
 		f := strings.Fields(ln)
-		// Data row: NAME ADDED LAST-SCAN LAST-UPDATE COMMIT PATH (6 fields). The
-		// header splits into more fields (spaces inside "LAST SCAN"), so guard on
-		// count and the NAME sentinel to touch only data rows.
-		if len(f) == 6 && f[0] != "NAME" {
+		// Data row: NAME ADDED LAST-SCAN LAST-UPDATE COMMIT GRAPH PATH (7 fields).
+		// The header splits into more fields (spaces inside "LAST SCAN"/"LAST
+		// UPDATE"), so guard on count and the NAME sentinel to touch only data rows.
+		if len(f) == 7 && f[0] != "NAME" {
 			f[1], f[2] = "<AGE>", "<AGE>"
 		}
 		lines[i] = strings.Join(f, " ")

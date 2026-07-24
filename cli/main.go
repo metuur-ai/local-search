@@ -25,7 +25,7 @@ import (
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const Version = "0.3.7"
+const Version = "0.3.8"
 
 var (
 	appDir    = filepath.Join(homeDir(), ".local-search")
@@ -460,12 +460,25 @@ func repoList() {
 
 // formatRepoList renders the columnar `repo list` table (R-4.1). db may be nil
 // (absent/unreadable); in that case every DB-derived column (last-scan,
-// last-update, commit) renders as "—" (R-4.4). Timestamps are shown as
-// human-relative ages via humanAge (R-4.3); missing values as "—" (R-4.2).
+// last-update, commit, graph) renders as "—" (R-4.4). Timestamps are shown as
+// human-relative ages via humanAge (R-4.3); missing values as "—" (R-4.2). The
+// GRAPH column mirrors `local-search graphs`: it names the graph kind(s) linked
+// to each repo (graphify / crg), so graph-backed repos are visible at a glance.
 func formatRepoList(repos []repoEntry, db *sql.DB) string {
+	// Graph status lives in the repos table (populated at scan time), keyed by
+	// name — the same source `graphs` reads. Fetch once; missing → "—".
+	graphByName := map[string]string{}
+	if db != nil {
+		if rows, err := localdb.Repos(db); err == nil {
+			for _, rr := range rows {
+				graphByName[rr.Name] = graphKindLabel(rr)
+			}
+		}
+	}
+
 	var b strings.Builder
-	fmt.Fprintf(&b, "%-20s  %-10s  %-11s  %-11s  %-8s  %s\n",
-		"NAME", "ADDED", "LAST SCAN", "LAST UPDATE", "COMMIT", "PATH")
+	fmt.Fprintf(&b, "%-20s  %-10s  %-11s  %-11s  %-8s  %-12s  %s\n",
+		"NAME", "ADDED", "LAST SCAN", "LAST UPDATE", "COMMIT", "GRAPH", "PATH")
 	for _, r := range repos {
 		lastScan, lastUpdate, commit := "—", "—", "—"
 		if db != nil {
@@ -473,10 +486,32 @@ func formatRepoList(repos []repoEntry, db *sql.DB) string {
 			lastUpdate = ageOrDash(localdb.GetMeta(db, "last_index_update_"+r.Name))
 			commit = shortCommitOrDash(localdb.GetMeta(db, "git_commit_"+r.Name))
 		}
-		fmt.Fprintf(&b, "%-20s  %-10s  %-11s  %-11s  %-8s  %s\n",
-			r.Name, ageOrDash(r.AddedAt), lastScan, lastUpdate, commit, r.Path)
+		graphCol := graphByName[r.Name]
+		if graphCol == "" {
+			graphCol = "—"
+		}
+		fmt.Fprintf(&b, "%-20s  %-10s  %-11s  %-11s  %-8s  %-12s  %s\n",
+			r.Name, ageOrDash(r.AddedAt), lastScan, lastUpdate, commit, graphCol, r.Path)
 	}
 	return b.String()
+}
+
+// graphKindLabel names the graph kind(s) attached to a repo row for the `repo
+// list` GRAPH column: "graphify", "crg", "graphify+crg", or "—" when neither is
+// linked. A graph is "linked" only when its path is stored (i.e. it was present
+// under the repo's registered root at scan time).
+func graphKindLabel(r localdb.RepoRow) string {
+	var parts []string
+	if r.GraphPath != "" {
+		parts = append(parts, "graphify")
+	}
+	if r.CodeGraphPath != "" {
+		parts = append(parts, "crg")
+	}
+	if len(parts) == 0 {
+		return "—"
+	}
+	return strings.Join(parts, "+")
 }
 
 // ageOrDash parses an RFC3339 timestamp and renders it as a human-relative age;
