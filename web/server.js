@@ -96,9 +96,17 @@ if (!isProd) {
   assetHandler = (req, res) => {
     vite.middlewares(req, res, async () => {
       try {
+        // Vite's static middleware skips .html so the app controls HTML. Pick the
+        // multi-page entry by path (the graph explorer vs. the SPA console), then
+        // let Vite transform it (inject the client + module scripts).
+        const { pathname } = new URL(req.url, 'http://localhost');
+        const entry =
+          pathname === '/graph-explorer.html' || pathname === '/graph-explorer'
+            ? 'graph-explorer.html'
+            : 'index.html';
         const html = await vite.transformIndexHtml(
           req.url,
-          fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8'),
+          fs.readFileSync(path.join(frontendDir, entry), 'utf8'),
         );
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         res.end(html);

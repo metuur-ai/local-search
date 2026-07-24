@@ -47,6 +47,7 @@ export function RepoPicker({
   onSelectMatching,
   onClear,
   aiMode = false,
+  loading = false,
 }) {
   const [filter, setFilter] = useState('');
 
@@ -57,6 +58,19 @@ export function RepoPicker({
       <section class="repo-picker" data-testid="repo-picker">
         <p class="repo-picker-error" data-testid="repo-picker-error">
           {message}
+        </p>
+      </section>
+    );
+  }
+
+  // A live fetch with nothing to show yet (first load): a spinner, not the
+  // empty state — an empty picker reads as "no repos" (R-1.6).
+  if (loading && repos.length === 0) {
+    return (
+      <section class="repo-picker" data-testid="repo-picker">
+        <p class="repo-picker-loading" data-testid="repo-picker-loading">
+          <span class="repo-picker-spinner" aria-hidden="true" />
+          Loading repositories…
         </p>
       </section>
     );

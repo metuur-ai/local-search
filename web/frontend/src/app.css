@@ -452,6 +452,30 @@ body {
   color: var(--ink-500);
 }
 
+.facet-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.repo-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--brand-600);
+  background: var(--brand-50);
+  border: 1px solid var(--brand-200);
+  border-radius: var(--radius-pill);
+  padding: 0.22rem 0.55rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.repo-refresh:hover:not(:disabled) { background: var(--brand-100); }
+.repo-refresh:disabled { opacity: 0.6; cursor: default; }
+
 .facet-grid {
   display: grid;
   grid-template-columns: 1fr;

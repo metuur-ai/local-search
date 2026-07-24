@@ -26,6 +26,31 @@ export async function fetchRepos() {
   return rows.map((r) => ({ ...r, name: r.name ?? r.repo }));
 }
 
+// GET /api/graph -> the persisted graph. Either a flat array of file records
+// (hub export) or a { nodes, links|edges } object (graph export); the caller
+// normalizes both via graphData.toGraph. Throws on non-200 so the UI can react.
+export async function fetchGraph() {
+  const res = await fetch('/api/graph');
+  if (!res.ok) {
+    throw new Error(await readError(res));
+  }
+  return res.json();
+}
+
+// POST /api/graph/refresh { repos } -> a freshly rebuilt + persisted graph.
+// An empty `repos` rebuilds from all repos. Throws carrying the server message.
+export async function refreshGraph(repos = []) {
+  const res = await fetch('/api/graph/refresh', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ repos }),
+  });
+  if (!res.ok) {
+    throw new Error(await readError(res));
+  }
+  return res.json();
+}
+
 // POST /api/query -> { sessionId }. Throws carrying the server message on 400/409/500.
 // `mode` is 'ai' (default, spawns claude) or 'graph' (no-AI, direct graph DB search).
 export async function postQuery({ q, repos, mode }) {

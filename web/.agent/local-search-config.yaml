@@ -1,0 +1,3 @@
+# LocalSearch project scope — repositories searched when running from this project.
+# Names must match `local-search repo list`. Managed by `local-search init`.
+repositories: []

@@ -14,6 +14,7 @@ import { AnswerPanel } from './components/AnswerPanel.jsx';
 import { GraphView } from './components/GraphView.jsx';
 import { graphFromSources } from './components/graphElements.js';
 import { loadHistory, saveRun, clearHistory } from './history.js';
+import { loadCachedRepos, saveCachedRepos } from './repoCache.js';
 
 // Shown in the site footer. Bump alongside the project version.
 const APP_VERSION = '0.1.0';
@@ -119,6 +120,11 @@ function capTurns(turns, max = MAX_ANSWER_VERSIONS) {
 export function App() {
   const [repos, setRepos] = useState([]);
   const [reposError, setReposError] = useState(null);
+  // True only while a live fetch is in flight with nothing to show yet (first
+  // ever load, or a manual refresh). A cached list renders immediately with no
+  // spinner. `reposCachedAt` holds the timestamp the shown list was fetched.
+  const [reposLoading, setReposLoading] = useState(false);
+  const [reposCachedAt, setReposCachedAt] = useState(null);
   const [selected, setSelected] = useState([]);
 
   const [q, setQ] = useState('');
@@ -170,20 +176,45 @@ export function App() {
 
   const streamRef = useRef(null);
 
-  useEffect(() => {
-    let active = true;
-    fetchRepos()
+  // Fetch the repo list live, persist it to the cache, and reconcile: any
+  // selected repo that no longer exists is dropped so a stale pick can't be
+  // searched (the CLI would reject an unregistered repo). A failed fetch keeps
+  // the currently shown list rather than wiping it. Used by the refresh button
+  // and by the first-ever load below.
+  const refreshRepos = useCallback(() => {
+    setReposLoading(true);
+    setReposError(null);
+    return fetchRepos()
       .then((rows) => {
-        if (active) setRepos(Array.isArray(rows) ? rows : []);
+        const list = Array.isArray(rows) ? rows : [];
+        setRepos(list);
+        const ts = Date.now();
+        saveCachedRepos(list, ts);
+        setReposCachedAt(ts);
+        const names = new Set(list.map((r) => r.name));
+        setSelected((prev) => prev.filter((n) => names.has(n)));
       })
       .catch((err) => {
-        if (active) setReposError(err?.message ?? String(err));
-      });
+        setReposError(err?.message ?? String(err));
+      })
+      .finally(() => setReposLoading(false));
+  }, []);
+
+  // On mount: render the cached list instantly if present (no live call — the
+  // CLI re-indexes on every `json repos`, which is the slow part the user sees).
+  // Only the first-ever load, with no cache, pays for a live fetch + spinner.
+  useEffect(() => {
+    const cached = loadCachedRepos();
+    if (cached) {
+      setRepos(cached.repos);
+      setReposCachedAt(cached.ts);
+    } else {
+      refreshRepos();
+    }
     return () => {
-      active = false;
       if (streamRef.current) streamRef.current.close();
     };
-  }, []);
+  }, [refreshRepos]);
 
   const onToggle = useCallback((name) => {
     setSelected((prev) =>
@@ -638,11 +669,31 @@ export function App() {
                 <span class="facet-label">
                   <i class="fa-solid fa-cubes" /> Target Repositories
                 </span>
-                {selected.length > 0 && (
-                  <span class="facet-allcount" data-testid="repo-selected-count">
-                    {selected.length}/{repos.length} selected
-                  </span>
-                )}
+                <span class="facet-head-actions">
+                  {selected.length > 0 && (
+                    <span class="facet-allcount" data-testid="repo-selected-count">
+                      {selected.length}/{repos.length} selected
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    class="repo-refresh"
+                    data-testid="repo-refresh"
+                    title={
+                      reposCachedAt
+                        ? `Repositories cached ${relTime(reposCachedAt)}. Refresh from disk.`
+                        : 'Refresh repositories from disk'
+                    }
+                    disabled={reposLoading}
+                    onClick={refreshRepos}
+                  >
+                    <i
+                      class={`fa-solid fa-arrows-rotate${reposLoading ? ' fa-spin' : ''}`}
+                      aria-hidden="true"
+                    />
+                    {reposLoading ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                </span>
               </div>
               <RepoPicker
                 repos={repos}
@@ -652,6 +703,7 @@ export function App() {
                 onClear={onClearRepos}
                 aiMode={searchMode === 'ai'}
                 error={reposError}
+                loading={reposLoading}
               />
             </div>
 

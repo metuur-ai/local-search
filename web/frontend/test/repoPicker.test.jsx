@@ -93,3 +93,18 @@ describe('RepoPicker 1.5 (R-1.6) — error state', () => {
     expect(screen.queryByTestId('repo-picker-error')).toBeNull();
   });
 });
+
+describe('RepoPicker 1.6 — loading state', () => {
+  it('shows a loading indicator while fetching with no repos yet', () => {
+    render(<RepoPicker repos={[]} loading selected={[]} onToggle={() => {}} />);
+    expect(screen.getByTestId('repo-picker-loading')).toBeTruthy();
+    // A live fetch must not read as the empty "no repos" success state.
+    expect(screen.queryByTestId('repo-picker-empty')).toBeNull();
+  });
+
+  it('keeps showing the (cached) list during a refresh, not the loader', () => {
+    render(<RepoPicker repos={REPOS} loading selected={[]} onToggle={() => {}} />);
+    expect(screen.queryByTestId('repo-picker-loading')).toBeNull();
+    expect(screen.getByTestId('repo-entry-alpha')).toBeTruthy();
+  });
+});
