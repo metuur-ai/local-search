@@ -57,6 +57,13 @@ if [ -n "$(git status --porcelain)" ]; then
   info "WARNING: uncommitted changes present; the release tag will point at HEAD ($(git rev-parse --short HEAD))."
 fi
 
+# The release targets HEAD by SHA; GitHub returns an opaque HTTP 500 if that
+# commit isn't on the remote. Fail fast with an actionable message instead.
+git fetch origin --quiet 2>/dev/null || true
+if ! git branch -r --contains HEAD 2>/dev/null | grep -q .; then
+  die "HEAD ($(git rev-parse --short HEAD)) is not on any remote branch — run: git push origin $(git rev-parse --abbrev-ref HEAD)"
+fi
+
 TARBALL="dist/local-search-bundle.tar.gz"
 if [ "$BUILD" -eq 1 ]; then
   info "Building bundle (scripts/build-bundle.sh)…"
