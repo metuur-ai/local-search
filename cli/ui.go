@@ -152,18 +152,35 @@ func uiStatus() {
 
 // resolveWebDir locates the repo's web/ directory. Order: LOCAL_SEARCH_WEB_DIR
 // env override, then walk up from the executable's dir and the CWD looking for
-// web/backend/bin/serve.js.
+// web/server.js, then the standalone app install.sh drops at its WEB_DIR.
+//
+// Among the walk-up and installed candidates, one whose frontend is actually
+// built (frontend/dist/index.html) is preferred over one that only has the
+// server.js marker. This keeps a bare source checkout — where frontend/dist is
+// gitignored and unbuilt — from shadowing the installed bundle that ships a
+// prebuilt frontend. Without this preference, running `local-search ui` from
+// inside a checkout resolved to that checkout's web/ and failed with
+// "frontend not built" even though the installed copy was ready to serve.
 func resolveWebDir() (string, error) {
 	// server.js is the web app's entrypoint; its presence marks a usable web/
 	// folder — a repo checkout or the app install.sh drops at its WEB_DIR.
 	entry := "server.js"
 	marker := filepath.Join("web", entry)
+
+	// An explicit override wins unconditionally, built frontend or not.
 	if env := os.Getenv("LOCAL_SEARCH_WEB_DIR"); env != "" {
 		if _, err := os.Stat(filepath.Join(env, entry)); err == nil {
 			return env, nil
 		}
 		return "", fmt.Errorf("LOCAL_SEARCH_WEB_DIR=%s does not contain %s", env, entry)
 	}
+
+	// Candidate web/ dirs in precedence order: walk-ups first (a repo checkout
+	// or the binary's own tree), then the standalone app that install.sh drops
+	// at its WEB_DIR default (~/.local/share/local-search/web, XDG-aware) —
+	// which is not an ancestor of the installed binary, so the walk-up can't
+	// reach it.
+	var candidates []string
 	var starts []string
 	if exe, err := os.Executable(); err == nil {
 		starts = append(starts, filepath.Dir(exe))
@@ -173,23 +190,33 @@ func resolveWebDir() (string, error) {
 	}
 	for _, s := range starts {
 		if base, ok := findUpwards(s, marker); ok {
-			return filepath.Join(base, "web"), nil
+			candidates = append(candidates, filepath.Join(base, "web"))
 		}
 	}
-	// Fall back to the standalone web app that install.sh drops at its WEB_DIR
-	// default (~/.local/share/local-search/web, XDG-aware). This is not an
-	// ancestor of the installed binary, so the walk-up above can't reach it.
-	var installed []string
 	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
-		installed = append(installed, filepath.Join(xdg, "local-search", "web"))
+		candidates = append(candidates, filepath.Join(xdg, "local-search", "web"))
 	}
 	if home, err := os.UserHomeDir(); err == nil {
-		installed = append(installed, filepath.Join(home, ".local", "share", "local-search", "web"))
+		candidates = append(candidates, filepath.Join(home, ".local", "share", "local-search", "web"))
 	}
-	for _, w := range installed {
-		if _, err := os.Stat(filepath.Join(w, entry)); err == nil {
-			return w, nil
+
+	// Prefer the first candidate with a built frontend; otherwise fall back to
+	// the first that at least has the server.js marker, so the caller can still
+	// point at a real web/ and print its "frontend not built" build hint.
+	var firstUsable string
+	for _, w := range candidates {
+		if _, err := os.Stat(filepath.Join(w, entry)); err != nil {
+			continue // not a web/ dir
 		}
+		if firstUsable == "" {
+			firstUsable = w
+		}
+		if _, err := os.Stat(filepath.Join(w, "frontend", "dist", "index.html")); err == nil {
+			return w, nil // built and ready to serve
+		}
+	}
+	if firstUsable != "" {
+		return firstUsable, nil
 	}
 	return "", fmt.Errorf("could not locate the web/ directory. Install the bundle (see install.sh), run from inside the local-search repo, or set LOCAL_SEARCH_WEB_DIR to the path of its web/ folder")
 }
