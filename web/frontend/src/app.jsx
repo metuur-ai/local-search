@@ -191,11 +191,13 @@ export function App() {
   }, []);
 
   const allSelected = repos.length > 0 && selected.length === repos.length;
-  const onToggleAllRepos = useCallback(() => {
-    setSelected((prev) =>
-      prev.length === repos.length ? [] : repos.map((r) => r.name)
-    );
-  }, [repos]);
+
+  // Union the given repo names into the selection — used by the picker's
+  // filter-aware "select matching" action instead of a blind select-all.
+  const onSelectMatching = useCallback((names) => {
+    setSelected((prev) => [...new Set([...prev, ...names])]);
+  }, []);
+  const onClearRepos = useCallback(() => setSelected([]), []);
 
   const appendActivity = useCallback((type, data) => {
     setActivityEvents((prev) => [...prev, { type, data }]);
@@ -625,15 +627,21 @@ export function App() {
                 <span class="facet-label">
                   <i class="fa-solid fa-cubes" /> Target Repositories
                 </span>
-                {repos.length > 0 && (
-                  <button type="button" class="facet-allbtn" onClick={onToggleAllRepos}>
-                    <i class={`fa-solid ${allSelected ? 'fa-circle-check' : 'fa-circle'}`} />
-                    {allSelected ? 'All selected' : 'Select all'}
-                    <span class="facet-allcount">{selected.length}/{repos.length}</span>
-                  </button>
+                {selected.length > 0 && (
+                  <span class="facet-allcount" data-testid="repo-selected-count">
+                    {selected.length}/{repos.length} selected
+                  </span>
                 )}
               </div>
-              <RepoPicker repos={repos} selected={selected} onToggle={onToggle} error={reposError} />
+              <RepoPicker
+                repos={repos}
+                selected={selected}
+                onToggle={onToggle}
+                onSelectMatching={onSelectMatching}
+                onClear={onClearRepos}
+                aiMode={searchMode === 'ai'}
+                error={reposError}
+              />
             </div>
 
             {/* File typologies */}

@@ -184,12 +184,19 @@ and responds with the fresh graph JSON.
 
 ## Graph explorer
 
-Served at `/graph-explorer.html`. A self-contained D3 page that renders the
+Served at `/graph-explorer.html`. A self-contained page that renders the
 merged graph (`GET /api/graph`), colored by OS layer (derived from each node's
 `path`). The **⟳ Refresh from repos** button lists registered repos (`GET
 /api/repos`), lets you pick which to include, and rebuilds the cached graph via
 `POST /api/graph/refresh` without a page reload. Because the graph is persisted
 to `web/data/graph.json`, reopening or refreshing the page reuses it instantly.
+
+Filter by Type / Repo / Project / Tag (with removable "Active" chips), or by
+name/title substring. Tags include the `spec:` and `link:` tags derived from
+`@spec` references and `[[wikilinks]]` during indexing — filtering by a
+`link:<slug>` tag isolates every file that wikilinks to that target. See
+[Explore the knowledge graph](../how-to/explore-the-graph.md) for the full
+walkthrough.
 
 ## Claude Code subprocess
 

@@ -259,6 +259,96 @@ func normalizeSkipDirectoryNames(values []string) ([]string, error) {
 	return out, nil
 }
 
+// ignoreFileNames are the repo-root ignore files whose directory patterns are
+// honored as default scan skips, so a repo is indexed with the same folders git
+// and graphify already exclude — without the user re-declaring them.
+var ignoreFileNames = []string{".gitignore", ".graphifyignore"}
+
+// deriveIgnoredDirs reads the repo-root ignore files and returns the directory
+// names they imply, reduced to basenames the scan skip mechanism can match
+// (shouldSkipDir matches a directory's base name at any depth). Missing or
+// unreadable ignore files contribute nothing. The result is unnormalized and
+// may contain duplicates — callers pass it through normalizeSkipDirectoryNames.
+func deriveIgnoredDirs(repoPath string) []string {
+	var out []string
+	for _, name := range ignoreFileNames {
+		data, err := os.ReadFile(filepath.Join(repoPath, name))
+		if err != nil {
+			continue
+		}
+		for _, raw := range strings.Split(string(data), "\n") {
+			if d, ok := ignoreLineToSkipDir(raw); ok {
+				out = append(out, d)
+			}
+		}
+	}
+	return out
+}
+
+// ignoreLineToSkipDir maps one gitignore-style line to a single directory name
+// for basename skip-matching, or ("", false) when the line can't be represented
+// that way. The skip mechanism matches one directory name at any depth — not
+// globs, not anchored paths — so we only honor:
+//   - explicit directory patterns:  node_modules/  build/  .venv/
+//   - bare match-anywhere names:     node_modules   target   vendor
+//
+// and reject comments, negations, globs (*.exe), multi-segment paths
+// (web/frontend/dist), and root-anchored bare entries (/local-search) that may
+// be files and would over-skip same-named directories elsewhere.
+func ignoreLineToSkipDir(raw string) (string, bool) {
+	line := strings.TrimSpace(raw)
+	if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "!") {
+		return "", false
+	}
+	// This repo's own .gitignore uses (non-standard) trailing "# comments"; take
+	// the first whitespace-delimited field so `dist/   # note` yields `dist`.
+	if i := strings.IndexAny(line, " \t"); i >= 0 {
+		line = line[:i]
+	}
+	anchored := strings.HasPrefix(line, "/")
+	isDir := strings.HasSuffix(line, "/")
+	line = strings.TrimPrefix(line, "/")
+	line = strings.TrimSuffix(line, "/")
+	if line == "" || line == "." || line == ".." {
+		return "", false
+	}
+	// A remaining separator means a path (web/frontend/dist), not a bare name.
+	if strings.ContainsAny(line, "/\\") {
+		return "", false
+	}
+	// Glob/alternation can't be expressed as a single directory name.
+	if strings.ContainsAny(line, "*?[]|,") {
+		return "", false
+	}
+	// A root-anchored bare entry (`/local-search`) targets one specific root
+	// entry that may be a file; skipping that name everywhere would over-skip.
+	if anchored && !isDir {
+		return "", false
+	}
+	return line, true
+}
+
+// effectiveSkipDirs merges a repo's explicitly configured skip directories with
+// those derived from its ignore files at scan time. Computing this per scan
+// (rather than persisting it at `repo add`) means edits to .gitignore /
+// .graphifyignore take effect on the next scan, and repos registered before this
+// behavior existed gain it automatically. Ignore-file parsing must never fail a
+// scan, so a normalization error falls back to the explicit list.
+func effectiveSkipDirs(r repoEntry) []string {
+	derived := deriveIgnoredDirs(r.Path)
+	if len(derived) == 0 {
+		return r.SkipDirectories
+	}
+	merged := make([]string, 0, len(r.SkipDirectories)+len(derived))
+	merged = append(merged, r.SkipDirectories...)
+	merged = append(merged, derived...)
+	norm, err := normalizeSkipDirectoryNames(merged)
+	if err != nil {
+		return r.SkipDirectories
+	}
+	return norm
+}
+
 func repoRemove(args []string) {
 	if len(args) == 0 {
 		die("Usage: local-search repo remove <name>")
@@ -646,7 +736,7 @@ func scanFullRebuild(repos []repoEntry) {
 	total := 0
 	for _, r := range repos {
 		fmt.Printf("  %s: indexing %s…\n", r.Name, r.Path)
-		n, err := localdb.FullScan(db, r.Name, r.Path, r.SkipDirectories)
+		n, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "  %s: error — %v\n", r.Name, err)
 			continue
@@ -695,7 +785,7 @@ func scanSurgical(targets []repoEntry) {
 		// automation makes frequent) sees either the pre- or post-scan index for
 		// this repo, never the empty window. A prior DeleteRepo here would commit
 		// an empty state first and reintroduce that window — hence it is gone.
-		n, err := localdb.ReplaceRepo(db, r.Name, r.Path, r.SkipDirectories)
+		n, err := localdb.ReplaceRepo(db, r.Name, r.Path, effectiveSkipDirs(r))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "  %s: error — %v\n", r.Name, err)
 			continue
@@ -757,7 +847,7 @@ func ensureDB() *sql.DB {
 		// no-op when there's nothing to do, so the order is harmless.
 		if !knownNames[r.Name] {
 			fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
-			if _, err := localdb.FullScan(db, r.Name, r.Path, r.SkipDirectories); err != nil {
+			if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r)); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: scan of %s failed: %v\n", r.Name, err)
 				continue
 			}
@@ -1889,7 +1979,7 @@ func runIncrementalUpdates(db *sql.DB, repos []localdb.RepoRow) {
 		// so their row appears with code_graph_* metadata.
 		if !knownNames[r.Name] {
 			fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
-			if _, err := localdb.FullScan(db, r.Name, r.Path, r.SkipDirectories); err != nil {
+			if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r)); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: scan of %s failed: %v\n", r.Name, err)
 				continue
 			}

@@ -74,6 +74,35 @@
             justify-content: space-between; padding: 9px 22px;
             background: var(--paper); border-top: 1px solid var(--border);
         }
+        /* active filter chips */
+        .row-3 {
+            padding: 8px 22px; gap: 10px;
+            background: var(--paper); border-top: 1px solid var(--border);
+            animation: fadeDown 0.25s ease;
+        }
+        .active-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
+        .active-chip {
+            display: inline-flex; align-items: center; gap: 7px; max-width: 260px;
+            font-family: var(--font-sans); font-size: 11.5px; color: var(--ink-dim);
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 999px; padding: 3px 5px 3px 10px;
+        }
+        .active-chip .chip-key {
+            font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em;
+            text-transform: uppercase; color: var(--ink-faint); flex-shrink: 0;
+        }
+        .active-chip .chip-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .active-chip button {
+            flex-shrink: 0; border: none; background: none; cursor: pointer;
+            color: var(--ink-faint); font-size: 15px; line-height: 1;
+            width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%;
+        }
+        .active-chip button:hover { color: var(--ink); background: var(--paper-2); }
+        .chip-clear-all {
+            flex-shrink: 0; font-family: var(--font-sans); font-size: 11.5px; font-weight: 600;
+            color: var(--accent); background: none; border: none; cursor: pointer; white-space: nowrap;
+        }
+        .chip-clear-all:hover { text-decoration: underline; }
 
         /* brand */
         .brand { display: flex; align-items: center; gap: 13px; flex-shrink: 0; }
@@ -191,6 +220,24 @@
         .popover-enter { animation: popIn 0.16s cubic-bezier(0.22, 1, 0.36, 1); }
         @keyframes popIn { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
 
+        /* instant, styled tooltip for truncated filter options (replaces the native title) */
+        #filter-tooltip {
+            position: fixed; z-index: 200; pointer-events: none;
+            max-width: 440px; padding: 6px 10px;
+            background: var(--ink); color: #fff;
+            font-family: var(--font-mono); font-size: 11.5px; line-height: 1.4; letter-spacing: 0.01em;
+            border-radius: 8px; box-shadow: var(--shadow);
+            white-space: normal; overflow-wrap: anywhere;
+            opacity: 0; transform: translateY(3px);
+            transition: opacity 0.08s ease, transform 0.08s ease;
+        }
+        #filter-tooltip.show { opacity: 1; transform: translateY(0); }
+        #filter-tooltip::after {
+            content: ""; position: absolute; left: var(--arrow-x, 16px); bottom: -4px;
+            width: 8px; height: 8px; background: var(--ink); transform: rotate(45deg); border-radius: 1px;
+        }
+        #filter-tooltip.below::after { bottom: auto; top: -4px; }
+
         /* stats readout */
         .stats { display: flex; align-items: center; gap: 22px; flex-shrink: 0; }
         .stat { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
@@ -204,6 +251,22 @@
         /* ---------- GRAPH AREA ---------- */
         #graph-wrapper { flex: 1; position: relative; overflow: hidden; background: var(--paper); }
         #graph-container { position: absolute; inset: 0; }
+
+        /* site footer — mirrors the Local-Search Console footer */
+        .app-footer {
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+            padding: 9px 22px;
+            background: var(--surface); border-top: 1px solid var(--border);
+            color: var(--ink-faint); font-family: var(--font-sans); font-size: 12px;
+        }
+        .app-footer a { color: var(--ink-faint); text-decoration: none; transition: color 0.15s ease; }
+        .app-footer a:hover { color: var(--ink); }
+        .app-footer-credit a { color: var(--ink-dim); }
+        .app-footer-links { display: inline-flex; align-items: center; gap: 16px; }
+        .app-footer-links svg { display: block; }
+        .app-footer-coffee { display: inline-flex; align-items: center; gap: 6px; }
+        .app-footer-coffee:hover { color: var(--c-project); }
         /* blueprint paper: faint dot-grid + soft edge vignette, above canvas, non-interactive */
         .graph-vignette {
             position: absolute; inset: 0; pointer-events: none; z-index: 4;
@@ -277,6 +340,8 @@
         .prop { font-size: 13px; color: var(--ink); line-height: 1.45; }
         .prop-key { color: var(--ink-faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 6px; }
         .prop-path { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); overflow-wrap: anywhere; }
+        .prop-tags { display: inline-flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; vertical-align: top; }
+        .tag-chip { font-family: var(--font-mono); font-size: 10.5px; line-height: 1; padding: 4px 8px; border-radius: 999px; background: rgba(124, 58, 237, 0.12); color: var(--c-tag); border: 1px solid rgba(124, 58, 237, 0.28); }
         .conns { display: flex; flex-direction: column; gap: 2px; }
         .conn { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 8px; color: var(--ink-dim); transition: background 0.12s; }
         .conn:hover { background: var(--paper); color: var(--ink); }
@@ -367,13 +432,13 @@
                 <span class="filters-label">Filters</span>
 
                 <div class="select-wrap" id="dropdown-type">
-                    <button class="dropdown-trigger"><span>All Types</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <button class="dropdown-trigger"><span>All Files Types</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
                 </div>
                 <div class="select-wrap" id="dropdown-repo">
                     <button class="dropdown-trigger"><span>All Repos</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
                 </div>
                 <div class="select-wrap" id="dropdown-project">
-                    <button class="dropdown-trigger"><span>All Projects</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <button class="dropdown-trigger"><span>All Directories</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
                 </div>
                 <div class="select-wrap" id="dropdown-tag">
                     <button class="dropdown-trigger"><span>All Tags</span><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
@@ -389,6 +454,13 @@
                 <div class="stat"><span class="stat-value v-projects" id="stat-projects">0</span><span class="stat-label">Projects</span></div>
                 <div class="stat"><span class="stat-value v-tags" id="stat-tags">0</span><span class="stat-label">Tags</span></div>
             </div>
+        </div>
+
+        <!-- active filter chips -->
+        <div class="row row-3 hidden" id="active-filters-row">
+            <span class="filters-label">Active</span>
+            <div class="active-chips" id="active-chips"></div>
+            <button class="chip-clear-all" type="button" onclick="clearAllFilters()">Clear all</button>
         </div>
     </div>
 
@@ -436,6 +508,26 @@
             </div>
         </div>
     </div>
+
+    <!-- site footer -->
+    <footer class="app-footer">
+        <span class="app-footer-credit">
+            © 2026 local-search · made by
+            <a href="https://x.com/javierhbr" target="_blank" rel="noopener noreferrer">@javierhbr</a>
+        </span>
+        <span class="app-footer-links">
+            <a href="https://github.com/javierhbr" target="_blank" rel="noopener noreferrer" title="GitHub" aria-label="GitHub">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.28-.01-1.02-.02-2-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.13-.3-.54-1.53.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.29-1.23 3.29-1.23.66 1.65.25 2.88.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22 0 1.6-.01 2.9-.01 3.29 0 .32.21.7.83.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg>
+            </a>
+            <a href="https://x.com/javierhbr" target="_blank" rel="noopener noreferrer" title="X" aria-label="X">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.714 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644z"/></svg>
+            </a>
+            <a class="app-footer-coffee" href="https://www.buymeacoffee.com/javierhbr" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M7 2.5v2M10.5 2.5v2M14 2.5v2"/></svg>
+                Buy me a coffee
+            </a>
+        </span>
+    </footer>
 
     <script>
         // State Management
@@ -610,7 +702,7 @@
                     <input type="text" placeholder="Search ${label}…" oninput="filterDropdownOptions(this, '${id}')">
                 </div>`;
             const optionsHtml = options.map(opt => `
-                <label class="opt dropdown-option" title="${opt}">
+                <label class="opt dropdown-option">
                     <input type="checkbox" value="${opt}" onchange="handleDropdownChange('${typeKey}', '${opt}', this.checked); applyFiltersDebounced();">
                     <span>${opt}</span>
                 </label>`).join('');
@@ -633,15 +725,118 @@
             });
         };
 
-        window.handleDropdownChange = function(typeKey, value, isChecked) {
-            if (isChecked) multiSelectState[typeKey].add(value);
-            else multiSelectState[typeKey].delete(value);
+        // Instant, styled tooltip for truncated filter-dropdown options — one reusable
+        // element on <body> (the popover clips overflow), event-delegated so it covers
+        // every dynamically-built dropdown, and shown ONLY when the value is cut off.
+        (function initOptionTooltip() {
+            const tip = document.createElement('div');
+            tip.id = 'filter-tooltip';
+            document.body.appendChild(tip);
+            let anchor = null;
 
+            function place() {
+                if (!anchor) return;
+                const r = anchor.getBoundingClientRect();
+                const pad = 8, tw = tip.offsetWidth, th = tip.offsetHeight;
+                const left = Math.min(Math.max(pad, r.left - 2), window.innerWidth - tw - pad);
+                let top = r.top - th - 8;
+                const below = top < pad;
+                if (below) top = r.bottom + 8;
+                tip.classList.toggle('below', below);
+                tip.style.setProperty('--arrow-x', Math.max(8, Math.min(r.left - left + 14, tw - 16)) + 'px');
+                tip.style.left = left + 'px';
+                tip.style.top = top + 'px';
+            }
+            function show(opt) {
+                if (opt === anchor) return;
+                const span = opt.querySelector('span');
+                if (!span || span.scrollWidth <= span.clientWidth + 1) { hide(); return; }
+                anchor = opt;
+                tip.textContent = span.textContent;
+                tip.classList.add('show');
+                place();
+            }
+            function hide() { anchor = null; tip.classList.remove('show'); }
+
+            document.addEventListener('mouseover', (e) => {
+                const opt = e.target.closest && e.target.closest('.dropdown-option');
+                if (opt) show(opt);
+            });
+            document.addEventListener('mouseout', (e) => {
+                const opt = e.target.closest && e.target.closest('.dropdown-option');
+                if (opt && opt === anchor && !opt.contains(e.relatedTarget)) hide();
+            });
+            // A stale position is worse than none: drop the tooltip on any scroll.
+            document.addEventListener('scroll', hide, true);
+        })();
+
+        function updateTriggerLabel(typeKey) {
             const trigger = document.querySelector(`#dropdown-${typeKey} .dropdown-trigger`);
+            if (!trigger) return;
             const labelSpan = trigger.querySelector('span');
             const count = multiSelectState[typeKey].size;
             labelSpan.textContent = count === 0 ? `All ${typeKey.charAt(0).toUpperCase() + typeKey.slice(1)}s` : `${count} Selected`;
             trigger.classList.toggle('is-active', count > 0);
+        }
+
+        // Active-filter chips: one removable pill per selected value across every dimension.
+        // Built as DOM nodes (textContent) so arbitrary tag/project values can't break markup
+        // and the raw value is captured directly for removal.
+        function renderActiveFilters() {
+            const row = document.getElementById('active-filters-row');
+            const container = document.getElementById('active-chips');
+            if (!row || !container) return;
+            container.innerHTML = '';
+            let count = 0;
+            ['type', 'repo', 'project', 'tag'].forEach(dim => {
+                multiSelectState[dim].forEach(val => {
+                    count++;
+                    const chip = document.createElement('span');
+                    chip.className = 'active-chip';
+                    chip.title = `${dim}: ${val}`;
+                    const key = document.createElement('span');
+                    key.className = 'chip-key';
+                    key.textContent = dim;
+                    const value = document.createElement('span');
+                    value.className = 'chip-val';
+                    value.textContent = val;
+                    const x = document.createElement('button');
+                    x.type = 'button';
+                    x.textContent = '×';
+                    x.setAttribute('aria-label', `Remove ${dim} filter ${val}`);
+                    x.addEventListener('click', () => removeFilter(dim, val));
+                    chip.append(key, value, x);
+                    container.appendChild(chip);
+                });
+            });
+            row.classList.toggle('hidden', count === 0);
+        }
+
+        function removeFilter(dim, val) {
+            multiSelectState[dim].delete(val);
+            document.querySelectorAll(`#dropdown-${dim}-list input[type="checkbox"]`).forEach(cb => {
+                if (cb.value === val) cb.checked = false;
+            });
+            updateTriggerLabel(dim);
+            renderActiveFilters();
+            applyFiltersDebounced();
+        }
+
+        window.clearAllFilters = function() {
+            Object.keys(multiSelectState).forEach(dim => {
+                multiSelectState[dim].clear();
+                document.querySelectorAll(`#dropdown-${dim}-list input[type="checkbox"]`).forEach(cb => cb.checked = false);
+                updateTriggerLabel(dim);
+            });
+            renderActiveFilters();
+            applyFiltersDebounced();
+        };
+
+        window.handleDropdownChange = function(typeKey, value, isChecked) {
+            if (isChecked) multiSelectState[typeKey].add(value);
+            else multiSelectState[typeKey].delete(value);
+            updateTriggerLabel(typeKey);
+            renderActiveFilters();
         };
 
         // Node tags arrive as an array or a "[a, b]" / "a,b" string. Some exports leave
@@ -663,11 +858,13 @@
                 parseNodeTags(n.tags).forEach(t => tags.add(t));
                 if (n.type) types.add(n.type);
             });
-            createDropdownUI('dropdown-type', 'Types', Array.from(types).sort(), 'type');
+            createDropdownUI('dropdown-type', 'File Types', Array.from(types).sort(), 'type');
             createDropdownUI('dropdown-repo', 'Repos', Array.from(repos).sort(), 'repo');
-            createDropdownUI('dropdown-project', 'Projects', Array.from(projects).sort(), 'project');
+            createDropdownUI('dropdown-project', 'Directories', Array.from(projects).sort(), 'project');
             createDropdownUI('dropdown-tag', 'Tags', Array.from(tags).sort(), 'tag');
             Object.keys(multiSelectState).forEach(k => multiSelectState[k].clear());
+            ['type', 'repo', 'project', 'tag'].forEach(updateTriggerLabel);
+            renderActiveFilters();
         }
 
         document.addEventListener('click', (e) => {
@@ -831,6 +1028,20 @@
             if (node.project) propsHtml.push(`<div class="prop"><span class="prop-key">Project</span>${node.project}</div>`);
             const path = (node.raw && node.raw.path) || node.path;
             if (path) propsHtml.push(`<div class="prop"><span class="prop-key">Path</span><span class="prop-path">${path}</span></div>`);
+            // Tags may arrive as "a, b", "[a, b]", or an array whose leading/
+            // trailing items still carry the literal YAML flow-list brackets
+            // (["[workflow", "experimental]"]). Strip brackets from every tag.
+            // normalizeGraph spreads fields to the top level (node.tags); the
+            // hub loader nests them under node.raw. Support both, like Path above.
+            const rawTags = (node.raw && node.raw.tags) || node.tags;
+            const cleanTag = t => String(t).replace(/[\[\]]/g, '').trim();
+            let tagList = [];
+            if (typeof rawTags === 'string') tagList = rawTags.split(',').map(cleanTag).filter(Boolean);
+            else if (Array.isArray(rawTags)) tagList = rawTags.map(cleanTag).filter(Boolean);
+            if (tagList.length) {
+                const chips = tagList.map(t => `<span class="tag-chip">${t}</span>`).join('');
+                propsHtml.push(`<div class="prop"><span class="prop-key">Tags</span><span class="prop-tags">${chips}</span></div>`);
+            }
             document.getElementById('inspector-props').innerHTML = propsHtml.length ? propsHtml.join('') : '<div class="empty">No extra properties</div>';
 
             const connections = [];

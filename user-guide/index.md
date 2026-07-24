@@ -37,6 +37,9 @@ Task-shaped recipes for everyday work.
   search your specs for you.
 - [Run the web UI](how-to/run-the-web-ui.md) — the working ways to start,
   stop, and monitor the console.
+- [Explore the knowledge graph](how-to/explore-the-graph.md) — the graph
+  explorer, refreshing from repos, and how `@spec` refs and `[[wikilinks]]`
+  become `spec:` / `link:` tags you can filter by.
 
 ## 💡 Explanation — *"Wait, how does this actually work?"*
 
