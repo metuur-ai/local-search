@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { createServer } from './backend/src/server.js';
 import { createRegistry } from './backend/src/sessions.js';
 import { parseReposStdout, mergeRepoRows } from './backend/src/repos.js';
+import { memoizeRepos } from './backend/src/reposCache.js';
 import { probeJsonContext } from './backend/src/smoke.js';
 import { createCliLog, tapChild } from './backend/src/cliLog.js';
 
@@ -81,7 +82,9 @@ async function runRepos() {
 const graphCacheFile = path.resolve(__dirname, 'data', 'graph.json');
 
 const registry = createRegistry();
-const deps = { runRepos };
+// Memoized: /api/repos is hit on every popover open and /api/reveal needs the
+// repo roots on every click. Both would otherwise re-spawn the CLI each time.
+const deps = { runRepos: memoizeRepos(runRepos) };
 deps.runLocalSearch = runLocalSearch;
 deps.graphCacheFile = graphCacheFile;
 if (cliLog) deps.cliLog = cliLog;

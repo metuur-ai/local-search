@@ -163,6 +163,32 @@ body {
   box-shadow: 0 4px 16px -6px rgba(15,118,110,0.6);
 }
 .btn-primary:hover { filter: brightness(1.06); box-shadow: 0 6px 20px -6px rgba(15,118,110,0.6); }
+.btn:disabled { opacity: 0.7; cursor: default; transform: none; }
+.btn:disabled:hover { filter: none; transform: none; }
+
+/* Busy indicator — same construction as the console's .repo-picker-spinner. */
+.repos-spinner {
+  flex: none;
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-ring, rgba(15,118,110,0.22));
+  border-top-color: var(--accent);
+  animation: repos-spin 0.7s linear infinite;
+}
+/* On the solid teal primary button the accent ring is invisible — go white. */
+.btn-primary .repos-spinner {
+  border-color: rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+}
+.repos-loading { display: flex; align-items: center; gap: 8px; color: var(--ink-faint); }
+.repos-error { color: #c0392b; }
+@keyframes repos-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .repos-spinner { animation-duration: 2.4s; }
+}
 
 /* ---------- FILTER BAR ---------- */
 .filters { display: flex; align-items: center; gap: 10px; flex-shrink: 0; position: relative; }
