@@ -25,7 +25,7 @@ import (
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const Version = "0.3.13"
+const Version = "0.3.14"
 
 var (
 	appDir    = filepath.Join(homeDir(), ".local-search")
