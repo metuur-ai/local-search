@@ -1,6 +1,7 @@
 // Presentational fused-ranking illustration (R-6.2). Renders the search hits in
 // descending fused-relevance order so the ranking is legible. Data via props.
 
+import { RevealButton } from './RevealButton.jsx';
 import './small.css';
 
 // Pure helper: return a new array sorted by relevance descending. Sources
@@ -32,6 +33,7 @@ export function RankedSources({ sources = [] }) {
             {row.relevance != null && (
               <span class="ranked-relevance">{row.relevance}</span>
             )}
+            <RevealButton repo={row.repo} path={row.path} fullpath={row.fullpath} compact />
           </li>
         );
       })}

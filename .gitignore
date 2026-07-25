@@ -28,6 +28,11 @@ dist/
 graphify-out/
 dist/bundle/
 .playwright-mcp/
+# KG edge-yield measurement harness. Hardcodes local absolute repo paths, so it
+# must never be committed. Not in any shipped binary (cli/Makefile `build-all`
+# builds `.` only) but IS in `go vet ./...` / `go test ./...`.
+# Delete once the body-link edge work lands.
+cli/tmpverify/
 
 
 # ── Data / caches ─────────────────────────────────────────

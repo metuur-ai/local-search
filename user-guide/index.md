@@ -38,8 +38,9 @@ Task-shaped recipes for everyday work.
 - [Run the web UI](how-to/run-the-web-ui.md) — the working ways to start,
   stop, and monitor the console.
 - [Explore the knowledge graph](how-to/explore-the-graph.md) — the graph
-  explorer, refreshing from repos, and how `@spec` refs and `[[wikilinks]]`
-  become `spec:` / `link:` tags you can filter by.
+  explorer, refreshing from repos, telling declared relationships from lexical
+  similarity, and how `@spec` refs and `[[wikilinks]]` become `spec:` / `link:`
+  tags you can filter by.
 
 ## 💡 Explanation — *"Wait, how does this actually work?"*
 

@@ -166,6 +166,10 @@ type Edge struct {
 // (R-2.1, LLD "Recognized relationship fields"). Order is fixed so edge
 // emission is deterministic. `reversed` fields declare the INCOMING side:
 // `implementedBy: X` means X --implements--> this node.
+//
+// New fields are APPENDED, never inserted: the emission order below is the
+// per-file edge order, so reordering would churn golden fixtures for files
+// that did not change.
 var recognizedEdgeFields = []struct {
 	field    string
 	edgeType string
@@ -177,12 +181,39 @@ var recognizedEdgeFields = []struct {
 	{"dependsOn", "depends_on", false},
 	{"components", "has_component", false},
 	{"from-discovery", "from_discovery", false},
+
+	// Appended: fields observed in real corpora that were previously reported
+	// as "unrecognized relational-looking" (R-2.4) instead of yielding edges.
+	//
+	// `downstream` is the mirror of `upstream` and is declared alongside it on
+	// context-map documents. It gets its OWN edge type rather than reusing
+	// `upstream` reversed — a map declaring `upstream: A` and `downstream: B`
+	// asserts two different facts about itself, and collapsing them into one
+	// type would make both edges point the same way.
+	{"downstream", "downstream", false},
+	// `boundedContext: context://x` places a concept inside a context.
+	{"boundedContext", "in_context", false},
+	// `fromDiscovery` is the camelCase spelling used in practice; the kebab
+	// `from-discovery` above matched nothing in any observed corpus. Both are
+	// accepted and share one edge type so either spelling is a traceability
+	// edge.
+	{"fromDiscovery", "from_discovery", false},
 }
+
+// placeholderRefRe matches scaffolding-template placeholder refs such as
+// `<component-id>` or `component://<id>`. Templates ship these as literal
+// frontmatter values, and without this filter each one materializes as a
+// phantom graph node. Mirrors validSpecIDRe's placeholder rejection.
+var placeholderRefRe = regexp.MustCompile(`[<>]`)
 
 // nonRelationalFields are frontmatter fields with existing, known meanings that
 // must never be counted as "unrecognized relational-looking" (R-2.4).
 var nonRelationalFields = map[string]bool{
 	"id": true, "tags": true, "title": true, "summary": true,
+	// Read into Spec.DocType / Spec.Status. Listed here so a doc whose `type:`
+	// is scheme-shaped (e.g. `type: concept://component`) is not also reported
+	// as an unrecognized relational field.
+	"type": true, "status": true,
 }
 
 // extractEdges emits typed edges from the recognized-field table plus the
@@ -195,6 +226,9 @@ func extractEdges(nodeID string, fields map[string]any) (edges []Edge, unrecogni
 		recognized[rf.field] = true
 		refs := collectRefs(fields[rf.field])
 		for _, ref := range refs {
+			if placeholderRefRe.MatchString(ref) {
+				continue
+			}
 			e := Edge{Src: nodeID, Dst: ref, Type: rf.edgeType, Field: rf.field}
 			if rf.reversed {
 				e.Src, e.Dst = ref, nodeID

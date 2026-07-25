@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"local-search/embed"
+	"local-search/extract"
 )
 
 // GraphNode / GraphLink / NodeLinkGraph mirror NetworkX node-link JSON
@@ -37,6 +38,17 @@ type GraphNode struct {
 	// (R-5.4).
 	Kind  string `json:"kind,omitempty"`  // canonical scheme ('component', 'req', …)
 	Flags string `json:"flags,omitempty"` // '', 'conflict' (R-1.4), 'unresolved' (R-1.5)
+
+	// Declared frontmatter classification, verbatim and `omitempty`.
+	//
+	// Deliberately NOT named `type`: the explorer's normalizeGraph does
+	// `n.type || layerOf(n.path)`, so emitting `type` would override the
+	// OS-layer path coloring for every node declaring a frontmatter type, and
+	// values outside LAYER_COLORS (e.g. "dashboard") would fall through to
+	// grey. Shipping under a distinct key keeps rendering unchanged until a
+	// frontend change opts in.
+	DocType string `json:"doc_type,omitempty"` // frontmatter `type:`
+	Status  string `json:"status,omitempty"`   // frontmatter `status:`
 }
 
 // GraphLink is one undirected edge with a similarity weight — plus, for TYPED
@@ -361,7 +373,7 @@ func RepoGraph(db *sql.DB, repo, edges string, includeContent bool, minWeight fl
 		Links:      []GraphLink{},
 	}
 
-	rows, err := db.Query(`SELECT id, repo, name, title, project, path, ext, summary, tags, content
+	rows, err := db.Query(`SELECT id, repo, name, title, project, path, ext, summary, tags, content, doc_type, status
 		FROM specs WHERE repo=? ORDER BY id`, repo)
 	if err != nil {
 		return g, err
@@ -377,8 +389,10 @@ func RepoGraph(db *sql.DB, repo, edges string, includeContent bool, minWeight fl
 		var (
 			id                                                          int64
 			rp, name, title, project, path, ext, summary, tags, content string
+			docType, status                                             string
 		)
-		if err := rows.Scan(&id, &rp, &name, &title, &project, &path, &ext, &summary, &tags, &content); err != nil {
+		if err := rows.Scan(&id, &rp, &name, &title, &project, &path, &ext, &summary, &tags, &content,
+			&docType, &status); err != nil {
 			return g, err
 		}
 		label := title
@@ -397,6 +411,8 @@ func RepoGraph(db *sql.DB, repo, edges string, includeContent bool, minWeight fl
 			Summary:   summary,
 			Tags:      splitTags(tags),
 			FileType:  strings.TrimPrefix(ext, "."),
+			DocType:   docType,
+			Status:    status,
 		}
 		if includeContent {
 			n.Content = content
@@ -564,6 +580,12 @@ func kgTypedLinks(db *sql.DB, repo string, pathToRowID map[string]string) ([]Gra
 	for _, e := range edgeRows {
 		src, _ := resolveID(e.src)
 		dst, _ := resolveID(e.dst)
+		// A body-link edge's field is already a locator (`body:<line>`); only
+		// frontmatter field names need the prefix.
+		loc := "frontmatter:" + e.field
+		if extract.BodyLinkField(e.field) {
+			loc = e.field
+		}
 		links = append(links, GraphLink{
 			Source:         src,
 			Target:         dst,
@@ -571,7 +593,7 @@ func kgTypedLinks(db *sql.DB, repo string, pathToRowID map[string]string) ([]Gra
 			Relation:       e.typ,
 			Confidence:     1,
 			SourceFile:     e.path,
-			SourceLocation: "frontmatter:" + e.field,
+			SourceLocation: loc,
 		})
 	}
 

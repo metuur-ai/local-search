@@ -35,6 +35,7 @@ import { ActivityFeed } from './components/ActivityFeed.jsx';
 import { ReplyInput } from './components/ReplyInput.jsx';
 import { ElapsedTimer } from './components/ElapsedTimer.jsx';
 import { RankedSources } from './components/RankedSources.jsx';
+import { RevealButton } from './components/RevealButton.jsx';
 import RetrievalPath from './components/RetrievalPath.jsx';
 
 // Derive a lowercase file extension from a source path ("code/db/index.go" -> "go").
@@ -996,14 +997,25 @@ export function App() {
                 const label = src.title || src.name || '(untitled)';
                 const ext = extOf(src.path);
                 const isActive = i === activeSourceIdx;
+                const select = () => {
+                  setActiveSourceIdx(i);
+                  setInspectorTab('sources');
+                };
                 return (
-                  <button
-                    type="button"
+                  // A div, not a button: the card nests its own reveal action and
+                  // a button inside a button is invalid. role/tabIndex/onKeyDown
+                  // restore the keyboard and a11y behaviour a <button> gave us.
+                  <div
+                    role="button"
+                    tabIndex={0}
                     key={`${src.path || label}-${i}`}
                     class={`result-card${isActive ? ' is-active' : ''}`}
-                    onClick={() => {
-                      setActiveSourceIdx(i);
-                      setInspectorTab('sources');
+                    onClick={select}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        select();
+                      }
                     }}
                   >
                     <div class="result-card-top">
@@ -1018,6 +1030,12 @@ export function App() {
                         {src.path || label}
                       </span>
                       {src.repo != null && <span class="result-repo">{src.repo}</span>}
+                      <RevealButton
+                        repo={src.repo}
+                        path={src.path}
+                        fullpath={src.fullpath}
+                        compact
+                      />
                     </div>
                     <h4 class="result-title">{label}</h4>
                     <div class="result-card-bottom">
@@ -1032,7 +1050,7 @@ export function App() {
                         </span>
                       )}
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -1165,6 +1183,11 @@ export function App() {
                     <span class="source-detail-repo">{activeSource.repo}</span>
                   )}
                 </div>
+                <RevealButton
+                  repo={activeSource.repo}
+                  path={activeSource.path}
+                  fullpath={activeSource.fullpath}
+                />
                 <h2 class="source-detail-title">
                   {activeSource.title || activeSource.name || '(untitled)'}
                 </h2>

@@ -18,7 +18,8 @@ import (
 // v2: knowledge-graph tables (kg_nodes/kg_edges). Caches from before the kg
 // tables report an older version and are rebuilt via the drop-and-rebuild
 // path below — the codebase's no-ALTER convention (task 0.3).
-const schemaVersion = 2
+// v3 added specs.doc_type / specs.status (declared frontmatter classification).
+const schemaVersion = 3
 
 const schemaSQL = `
 CREATE TABLE IF NOT EXISTS repos (
@@ -47,6 +48,10 @@ CREATE TABLE IF NOT EXISTS specs (
   size          INTEGER NOT NULL,
   ext           TEXT NOT NULL,
   content       TEXT DEFAULT '',
+  -- Declared frontmatter classification, verbatim. Open vocabularies, not
+  -- enums: '' means the document declared nothing.
+  doc_type      TEXT NOT NULL DEFAULT '',
+  status        TEXT NOT NULL DEFAULT '',
   UNIQUE(repo, path)
 );
 

@@ -74,12 +74,17 @@ func kgCount(t *testing.T, db *sql.DB, query string, args ...any) int {
 
 // ── task 0.3: schema version bump + kg table shapes ──────────────────────────
 
-// TestKGSchema_Task03_VersionBumpAndTableShapes pins the schemaVersion 1→2
-// bump and the canonical-string-ID shapes of the kg tables: TEXT primary keys,
-// never rowid-derived integer keys (LLD schema constraint).
+// TestKGSchema_Task03_VersionBumpAndTableShapes pins that the kg tables landed
+// behind a schema-version bump (1→2) and the canonical-string-ID shapes of
+// those tables: TEXT primary keys, never rowid-derived integer keys (LLD schema
+// constraint).
+//
+// The version check is a FLOOR, not an equality: later features bump the
+// version for their own reasons (v3 added specs.doc_type/status), and the
+// property this test defends is only that the kg tables exist at v2 or later.
 func TestKGSchema_Task03_VersionBumpAndTableShapes(t *testing.T) {
-	if schemaVersion != 2 {
-		t.Fatalf("schemaVersion = %d, want 2 (kg tables bump)", schemaVersion)
+	if schemaVersion < 2 {
+		t.Fatalf("schemaVersion = %d, want >= 2 (kg tables bump)", schemaVersion)
 	}
 	db := openKGTestDB(t)
 

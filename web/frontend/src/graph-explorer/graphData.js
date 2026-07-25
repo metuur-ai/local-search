@@ -13,6 +13,60 @@ export const colors = {
 // Hub node types that get labels earlier + a shadow.
 export const COMMUNITY = new Set(['repo', 'project', 'tag']);
 
+// ── Edge families ───────────────────────────────────────────────────────────
+//
+// The export mixes two fundamentally different kinds of link, and rendering
+// them identically is a lie: a `depends_on` written by hand in frontmatter and
+// a 0.38-cosine lexical coincidence are not the same claim. Declared links
+// carry `relation` (+ `confidence`, `source_file`, `source_location`);
+// similarity links carry only `weight`.
+//
+// Declared links are split again by whether their endpoints actually resolve.
+// An endpoint flagged `unresolved` is a phantom — referenced but declared
+// nowhere — and that is the single most diagnostic thing the graph knows, so it
+// gets its own family rather than being blended into DECLARED.
+export const EDGE_FAMILY = {
+  DECLARED: 'declared',
+  DANGLING: 'dangling',
+  SIMILARITY: 'similarity',
+};
+
+export const EDGE_FAMILY_ORDER = [
+  EDGE_FAMILY.DECLARED,
+  EDGE_FAMILY.DANGLING,
+  EDGE_FAMILY.SIMILARITY,
+];
+
+// `label` is the full name (inspector, tooltips); `short` is the filter-bar
+// chip, which sits in a horizontal row and cannot afford to truncate.
+export const EDGE_FAMILY_META = {
+  [EDGE_FAMILY.DECLARED]: {
+    label: 'Declared', short: 'Declared', color: 'rgba(15,118,110,0.85)', width: 1.9, dash: null,
+  },
+  [EDGE_FAMILY.DANGLING]: {
+    label: 'Declared · unresolved target', short: 'Unresolved', color: 'rgba(180,83,9,0.85)', width: 1.6, dash: [4, 3],
+  },
+  [EDGE_FAMILY.SIMILARITY]: {
+    label: 'Similarity (lexical)', short: 'Similarity', color: 'rgba(23,27,38,0.18)', width: 1.1, dash: null,
+  },
+};
+
+// Link endpoints are ids before the force layout runs and node objects after.
+export const linkEndId = (e) => (e && typeof e === 'object' ? e.id : e);
+
+// Classify one link. `nodeById` is a Map; a missing endpoint counts as
+// unresolved, since a link to a node that isn't in the graph is dangling too.
+export function edgeFamilyOf(link, nodeById) {
+  if (!link || !link.relation) return EDGE_FAMILY.SIMILARITY;
+  const unresolved = (id) => {
+    const n = nodeById && nodeById.get(id);
+    return !n || n.flags === 'unresolved';
+  };
+  return unresolved(linkEndId(link.source)) || unresolved(linkEndId(link.target))
+    ? EDGE_FAMILY.DANGLING
+    : EDGE_FAMILY.DECLARED;
+}
+
 // Colors for graph-export nodes, keyed by the OS layer derived from their path.
 export const LAYER_COLORS = {
   platform: '#2563eb', team: '#ea580c', ontology: '#9333ea', prd: '#db2777',
@@ -95,6 +149,8 @@ export function synthesizeGraphData(rawData) {
 export function normalizeGraph(json) {
   const nodes = (json.nodes || []).map((n) => {
     // Prefer an explicit type; otherwise classify by OS layer from the path.
+    // NOTE: the exporter emits declared frontmatter `type:` as `doc_type`, not
+    // `type`, precisely so it does NOT hijack this OS-layer classification.
     const type = n.type || layerOf(n.path || '');
     return {
       ...n,
@@ -103,7 +159,14 @@ export function normalizeGraph(json) {
       renderColor: n.renderColor || colors[type] || LAYER_COLORS[type] || colors.file,
     };
   });
-  return { nodes, links: json.links || json.edges || [] };
+  // Annotate every link with its family once, here, so styling/filtering/legend
+  // all read the same classification instead of each re-deriving it.
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const links = (json.links || json.edges || []).map((l) => ({
+    ...l,
+    family: edgeFamilyOf(l, byId),
+  }));
+  return { nodes, links };
 }
 
 // Normalize either data shape into a renderable graph: a flat array (hub export)
@@ -137,7 +200,9 @@ export function buildPerformanceMaps(data) {
 // Filter an original graph down to the nodes/links matching the current filter
 // state, and re-derive the links that connect surviving nodes. `multiSelect` is
 // { type, repo, project, tag } of Sets. Text filters are matched case-insensitively.
-export function applyFilters(originalData, { search = '', name = '', title = '', multiSelect }) {
+export function applyFilters(originalData, {
+  search = '', name = '', title = '', multiSelect, families = null,
+}) {
   const searchTerm = search.toLowerCase();
   const nameFilter = name.toLowerCase();
   const titleFilter = title.toLowerCase();
@@ -171,13 +236,48 @@ export function applyFilters(originalData, { search = '', name = '', title = '',
     }
   }
 
+  const narrowing = families instanceof Set
+    && families.size > 0
+    && families.size < EDGE_FAMILY_ORDER.length;
+
   const filteredLinks = originalData.links.filter((link) => {
-    const s = typeof link.source === 'object' ? link.source.id : link.source;
-    const t = typeof link.target === 'object' ? link.target.id : link.target;
-    return validNodeIds.has(s) && validNodeIds.has(t);
+    if (narrowing && !families.has(link.family)) return false;
+    return validNodeIds.has(linkEndId(link.source)) && validNodeIds.has(linkEndId(link.target));
   });
 
-  return { nodes: originalData.nodes.filter((n) => validNodeIds.has(n.id)), links: filteredLinks };
+  // When the family filter narrows, drop nodes left with no surviving link.
+  // Otherwise "Declared only" renders 800 isolated dots around 385 edges and
+  // the structure it exists to reveal is buried in noise.
+  let keep = validNodeIds;
+  if (narrowing) {
+    keep = new Set();
+    filteredLinks.forEach((l) => {
+      keep.add(linkEndId(l.source));
+      keep.add(linkEndId(l.target));
+    });
+  }
+
+  return { nodes: originalData.nodes.filter((n) => keep.has(n.id)), links: filteredLinks };
+}
+
+// Count links per family across a graph, for the legend and the default choice.
+export function countEdgeFamilies(links) {
+  const counts = { declared: 0, dangling: 0, similarity: 0 };
+  (links || []).forEach((l) => {
+    const f = l.family || EDGE_FAMILY.SIMILARITY;
+    if (counts[f] !== undefined) counts[f] += 1;
+  });
+  return counts;
+}
+
+// The family selection a freshly-loaded graph should open with. Declared
+// structure is the point of the view, so it wins whenever any exists; a graph
+// with none (a pure similarity export) still shows something rather than
+// opening empty.
+export function defaultFamilies(links) {
+  const c = countEdgeFamilies(links);
+  if (c.declared + c.dangling === 0) return new Set(EDGE_FAMILY_ORDER);
+  return new Set([EDGE_FAMILY.DECLARED, EDGE_FAMILY.DANGLING]);
 }
 
 // Collect the distinct filter option values present across a graph's nodes.

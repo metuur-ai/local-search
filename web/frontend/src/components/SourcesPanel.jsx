@@ -1,6 +1,7 @@
 // Presentational panel listing the sources returned by a search run (R-5.1).
 // Data arrives via props (the `sources` stream event); tolerate missing fields.
 
+import { RevealButton } from './RevealButton.jsx';
 import './panels.css';
 
 export function SourcesPanel({ sources = [] }) {
@@ -20,6 +21,7 @@ export function SourcesPanel({ sources = [] }) {
               {row.relevance != null && (
                 <span class="source-relevance"> {row.relevance}</span>
               )}
+              <RevealButton repo={row.repo} path={row.path} fullpath={row.fullpath} compact />
             </div>
             {tags.length > 0 && (
               <div class="source-tags">

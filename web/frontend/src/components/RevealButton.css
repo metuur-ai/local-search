@@ -1,0 +1,56 @@
+/* Shared by both Vite entries, which define different token sets — every var()
+   carries a literal fallback so the button looks right on either page. */
+
+.reveal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.73rem;
+  font-weight: 600;
+  line-height: 1;
+  /* A resting state that reads as an affordance: accent ink on a tinted fill
+     with a real border. Grey-on-transparent looked disabled. */
+  color: var(--brand-600, var(--accent, #15803d));
+  background: var(--brand-50, var(--accent-soft, #f0fdf4));
+  border: 1px solid var(--brand-200, var(--accent-ring, #bbf7d0));
+  border-radius: var(--radius-sm, 8px);
+  cursor: pointer;
+  transition: color 0.14s, background 0.14s, border-color 0.14s;
+}
+
+.reveal-btn:hover:not(:disabled) {
+  color: var(--surface, #ffffff);
+  background: var(--brand-600, var(--accent, #15803d));
+  border-color: var(--brand-600, var(--accent, #15803d));
+}
+
+.reveal-btn:focus-visible {
+  outline: 2px solid var(--brand-500, var(--accent, #16a34a));
+  outline-offset: 1px;
+}
+
+.reveal-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.reveal-btn.is-error {
+  color: var(--red-500, #dc2626);
+}
+
+.reveal-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2;
+  flex-shrink: 0;
+}
+
+.reveal-btn-compact {
+  padding: 0.28rem 0.34rem;
+}
+
+.reveal-btn-label {
+  white-space: nowrap;
+}

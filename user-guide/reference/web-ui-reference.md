@@ -167,6 +167,22 @@ explorer. Reads the cached file at `web/data/graph.json` (produced by
 `{ "nodes": [], "links": [] }` (never an error) so the explorer renders and
 prompts a refresh.
 
+Beyond `id` / `name` / `path` / `repo` / `tags`, a **node** may carry
+`doc_type` and `status` (frontmatter `type:` and `status:`, verbatim — open
+vocabularies, not enums) and `flags` (`unresolved` for a referenced-but-never-
+declared node, `conflict` when two files claim one canonical id). All are
+omitted when empty.
+
+A **link** always has `source` / `target` / `weight`. A *declared* link adds
+four provenance fields, all omitted on similarity links:
+
+| Field | Meaning |
+|---|---|
+| `relation` | edge type, e.g. `depends_on`, `links_to` |
+| `confidence` | `1` — declared edges are deterministic extractions, not inferences |
+| `source_file` | repo-relative path of the file that declared it |
+| `source_location` | `frontmatter:<field>`, or `body:<line>` for a markdown body link |
+
 ### `POST /api/graph/refresh`
 
 Rebuilds and persists the graph from selected repos, then returns it. Body:
@@ -194,8 +210,22 @@ to `web/data/graph.json`, reopening or refreshing the page reuses it instantly.
 Filter by Type / Repo / Project / Tag (with removable "Active" chips), or by
 name/title substring. Tags include the `spec:` and `link:` tags derived from
 `@spec` references and `[[wikilinks]]` during indexing — filtering by a
-`link:<slug>` tag isolates every file that wikilinks to that target. See
-[Explore the knowledge graph](../how-to/explore-the-graph.md) for the full
+`link:<slug>` tag isolates every file that wikilinks to that target.
+
+Edges are filtered separately, from the **Links** toggles at the end of the
+filter bar:
+
+| Family | Stroke | Links matching |
+|---|---|---|
+| Declared | solid teal | `relation` set, both endpoints resolved |
+| Declared · unresolved target | dashed amber | `relation` set, an endpoint flagged `unresolved` |
+| Similarity (lexical) | faint grey | no `relation` — `weight` only |
+
+Similarity is deselected on load whenever the graph contains any declared link;
+deselecting every family re-selects all of them. A family with no links is
+listed but disabled.
+
+See [Explore the knowledge graph](../how-to/explore-the-graph.md) for the full
 walkthrough.
 
 ## Claude Code subprocess

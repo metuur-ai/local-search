@@ -47,12 +47,24 @@ type Spec struct {
 	Edges                 []Edge // typed, directed edges with field provenance (R-2.1)
 	UnrecognizedRelFields []string // unknown fields with canonical-ID-shaped values (R-2.4)
 	FrontmatterMalformed  bool   // frontmatter present but invalid YAML (R-2.3)
+
+	// Declared document classification, read verbatim from frontmatter. Both are
+	// producer-defined OPEN vocabularies, not closed enums — consumers must
+	// tolerate unknown values. Stored as written and case-folded only at
+	// grouping/query time: a producer's lifecycle value is information a
+	// consumer has no standing to rewrite.
+	DocType string // frontmatter `type:`   — e.g. "prd", "dashboard", "team-standard"
+	Status  string // frontmatter `status:` — e.g. "draft", "validated", "complete"
 }
 
 // applyKG fills the knowledge-graph fields of sp from the shared frontmatter
 // parse. Malformed YAML degrades to structural-only indexing (R-2.3): fallback
-// identity, no edges.
-func applyKG(sp *Spec, fm frontmatter) {
+// identity, no edges — but body-link edges still apply, since they do not
+// depend on frontmatter at all.
+//
+// docAbsPath is the file the body came from (the sidecar, for a media
+// companion), which is what relative links resolve against.
+func applyKG(sp *Spec, fm frontmatter, repoRoot, docAbsPath, content string) {
 	sp.FrontmatterMalformed = fm.malformed
 	id, kind := canonicalIDFrom(fm.fields)
 	sp.CanonicalID = id
@@ -62,6 +74,26 @@ func applyKG(sp *Spec, fm frontmatter) {
 		sp.NodeID, sp.Kind = fallbackNodeID(sp.Repo, sp.Path), "file"
 	}
 	sp.Edges, sp.UnrecognizedRelFields = extractEdges(sp.NodeID, fm.fields)
+	sp.Edges = append(sp.Edges,
+		extractLinkEdges(sp.NodeID, sp.Repo, repoRoot, docAbsPath, content)...)
+	sp.DocType = scalarField(fm.fields, "type")
+	sp.Status = scalarField(fm.fields, "status")
+}
+
+// scalarField returns a trimmed string frontmatter value, or "" when the key is
+// absent, malformed, or not a scalar string. Non-string values (a list, a map, a
+// number) are deliberately ignored rather than stringified: a `status:` that is
+// not a scalar is not a lifecycle value.
+func scalarField(fields map[string]any, key string) string {
+	v, ok := fields[key]
+	if !ok {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(s)
 }
 
 var frontmatterRe = regexp.MustCompile(`(?s)^---\s*\n(.*?)\n---\s*\n`)
@@ -110,6 +142,100 @@ var slugStripRe = regexp.MustCompile(`[^a-z0-9]+`)
 // rejects format-description placeholders like `req://.../<id>@<version>#<clause>`
 // that appear in docs, so those don't become junk tags.
 var validSpecIDRe = regexp.MustCompile(`^[a-z0-9][a-z0-9/_-]*$`)
+
+// LinkEdgeType is the edge type for a markdown body link from one indexed
+// document to another. Unlike the frontmatter relationship fields, a body link
+// asserts only THAT a relationship exists, not which kind — the kind lives in
+// the surrounding prose. This mirrors OKF §6, which specifies exactly the same
+// untyped-relationship semantics for the identical construct.
+const LinkEdgeType = "links_to"
+
+// bodyLinkFieldPrefix marks an Edge.Field as a body locator (`body:<line>`)
+// rather than a frontmatter field name, so provenance renderers can tell the
+// two apart. Exported for the db layer, which builds `source_location`.
+const bodyLinkFieldPrefix = "body:"
+
+// BodyLinkField reports whether an Edge.Field is a body locator rather than a
+// frontmatter field name.
+func BodyLinkField(field string) bool {
+	return strings.HasPrefix(field, bodyLinkFieldPrefix)
+}
+
+// mdLinkRe matches an inline markdown link whose target is an indexable text
+// file, with an optional `#anchor`. The target class forbids whitespace and `)`,
+// so link titles (`[x](a.md "T")`) do not match — same conservative choice the
+// wikilink and @spec patterns make.
+var mdLinkRe = regexp.MustCompile(`\]\(([^)\s]+\.(?:md|mdx|txt))(?:#[^)\s]*)?\)`)
+
+// extractLinkEdges emits one `links_to` edge per distinct markdown body link
+// that resolves to a file which actually exists on disk.
+//
+// Resolution is by FILESYSTEM PATH, so the destination is always the
+// `<repo>:<path>` fallback identity (R-1.2) — never a canonical scheme ID.
+// Consequence, accepted deliberately: when the target file declares its own
+// canonical `id:`, its node lives at that canonical ID, so this edge points at
+// a path-shaped name nothing declares and lands as an `unresolved` phantom
+// (R-1.5). Measured at 2 of 581 resolvable links (0.3%) across the reference
+// corpora. Fixing it properly means mapping (repo, path) -> declared ID, which
+// only the global resolveKG pass can see; doing it here would make one file's
+// edges depend on another file's contents and silently break the incremental
+// mtime fast path.
+//
+// Fenced code is neutralized before matching, preserving line numbers so the
+// `body:<line>` locator stays accurate. Both link forms are handled here, in
+// one place: relative (resolved against the document's directory) and
+// repo-absolute (leading `/`, resolved against the repo root).
+func extractLinkEdges(nodeID, repoName, repoRoot, docAbsPath, content string) []Edge {
+	if repoRoot == "" || docAbsPath == "" {
+		return nil
+	}
+	// Blank out fences but keep the line count identical, so byte offsets still
+	// map to the right source line.
+	body := fencedCodeRe.ReplaceAllStringFunc(content, func(m string) string {
+		return strings.Repeat("\n", strings.Count(m, "\n"))
+	})
+
+	docDir := filepath.Dir(docAbsPath)
+	var edges []Edge
+	seen := map[string]bool{}
+	for _, loc := range mdLinkRe.FindAllStringSubmatchIndex(body, -1) {
+		target := body[loc[2]:loc[3]]
+		if strings.Contains(target, "://") || strings.ContainsAny(target, "<>") {
+			continue
+		}
+		var abs string
+		if strings.HasPrefix(target, "/") {
+			abs = filepath.Join(repoRoot, filepath.FromSlash(target))
+		} else {
+			abs = filepath.Join(docDir, filepath.FromSlash(target))
+		}
+		rel, err := filepath.Rel(repoRoot, abs)
+		if err != nil {
+			continue
+		}
+		rel = filepath.ToSlash(rel)
+		// Never let a link escape the repo, and never self-link.
+		if rel == ".." || strings.HasPrefix(rel, "../") {
+			continue
+		}
+		if st, err := os.Stat(abs); err != nil || st.IsDir() {
+			continue
+		}
+		dst := fallbackNodeID(repoName, rel)
+		if dst == nodeID || seen[dst] {
+			continue
+		}
+		seen[dst] = true
+		line := 1 + strings.Count(body[:loc[0]], "\n")
+		edges = append(edges, Edge{
+			Src:   nodeID,
+			Dst:   dst,
+			Type:  LinkEdgeType,
+			Field: bodyLinkFieldPrefix + strconv.Itoa(line),
+		})
+	}
+	return edges
+}
 
 const maxContentBytes = 10 * 1024 * 1024 // 10 MB cap
 const maxSummaryChars = 300
@@ -167,7 +293,7 @@ func fromFileInfo(repoName, repoRoot, absPath string, info os.FileInfo) (*Spec, 
 		Ext:          strings.TrimPrefix(ext, "."),
 		Content:      content,
 	}
-	applyKG(sp, fm)
+	applyKG(sp, fm, repoRoot, absPath, content)
 	return sp, nil
 }
 
@@ -234,7 +360,9 @@ func fromCompanionInfo(repoName, repoRoot, mediaAbsPath string, mediaInfo os.Fil
 		Ext:          strings.TrimPrefix(ext, "."),
 		Content:      companionContent,
 	}
-	applyKG(sp, fm)
+	// Links resolve against the SIDECAR's directory, not the media file's —
+	// they are the same directory today, but the sidecar is what holds the body.
+	applyKG(sp, fm, repoRoot, companionAbsPath, companionContent)
 	return sp, nil
 }
 
