@@ -8,7 +8,7 @@
 // described as relationship, similarity, or relevance links (R-1.6), per the
 // honesty doctrine in docs/ears/explainable-search-web-ui.md R-4.4.
 
-import { useMemo } from 'preact/hooks';
+import { useCallback, useMemo, useState } from 'preact/hooks';
 import { buildSourceTree } from './sourceTree.js';
 // Shared, not re-derived here. Tags arrive as a string on the AI path
 // (cli/db/query.go:24) and as "" or "[a, b, c]" from the graph DB, so a second
@@ -34,6 +34,46 @@ const FLAT_NOTE =
 // legitimately differ and the header has to say which one this is.
 function scopeNote(total) {
   return `Covers all ${total} retrieved ${total === 1 ? 'source' : 'sources'}, not the filtered view.`;
+}
+
+// Branch expansion is held as the set of COLLAPSED keys, not expanded ones (R-4.5,
+// D6). Every branch defaults open, and a branch that first appears mid-stream is
+// absent from the set, so it opens without anyone having to remember to add it.
+//
+// `rows` is the `sources` array as it stood when the user last collapsed something
+// — see `sameRun` for what it is for.
+const NOTHING_COLLAPSED = { rows: [], keys: new Set() };
+
+// Is `rows` the same run's `sources` array, grown, as `prevRows` was?
+//
+// Within a run `sources` only ever grows and REUSES its existing row objects:
+// `mergeSources` slices the previous array and pushes only the rows it has not
+// seen (app.jsx:60-70), and the handler accumulates one event per searched repo
+// (app.jsx:257-258, LLD constraint 4). So an unchanged object-identity prefix means
+// "same run, more rows" and the user's collapse still refers to this tree.
+//
+// Every other writer of `sources` replaces it outright with freshly built rows: a
+// new run clears it (`setSources([])`, app.jsx:304) and a restored run rebuilds it
+// (`setSources(mergeSources([], run.sources))`, app.jsx:629) — both mint new
+// objects via `{ ...r, tags }` (app.jsx:67). The prefix check therefore fails and
+// the tree comes back fully expanded (R-4.3, R-4.4, R-4.5).
+//
+// Identity rather than `sourceKey` on purpose. Re-running the same query returns
+// the same DOCUMENTS under the same branch keys — nothing about the tree's shape
+// says "new run" — but never the same objects. Comparing keys would resurrect the
+// previous run's collapse there; comparing references cannot.
+function sameRun(prevRows, rows) {
+  if (rows.length < prevRows.length) return false;
+  for (let i = 0; i < prevRows.length; i++) {
+    if (prevRows[i] !== rows[i]) return false;
+  }
+  return true;
+}
+
+// The collapsed keys that still apply to `rows`, or none. Skips the prefix walk
+// entirely on the common path, where the user has collapsed nothing.
+function collapsedFor(state, rows) {
+  return state.keys.size > 0 && sameRun(state.rows, rows) ? state.keys : NOTHING_COLLAPSED.keys;
 }
 
 function Leaf({ row, onSelect }) {
@@ -90,37 +130,63 @@ function Leaves({ rows, onSelect }) {
   return rows.map((row) => <Leaf row={row} onSelect={onSelect} key={sourceKey(row)} />);
 }
 
-function ProjectBranch({ branch, onSelect }) {
+// One branch row, for both levels. Native <details>/<summary> (R-5.2) — keyboard
+// operation and the roles assistive technology reads come from the elements, so no
+// disclosure widget is hand-rolled here. Only `open` changes hands.
+function Branch({ branch, collapsed, onToggle, children }) {
   return (
     <li class="source-map-branch" data-testid={`branch-${branch.name}`}>
-      <details open>
-        <summary class="source-map-summary">
+      {/* `open` is driven from state, and the summary's default action is
+          CANCELLED so the browser never writes `open` itself (R-4.2a, D5). That
+          leaves exactly one writer: without it, `<details>` would flip `open` on
+          its own and Preact — which diffs props against the PREVIOUS vnode, not
+          against the DOM — would skip re-asserting a value it believes unchanged,
+          leaving the element open while state says collapsed.
+
+          Cancelling covers the keyboard too: activating a focused <summary> with
+          Enter or Space dispatches this same click event. */}
+      <details open={!collapsed}>
+        <summary
+          class="source-map-summary"
+          onClick={(e) => {
+            e.preventDefault();
+            onToggle(branch.key);
+          }}
+        >
           <span class="source-map-branch-name">{branch.name}</span>
           <span class="source-map-count">{branch.count}</span>
         </summary>
-        <ul class="source-map-leaves">
-          <Leaves rows={branch.sources} onSelect={onSelect} />
-        </ul>
+        {children}
       </details>
     </li>
   );
 }
 
-function RepoBranch({ branch, onSelect }) {
+function ProjectBranch({ branch, collapsed, onToggle, onSelect }) {
   return (
-    <li class="source-map-branch" data-testid={`branch-${branch.name}`}>
-      <details open>
-        <summary class="source-map-summary">
-          <span class="source-map-branch-name">{branch.name}</span>
-          <span class="source-map-count">{branch.count}</span>
-        </summary>
-        <ul class="source-map-branches">
-          {branch.projects.map((project) => (
-            <ProjectBranch branch={project} onSelect={onSelect} key={project.key} />
-          ))}
-        </ul>
-      </details>
-    </li>
+    <Branch branch={branch} collapsed={collapsed.has(branch.key)} onToggle={onToggle}>
+      <ul class="source-map-leaves">
+        <Leaves rows={branch.sources} onSelect={onSelect} />
+      </ul>
+    </Branch>
+  );
+}
+
+function RepoBranch({ branch, collapsed, onToggle, onSelect }) {
+  return (
+    <Branch branch={branch} collapsed={collapsed.has(branch.key)} onToggle={onToggle}>
+      <ul class="source-map-branches">
+        {branch.projects.map((project) => (
+          <ProjectBranch
+            branch={project}
+            collapsed={collapsed}
+            onToggle={onToggle}
+            onSelect={onSelect}
+            key={project.key}
+          />
+        ))}
+      </ul>
+    </Branch>
   );
 }
 
@@ -136,8 +202,31 @@ function RepoBranch({ branch, onSelect }) {
  * lands the user on the same detail block its result card would (R-3.3).
  */
 export function SourceMap({ sources = [], active = false, onSelectSource }) {
-  // Gated inside the memo, so an inactive pane performs no grouping at all.
+  // Gated inside the memo, so an inactive pane performs no grouping at all. The
+  // dependency on `sources` is what satisfies R-4.1: a run merges rows in batches
+  // (LLD constraint 4), each merge hands down a new array, and the tree rebuilds.
   const tree = useMemo(() => (active ? buildSourceTree(sources) : null), [active, sources]);
+
+  // R-4.2a/D5: expansion lives here rather than in the DOM, because R-2.6 orders
+  // branches by descending count and counts change as rows stream in — so branches
+  // re-order mid-run, and a tree that gains a second repo re-nests them entirely.
+  // Keyed by `branch.key`, which is derived from repo and project names and never
+  // from position (R-2.6a, sourceTree.js:33-35).
+  const [collapsedState, setCollapsedState] = useState(NOTHING_COLLAPSED);
+  const collapsed = collapsedFor(collapsedState, sources);
+
+  // Re-derived inside the updater rather than closed over, so a toggle can never
+  // extend a set that belongs to a run already gone.
+  const onToggle = useCallback(
+    (key) => {
+      setCollapsedState((prev) => {
+        const keys = new Set(collapsedFor(prev, sources));
+        if (!keys.delete(key)) keys.add(key);
+        return { rows: sources, keys };
+      });
+    },
+    [sources],
+  );
 
   if (!active) return null;
 
@@ -166,10 +255,22 @@ export function SourceMap({ sources = [], active = false, onSelectSource }) {
         <ul class="source-map-branches source-map-root" data-testid="source-tree">
           {tree.repoName === null
             ? tree.branches.map((repo) => (
-                <RepoBranch branch={repo} onSelect={onSelectSource} key={repo.key} />
+                <RepoBranch
+                  branch={repo}
+                  collapsed={collapsed}
+                  onToggle={onToggle}
+                  onSelect={onSelectSource}
+                  key={repo.key}
+                />
               ))
             : tree.branches.map((project) => (
-                <ProjectBranch branch={project} onSelect={onSelectSource} key={project.key} />
+                <ProjectBranch
+                  branch={project}
+                  collapsed={collapsed}
+                  onToggle={onToggle}
+                  onSelect={onSelectSource}
+                  key={project.key}
+                />
               ))}
         </ul>
       )}

@@ -155,13 +155,51 @@ present, projects become the top level and the repo is named in the pane header 
 `<details>`/`<summary>` brings keyboard operation and correct assistive-technology roles for free, so
 it stays.
 
-Its open state, however, does **not** stay browser-owned. R-2.6 orders branches by descending count,
-and counts change as `sources` events stream in — so branches re-order mid-run. DOM-owned disclosure
-state cannot be relied on to follow a branch through a re-order. Expansion is therefore held in
-component state as a set of collapsed branch keys (R-4.2a), and branches are keyed by
-`repo + project` identity, never by index (R-2.6a).
+Its open state, however, does **not** stay browser-owned. Expansion is held in component state as a
+set of collapsed branch keys (R-4.2a), and branches are keyed by `repo + project` identity, never by
+index (R-2.6a).
 
-This is roughly five lines more than the naive version and removes an entire class of
+**Correcting this decision's original reasoning** — 2026-07-27, measured while implementing Unit 4.
+This decision first argued that because R-2.6 re-orders branches by descending count as rows stream
+in, DOM-owned disclosure state could not be relied on to follow a branch through a re-order. That
+premise is **wrong**, and it was tested rather than argued: with browser-owned `open`, a pure
+re-order preserves the collapse correctly, because branches are keyed and Preact moves the same
+`<details>` element — carrying its DOM state — to the branch's new position.
+
+The conclusion survives on two different grounds, both verified by reverting to browser-owned `open`
+and watching the relevant tests fail:
+
+1. **Re-shaping, not re-ordering.** When a second repo arrives mid-run, the repo level stops being
+   elided (D4) and every project branch is re-parented. Its element is torn down and rebuilt, so
+   DOM-owned `open` is lost. Component state survives because the project key is identical either way.
+2. **The visibility gate unmounts.** R-1.3 returns early while the pane is inactive, so switching to
+   another inspector tab and back destroys the subtree along with any DOM-owned state.
+
+Both are ordinary events in a normal run, so expansion still belongs in component state — but for
+these reasons, not the re-ordering one.
+
+A set of **collapsed** keys rather than expanded ones, because R-4.5/D6 default every branch open: a
+branch appearing mid-stream is absent from the set and opens with no one having to add it.
+
+**How `open` is controlled** — added 2026-07-27 while implementing Unit 4. `<details>` normally writes
+its own `open`, which would make the browser a second writer alongside component state. Preact diffs
+props against the previous **vnode**, not against the DOM, so once the two disagree Preact skips
+re-asserting a value it believes unchanged and the disagreement sticks. The summary's default action is
+therefore cancelled — `onClick` calls `preventDefault()` — leaving state the sole writer. Cancelling
+covers the keyboard too: activating a focused `<summary>` with Enter or Space dispatches the same click
+event, so the element stays keyboard-operable and R-5.2's assistive-technology roles are untouched.
+
+The one path left where the DOM can change `open` without a cancellable click is a browser
+auto-expanding a `<details>` to reveal a find-in-page match. Accepted: it leaves a branch visibly open
+that state records as collapsed until the user next toggles it, which is the behaviour the user asked
+for by searching inside it. No data is wrong, so it is not reconciled.
+
+Two consequences for the stylesheet. Setting `display: flex` on `<summary>` removes its default
+`list-item` display and with it the browser's disclosure triangle — invisible while every branch was
+permanently open, but the only affordance for collapsing once collapsing works, so the caret is drawn
+by hand in `SourceMap.css`.
+
+This is roughly fifteen lines more than the naive version and removes an entire class of
 "my tree collapsed itself while I was reading it" bug.
 
 ### D6 — Default every branch expanded
@@ -227,6 +265,44 @@ Components need both, and importing them from `app.jsx` made a component depend 
 renders it — a cycle that resolved only because both were hoisted function declarations, and that
 pulled `app.jsx`'s whole dependency graph into every component test. `app.jsx` re-exports them so
 existing importers are unaffected.
+
+### D11 — A run boundary is detected from row-object identity, not from an empty step
+
+Decided 2026-07-27, while implementing Unit 4 (story 4.3).
+
+Holding expansion in component state (D5) creates a state that has to be discarded at a run boundary,
+and the obvious trigger — "reset when `sources` goes empty" — does not fire on the path that needs it
+most. A new run does pass through empty (`setSources([])`, `app.jsx:304`), but `restoreRun` replaces
+`sources` outright, non-empty straight to non-empty (`setSources(mergeSources([], run.sources))`,
+`app.jsx:629`). Restoring run A after run B therefore never sees an empty step, and A and B share
+branch keys whenever they share repos and project folders — which is the normal case — so A would
+render collapsed because of something the user did in B, in violation of R-4.4 and R-4.5.
+
+Pruning the collapsed set to keys present in the current tree has the same hole: shared keys survive
+the prune.
+
+The signal used instead is **row-object identity**. Within a run `sources` only grows and reuses its
+existing row objects — `mergeSources` slices the previous array and pushes only unseen rows
+(`app.jsx:60-70`, constraint 4). Every wholesale replacement mints new objects via `{ ...r, tags }`
+(`app.jsx:67`). So the component stores, alongside the collapsed keys, the `sources` array as it stood
+when the user last collapsed something; if the current array still starts with those same objects **by
+reference**, the collapse still belongs to this tree, otherwise it is ignored and every branch renders
+open.
+
+Identity rather than `sourceKey`: re-running the same query returns the same documents under the same
+branch keys, so nothing about the tree's shape says "new run" — but the row objects are always new.
+
+All four run transitions are covered — live→live, live→restore, restore→restore, restore→live — as is
+a boundary crossed while the user is on another inspector tab, because the check reads the `sources`
+prop rather than an event. What it does **not** cover is a future writer of `sources` that replaces the
+array while reusing the previous row objects; there is no such writer today (the three are enumerated
+above), and one would read as a continuation of the same run.
+
+Chosen over passing a run-sequence counter down from `app.jsx`. That would be more explicit, but it
+contradicts this document's own "No new event, endpoint, or state variable is introduced" and adds
+app-shell state to solve a problem the component can see for itself.
+
+Not persisted across runs or reloads — see Out of Scope.
 
 ## Out of Scope
 

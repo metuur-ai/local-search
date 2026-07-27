@@ -55,7 +55,31 @@
   background: var(--surface-mut);
 }
 
+/* `display: flex` above drops <summary>'s default `list-item` display, and with it
+   the browser's disclosure triangle. That was invisible while every branch was
+   permanently open; now that branches actually collapse (R-4.2), the caret is the
+   only thing telling the user a branch can be opened, so it is drawn by hand. */
+.source-map-summary::before {
+  content: '';
+  flex: none;
+  width: 0.3rem;
+  height: 0.3rem;
+  border-right: 1.5px solid var(--ink-400);
+  border-bottom: 1.5px solid var(--ink-400);
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+
+details[open] > .source-map-summary::before {
+  transform: rotate(45deg);
+}
+
+/* Absorbs the free space so the caret stays next to the name and the count keeps
+   the trailing edge — the summary's `space-between` would otherwise spread all
+   three apart. `min-width: 0` is what lets a flex item ellipsize. */
 .source-map-branch-name {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

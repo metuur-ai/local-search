@@ -198,13 +198,13 @@ the code it governs can be written. Each is a five-minute decision, not a work i
 
 ## Unit 4: Streaming behavior
 
-- [ ] 4.1 Rebuild on streamed rows (deps: 1.1, 2.1, est: ~20m)
+- [x] 4.1 Rebuild on streamed rows (deps: 1.1, 2.1, est: ~20m)
   - why: `sources` events accumulate over a run rather than arriving once, so a tree built only at
     the end would sit empty during the part of the run the user is actually watching.
   - acceptance: R-4.1 — the tree rebuilds as rows merge in and reflects everything retrieved so far.
   - verify: Watch the pane during a live multi-repo run; branches and counts grow.
 
-- [ ] 4.2 Component-owned expansion state (deps: 2.2, 4.1, est: ~30m)
+- [x] 4.2 Component-owned expansion state (deps: 2.2, 4.1, est: ~30m)
   - why: Branch order changes as counts change, and browser-owned disclosure state cannot be relied
     on to follow a branch through a reorder. This is the fix for the contradiction the pre-mortem
     found between R-2.6 and the original R-4.2.
@@ -215,7 +215,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
   - verify: Collapse a branch mid-run; as further rows arrive and reorder the branches, it stays
     collapsed and no sibling collapses with it.
 
-- [ ] 4.3 Run boundaries and history restore (deps: 4.1, est: ~20m)
+- [x] 4.3 Run boundaries and history restore (deps: 4.1, est: ~20m)
   - why: A tree carrying branches from the previous question is actively misleading, and restored
     runs are a first-class path in this UI, not an edge case.
   - acceptance:
@@ -224,7 +224,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
   - verify: Run query A, run query B, confirm no A branches remain; restore A from history and
     confirm its tree matches what it showed live.
 
-- [ ] 4.4 Default expanded (deps: 4.2, est: ~10m)
+- [x] 4.4 Default expanded (deps: 4.2, est: ~10m)
   - why: At a median of ~7 groups and ~28 leaves the whole tree fits on screen. Starting collapsed
     would hide the very skew the pane exists to reveal.
   - acceptance: R-4.5 — every branch renders expanded by default.
@@ -232,7 +232,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
 
 ## Unit 5: Dependency and footprint
 
-- [ ] 5.1 Confirm zero new dependencies and no contract change (deps: 1.1, est: ~15m)
+- [x] 5.1 Confirm zero new dependencies and no contract change (deps: 1.1, est: ~15m)
   - why: The pane is justified by being nearly free. A dependency added here would have to be earned
     by observed use, and a backend change would break the "purely additive" premise the whole plan
     rests on.
