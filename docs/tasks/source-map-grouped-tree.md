@@ -19,7 +19,7 @@ Verification commands used throughout:
 These three were flagged as risks and accepted at the spec gate, but each still needs a call before
 the code it governs can be written. Each is a five-minute decision, not a work item.
 
-- [ ] 0.1 Decide whether branch counts ignore or reflect the active filter (est: ~10m)
+- [x] 0.1 Decide whether branch counts ignore or reflect the active filter (est: ~10m)
   - why: The pane's whole value is counts the user trusts. With a tag or file-type filter active,
     the left console shows `filteredSources` (`app.jsx:542-543`) while `SourcesPanel` and `topTags`
     use unfiltered `sources`. A tree saying 28 beside a list showing 6 destroys the pane's only
@@ -29,8 +29,10 @@ the code it governs can be written. Each is a five-minute decision, not a work i
     reflects the active filter and says so. Not left implicit.
   - verify: `docs/lld/source-map-grouped-tree.md` contains the decision and its rationale; the chosen
     behaviour is expressible as a check in 2.5.
+  - **DECIDED 2026-07-27:** counts cover all retrieved sources, consistent with `SourcesPanel` and
+    `topTags`; the header names that scope. Recorded as LLD D8 and EARS R-2.12.
 
-- [ ] 0.2 Decide the degenerate-tree fallback (est: ~10m)
+- [x] 0.2 Decide the degenerate-tree fallback (est: ~10m)
   - why: The grouping axis was chosen on one machine, where every registered repo points at a
     `docs/` directory so the first path segment is the doc type. A repo registered at its root yields
     `src`/`docs`/`tests` — possibly two groups — and the tree becomes a flat list with boxes drawn
@@ -40,8 +42,10 @@ the code it governs can be written. Each is a five-minute decision, not a work i
     and expressed as a new EARS requirement under Unit 2.
   - verify: The new requirement exists in `docs/ears/source-map-grouped-tree.md` and is covered by a
     test in 2.6.
+  - **DECIDED 2026-07-27:** below 2 derived groups the pane drops the branch chrome, renders a plain
+    list, and says there was nothing to group by. Recorded as LLD D9 and EARS R-2.11.
 
-- [ ] 0.3 Decide whether to disambiguate the Neighborhood Map header (est: ~10m)
+- [x] 0.3 Decide whether to disambiguate the Neighborhood Map header (est: ~10m)
   - why: Two panes will be named "…Map". R-1.6 makes Source Map state its own claim, but the user
     still has to guess which tab answers their question — the exact objection recorded on
     2026-07-24. One line of copy on the Neighborhood Map header resolves it, and the HLD currently
@@ -50,6 +54,8 @@ the code it governs can be written. Each is a five-minute decision, not a work i
     Neighborhood Map, or the decision to leave it alone is recorded with its rationale.
   - verify: `docs/hld/source-map-grouped-tree.md` reflects the decision; if permitted, 1.5 is
     in scope, otherwise 1.5 is struck.
+  - **DECIDED 2026-07-27:** the HLD non-goal is amended to permit a header-copy-only change to the
+    Neighborhood Map. Story 1.5 is IN SCOPE.
 
 ## Unit 2: Tree derivation
 
@@ -145,8 +151,8 @@ the code it governs can be written. Each is a five-minute decision, not a work i
   - verify: Read the rendered header; it names grouping, not relationship.
 
 - [ ] 1.5 Disambiguate the Neighborhood Map header (deps: 0.3, est: ~10m)
-  - why: Resolves the two-"Map"-tabs confusion at its source. **Conditional — in scope only if 0.3
-    amended the HLD non-goal; otherwise strike this story.**
+  - why: Resolves the two-"Map"-tabs confusion at its source. In scope — 0.3 amended the HLD
+    non-goal on 2026-07-27 to permit a header-copy-only change.
   - acceptance: The Neighborhood Map header states its own claim in one line, distinct from the
     Source Map's.
   - verify: Both headers read side by side make it obvious which tab answers which question.

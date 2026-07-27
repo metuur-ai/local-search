@@ -172,6 +172,39 @@ A count answers "is the mix defensible". A bar would add a second encoding of th
 out deliberately; the `tag-rank-bar` pattern (`app.css:1038-1043`) remains available if counts alone
 prove insufficient in use.
 
+### D8 — Branch counts cover all retrieved sources, not the filtered subset
+
+Decided 2026-07-27, closing pre-mortem risk 3.
+
+With a tag or file-type filter active the left console renders `filteredSources` (`app.jsx:542-543`)
+while `SourcesPanel` and `topTags` read unfiltered `sources`. The tree joins the latter group: it is
+built from the full `sources` array, and its header names that set explicitly ("all N retrieved") so
+a tree reading 28 beside a list reading 6 is legible rather than alarming.
+
+Two reasons. The pane answers "is the retrieval mix defensible" — a question about what the search
+retrieved, not about what the user is currently narrowing to. And it sits beside two panes that
+already count unfiltered; a third convention in the same inspector would be the confusing choice.
+
+The cost accepted: the tree does not agree with the left console under an active filter. Mitigated by
+the header stating its scope rather than leaving the user to infer it.
+
+### D9 — Below 2 groups, drop the branch chrome and say why
+
+Decided 2026-07-27, closing pre-mortem risk 4.
+
+The grouping axis was chosen against corpora whose registered roots point at a `docs/` directory, so
+the first path segment is the doc type. A repo registered at its root instead yields `src`/`docs`/
+`tests` — sometimes one usable group — and a one-branch tree is exactly the "flat list with boxes
+drawn around it" the HLD's success criterion 2 warns about.
+
+So below 2 derived groups the pane renders a plain ranked list with no disclosure elements, and a
+header line saying there was nothing to group by. It degrades into something honest rather than
+performing structure it does not have.
+
+Rejected: falling back to `kindFromPath` as a second axis. It would recover structure in root-
+registered repos, but it contradicts R-2.2, and maintaining two grouping axes for a pane whose kill
+signal is "did this change a decision" is more machinery than the question warrants.
+
 ## Out of Scope
 
 - Mind-mapping the AI answer markdown
