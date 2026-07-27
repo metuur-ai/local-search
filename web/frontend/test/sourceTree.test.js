@@ -50,6 +50,24 @@ describe('buildSourceTree — grouping (R-2.1)', () => {
     const allKeys = tree.branches.flatMap((r) => [r.key, ...r.projects.map((p) => p.key)]);
     expect(new Set(allKeys).size).toBe(allKeys.length);
   });
+
+  it('keys a project by its repo too, so same-named projects never collide', () => {
+    // FIXTURE's projects happen to be disjoint across its two repos, so the
+    // uniqueness check above passes even if the key omitted the repo entirely.
+    // Two repos both containing `hld` is the case that actually matters: a shared
+    // key would make collapsing one branch collapse the other (R-2.6a).
+    const tree = buildSourceTree([
+      { repo: 'alpha', project: 'hld', name: 'a.md' },
+      { repo: 'beta', project: 'hld', name: 'b.md' },
+    ]);
+
+    const alpha = projectNamed(repoNamed(tree, 'alpha'), 'hld');
+    const beta = projectNamed(repoNamed(tree, 'beta'), 'hld');
+
+    expect(alpha.key).not.toBe(beta.key);
+    expect(alpha.key).toContain('alpha');
+    expect(beta.key).toContain('beta');
+  });
 });
 
 describe('buildSourceTree — ordering (R-2.6, R-2.7)', () => {
