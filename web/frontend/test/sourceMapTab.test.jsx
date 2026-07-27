@@ -130,3 +130,140 @@ describe('Neighborhood Map disambiguation (story 1.5)', () => {
     expect(contrast.textContent).toMatch(/source map/i);
   });
 });
+
+// ---------------------------------------------------------------- Unit 3 wiring
+//
+// Getting real sources into <App /> without a live SSE stream: restore a run from
+// history. `onRestore` feeds `run.sources` through the same `mergeSources` a live
+// run uses (app.jsx:629), so this is the R-4.4 path, not a test-only shortcut.
+
+const HISTORY_KEY = 'local-search:history:v1';
+
+const MOBILE = {
+  repo: 'foyer-platform',
+  project: 'hld',
+  name: 'mobile.md',
+  path: 'hld/mobile.md',
+  fullpath: '/r/hld/mobile.md',
+  tags: ['mobile'],
+};
+const BILLING = {
+  repo: 'foyer-platform',
+  project: 'lld',
+  name: 'billing.md',
+  path: 'lld/billing.md',
+  fullpath: '/r/lld/billing.md',
+  tags: ['billing'],
+};
+
+// Seed history, mount, and reopen the run so `sources` is populated.
+function renderWithRestoredRun(sources) {
+  localStorage.setItem(
+    HISTORY_KEY,
+    JSON.stringify([
+      { id: 'run-1', ts: Date.now(), query: 'care rules', repos: ['foyer-platform'], answerMarkdown: '', sources, provenance: {}, graph: null },
+    ]),
+  );
+  const rendered = render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /recent searches/i }));
+  fireEvent.click(rendered.container.querySelector('.history-item'));
+  return rendered;
+}
+
+// The Source Map leaf whose label matches `text`.
+const leafFor = (text) =>
+  screen
+    .getAllByTestId('source-map-leaf')
+    .find((li) => li.textContent.includes(text))
+    .querySelector('[data-testid="source-map-leaf-activate"]');
+
+// Narrow the console with a tag facet. Scoped to the ribbon: the Top Tags pane
+// renders a button per tag too, so an unscoped role query is ambiguous.
+const filterByTag = (container, tag) =>
+  fireEvent.click(
+    within(container.querySelector('.tag-ribbon')).getByRole('button', { name: new RegExp(`#${tag}\\b`) }),
+  );
+
+// The document the detail block is currently pointed at.
+const detailPath = (container) =>
+  container.querySelector('.source-detail .source-detail-path span')?.textContent ?? null;
+
+describe('Source Map leaf activation (R-3.3)', () => {
+  afterEach(() => localStorage.clear());
+
+  it('selects the source and switches to Sources & Provenance', () => {
+    const { container } = renderWithRestoredRun([MOBILE, BILLING]);
+    fireEvent.click(tab(container, /^source map$/i));
+
+    fireEvent.click(leafFor('billing.md'));
+
+    expect(screen.getByTestId('region-sources').hidden).toBe(false);
+    expect(screen.getByTestId('region-source-map').hidden).toBe(true);
+    expect(detailPath(container)).toBe('lld/billing.md');
+  });
+});
+
+describe('identity-based source selection (R-3.6)', () => {
+  afterEach(() => localStorage.clear());
+
+  it('opens the document the leaf names even with a filter narrowing the console', () => {
+    // The defect this closes: `activeSourceIdx` was a POSITIONAL index resolved
+    // against `filteredSources`, but D8 builds the Source Map from UNFILTERED
+    // `sources`. With #mobile active, filteredSources is [MOBILE] — so a leaf
+    // reporting position 1 (billing) resolved to nothing at all.
+    const { container } = renderWithRestoredRun([MOBILE, BILLING]);
+    filterByTag(container, 'mobile');
+    fireEvent.click(tab(container, /^source map$/i));
+
+    fireEvent.click(leafFor('billing.md'));
+
+    expect(detailPath(container)).toBe('lld/billing.md');
+  });
+
+  it('keeps a selected result card pointed at its own document when the filter changes', () => {
+    // Same defect on the result cards themselves: selecting position 1 of an
+    // unfiltered list and then filtering re-pointed the detail block at whatever
+    // row happened to land at position 1 next.
+    const { container } = renderWithRestoredRun([MOBILE, BILLING]);
+    fireEvent.click(container.querySelectorAll('.result-card')[1]);
+    expect(detailPath(container)).toBe('lld/billing.md');
+
+    filterByTag(container, 'billing');
+
+    expect(detailPath(container)).toBe('lld/billing.md');
+  });
+});
+
+describe('result-card selection is unchanged (R-1.7)', () => {
+  afterEach(() => localStorage.clear());
+
+  it('marks the clicked card active, opens Sources, and shows its detail block', () => {
+    const { container } = renderWithRestoredRun([MOBILE, BILLING]);
+    const cards = () => [...container.querySelectorAll('.result-card')];
+
+    fireEvent.click(cards()[1]);
+
+    expect(screen.getByTestId('region-sources').hidden).toBe(false);
+    expect(cards()[1].className).toContain('is-active');
+    expect(cards()[0].className).not.toContain('is-active');
+    expect(detailPath(container)).toBe('lld/billing.md');
+
+    // And selection moves rather than accumulating.
+    fireEvent.click(cards()[0]);
+    expect(cards()[0].className).toContain('is-active');
+    expect(cards()[1].className).not.toContain('is-active');
+    expect(detailPath(container)).toBe('hld/mobile.md');
+  });
+
+  it('a leaf and its result card land on the same detail block', () => {
+    const { container } = renderWithRestoredRun([MOBILE, BILLING]);
+
+    fireEvent.click(container.querySelectorAll('.result-card')[1]);
+    const fromCard = detailPath(container);
+
+    fireEvent.click(tab(container, /^source map$/i));
+    fireEvent.click(leafFor('billing.md'));
+
+    expect(detailPath(container)).toBe(fromCard);
+  });
+});

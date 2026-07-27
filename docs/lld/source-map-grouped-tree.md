@@ -208,6 +208,26 @@ Rejected: falling back to `kindFromPath` as a second axis. It would recover stru
 registered repos, but it contradicts R-2.2, and maintaining two grouping axes for a pane whose kill
 signal is "did this change a decision" is more machinery than the question warrants.
 
+### D10 — Source selection moved from a positional index to an identity key
+
+Decided 2026-07-27, while implementing Unit 3. Selection was `activeSourceIdx`, a position resolved
+as `filteredSources[activeSourceIdx]`. D8 builds the Source Map from **unfiltered** `sources`, so a
+leaf's position is not its position in `filteredSources` — with a filter active a leaf would have
+opened a different document, or none at all. The same representation carried a pre-existing latent
+bug on the result cards: changing the filter after selecting silently re-pointed the detail block at
+whatever row landed on that index next. Selection is therefore held as `activeSourceKey`, a
+`sourceKey` (now in `src/sourceIdentity.js`, re-exported from `app.jsx`), and `activeSource` is looked
+up in `sources` by that key —
+the same identity `mergeSources` dedupes on, which is what R-3.6 asks for. Result-card behaviour is
+unchanged by construction: both surfaces call one `selectSource(row)` handler, so a leaf and its list
+row can no longer address different documents.
+
+`sourceKey` and `normalizeTags` moved out of `app.jsx` into `src/sourceIdentity.js` as part of this.
+Components need both, and importing them from `app.jsx` made a component depend on the app shell that
+renders it — a cycle that resolved only because both were hoisted function declarations, and that
+pulled `app.jsx`'s whole dependency graph into every component test. `app.jsx` re-exports them so
+existing importers are unaffected.
+
 ## Out of Scope
 
 - Mind-mapping the AI answer markdown

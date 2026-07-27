@@ -36,6 +36,10 @@ import { ReplyInput } from './components/ReplyInput.jsx';
 import { ElapsedTimer } from './components/ElapsedTimer.jsx';
 import { RankedSources } from './components/RankedSources.jsx';
 import { SourceMap } from './components/SourceMap.jsx';
+// Re-exported so existing importers of these two keep working; they live in their
+// own module so components can use them without importing the app shell back.
+export { sourceKey, normalizeTags } from './sourceIdentity.js';
+import { sourceKey, normalizeTags } from './sourceIdentity.js';
 import { RevealButton } from './components/RevealButton.jsx';
 import RetrievalPath from './components/RetrievalPath.jsx';
 
@@ -49,27 +53,6 @@ function extOf(path) {
 
 // A run searches each selected repo separately, so `sources`/`provenance`
 // arrive incrementally. Merge helpers keep the accumulated view stable.
-
-// Stable identity for a source row (fullpath is unique; fall back to repo/name).
-function sourceKey(s) {
-  return s?.fullpath || `${s?.repo ?? ''}/${s?.name ?? s?.path ?? ''}`;
-}
-
-// Normalize a source's `tags` to a string array. The graph-DB (no-AI) path emits
-// `tags` as a string — either "" or a bracketed list like "[a, b, c]" — while
-// consumers (facets, filters, render) all expect an array. Coerce here so the
-// whole app sees one shape.
-export function normalizeTags(tags) {
-  if (Array.isArray(tags)) return tags.filter((t) => t != null).map(String);
-  if (typeof tags === 'string') {
-    return tags
-      .replace(/^\[|\]$/g, '')
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
-  }
-  return [];
-}
 
 // Append new source rows, de-duplicating by identity (later repos don't clobber
 // earlier ones, and a re-emitted row is not duplicated). Tags are normalized to
@@ -172,7 +155,9 @@ export function App() {
   const [inspectorTab, setInspectorTab] = useState('ai');
   const [fileFilter, setFileFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
-  const [activeSourceIdx, setActiveSourceIdx] = useState(null);
+  // The selected source, held as its `sourceKey` rather than as a position. See
+  // the `activeSource` resolution below for why position was wrong.
+  const [activeSourceKey, setActiveSourceKey] = useState(null);
 
   // Last-5 completed runs, persisted in localStorage (client-side only).
   const [history, setHistory] = useState(() => loadHistory());
@@ -325,7 +310,7 @@ export function App() {
     setDone(false);
     setModel(null);
     setPhase('idle');
-    setActiveSourceIdx(null);
+    setActiveSourceKey(null);
   }, []);
 
   const onSubmit = useCallback(async () => {
@@ -556,8 +541,23 @@ export function App() {
     return items.length ? items.join(' → ') : 'None';
   })();
 
+  // Resolved by identity, against the UNFILTERED `sources`. This used to be a
+  // positional index into `filteredSources`, which broke two ways. The Source Map
+  // is built from unfiltered `sources` (D8), so a leaf's position is not its
+  // position in `filteredSources` — with a filter active a leaf would open a
+  // different document, or none. And changing the filter after selecting silently
+  // re-pointed this block at whatever row landed on that index next.
   const activeSource =
-    activeSourceIdx != null ? filteredSources[activeSourceIdx] : null;
+    activeSourceKey == null
+      ? null
+      : sources.find((s) => sourceKey(s) === activeSourceKey) ?? null;
+
+  // One selection path for the result cards and the Source Map leaves, so a leaf
+  // and its list row always land on the same detail block (R-3.3, R-3.6).
+  const selectSource = useCallback((row) => {
+    setActiveSourceKey(sourceKey(row));
+    setInspectorTab('sources');
+  }, []);
 
   // The Neighborhood Map uses the explicit `graph` event when Claude ran
   // `json related`; otherwise it falls back to a star synthesized from the
@@ -630,7 +630,7 @@ export function App() {
       setProvenance(run.provenance || {});
       setGraph(run.graph || null);
       setDone(true);
-      setActiveSourceIdx(null);
+      setActiveSourceKey(null);
       setStartedAt(null);
       setInspectorTab('ai');
       setShowHistory(false);
@@ -997,11 +997,8 @@ export function App() {
               filteredSources.map((src, i) => {
                 const label = src.title || src.name || '(untitled)';
                 const ext = extOf(src.path);
-                const isActive = i === activeSourceIdx;
-                const select = () => {
-                  setActiveSourceIdx(i);
-                  setInspectorTab('sources');
-                };
+                const isActive = sourceKey(src) === activeSourceKey;
+                const select = () => selectSource(src);
                 return (
                   // A div, not a button: the card nests its own reveal action and
                   // a button inside a button is invalid. role/tabIndex/onKeyDown
@@ -1261,7 +1258,11 @@ export function App() {
                 {sources.length} retrieved sources, not the filtered view (D8).
               </p>
             </div>
-            <SourceMap sources={sources} active={inspectorTab === 'sourcemap'} />
+            <SourceMap
+              sources={sources}
+              active={inspectorTab === 'sourcemap'}
+              onSelectSource={selectSource}
+            />
           </div>
 
           {/* Pane 5: top tags across the retrieved sources */}

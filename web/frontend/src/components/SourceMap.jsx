@@ -10,6 +10,13 @@
 
 import { useMemo } from 'preact/hooks';
 import { buildSourceTree } from './sourceTree.js';
+// Shared, not re-derived here. Tags arrive as a string on the AI path
+// (cli/db/query.go:24) and as "" or "[a, b, c]" from the graph DB, so a second
+// parser would eventually disagree with the one `mergeSources` uses; and
+// `sourceKey` is the identity `mergeSources` dedupes on, which is exactly the
+// identity a leaf must carry (R-3.2, R-3.6).
+import { normalizeTags, sourceKey } from '../sourceIdentity.js';
+import { RevealButton } from './RevealButton.jsx';
 import './SourceMap.css';
 
 // Header copy is a requirement, not decoration (R-1.6, R-2.12), so it lives next
@@ -29,16 +36,61 @@ function scopeNote(total) {
   return `Covers all ${total} retrieved ${total === 1 ? 'source' : 'sources'}, not the filtered view.`;
 }
 
-function Leaf({ row }) {
+function Leaf({ row, onSelect }) {
   const label = row.title || row.name || row.path || '(untitled)';
+  const tags = normalizeTags(row.tags);
+  const select = () => onSelect?.(row);
+
   return (
     <li class="source-map-leaf" data-testid="source-map-leaf">
-      <span class="source-map-leaf-label">{label}</span>
+      {/* The <li> stays a listitem and the activation target is an inner div, not
+          a <button>: the leaf nests its own reveal action, and a button inside a
+          button is invalid. role/tabIndex/onKeyDown restore what a <button> would
+          have given us — the same trade the result cards make (app.jsx:1027-1029).
+          RevealButton stops click propagation, so it can sit inside this row
+          without also selecting it (RevealButton.jsx:37-39). */}
+      <div
+        role="button"
+        tabIndex={0}
+        class="source-map-leaf-row"
+        data-testid="source-map-leaf-activate"
+        onClick={select}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            select();
+          }
+        }}
+      >
+        <span class="source-map-leaf-label" title={row.path || row.fullpath || label}>
+          {label}
+        </span>
+        {tags.length > 0 && (
+          <span class="source-map-leaf-tags">
+            {tags.map((t) => (
+              <span class="source-map-leaf-tag" data-testid="source-map-leaf-tag" key={t}>
+                #{t}
+              </span>
+            ))}
+          </span>
+        )}
+        {/* R-3.5: `json related` rows carry a synthetic `path` and an EMPTY
+            `fullpath` (cli/db/query.go:501-510), so both are handed over and the
+            server resolves whichever it got. RevealButton renders nothing at all
+            when neither is present, so no no-op control ships. */}
+        <RevealButton repo={row.repo} path={row.path} fullpath={row.fullpath} compact />
+      </div>
     </li>
   );
 }
 
-function ProjectBranch({ branch }) {
+// Leaves are keyed by `sourceKey`, the same identity `mergeSources` dedupes on
+// (R-3.6) — `name` alone collides across repos.
+function Leaves({ rows, onSelect }) {
+  return rows.map((row) => <Leaf row={row} onSelect={onSelect} key={sourceKey(row)} />);
+}
+
+function ProjectBranch({ branch, onSelect }) {
   return (
     <li class="source-map-branch" data-testid={`branch-${branch.name}`}>
       <details open>
@@ -47,16 +99,14 @@ function ProjectBranch({ branch }) {
           <span class="source-map-count">{branch.count}</span>
         </summary>
         <ul class="source-map-leaves">
-          {branch.sources.map((row) => (
-            <Leaf row={row} key={row.path || row.name} />
-          ))}
+          <Leaves rows={branch.sources} onSelect={onSelect} />
         </ul>
       </details>
     </li>
   );
 }
 
-function RepoBranch({ branch }) {
+function RepoBranch({ branch, onSelect }) {
   return (
     <li class="source-map-branch" data-testid={`branch-${branch.name}`}>
       <details open>
@@ -66,7 +116,7 @@ function RepoBranch({ branch }) {
         </summary>
         <ul class="source-map-branches">
           {branch.projects.map((project) => (
-            <ProjectBranch branch={project} key={project.key} />
+            <ProjectBranch branch={project} onSelect={onSelect} key={project.key} />
           ))}
         </ul>
       </details>
@@ -75,14 +125,17 @@ function RepoBranch({ branch }) {
 }
 
 /**
- * <SourceMap sources active />
+ * <SourceMap sources active onSelectSource />
  *
  * `active` is the selected-tab flag. Every inspector pane stays mounted and is
  * toggled by `hidden`, so without this gate the tree would rebuild on every
  * `sources` event of every run while the user reads another tab — the problem
  * documented at GraphView.jsx:170-174 (R-1.3).
+ *
+ * `onSelectSource(row)` is the app's shared source-selection handler, so a leaf
+ * lands the user on the same detail block its result card would (R-3.3).
  */
-export function SourceMap({ sources = [], active = false }) {
+export function SourceMap({ sources = [], active = false, onSelectSource }) {
   // Gated inside the memo, so an inactive pane performs no grouping at all.
   const tree = useMemo(() => (active ? buildSourceTree(sources) : null), [active, sources]);
 
@@ -107,15 +160,17 @@ export function SourceMap({ sources = [], active = false }) {
         // No disclosure elements at all — a lone <details> would be the "flat list
         // with boxes drawn around it" D9 refuses to ship.
         <ul class="source-map-leaves source-map-root" data-testid="source-list">
-          {tree.branches[0].sources.map((row) => (
-            <Leaf row={row} key={row.path || row.name} />
-          ))}
+          <Leaves rows={tree.branches[0].sources} onSelect={onSelectSource} />
         </ul>
       ) : (
         <ul class="source-map-branches source-map-root" data-testid="source-tree">
           {tree.repoName === null
-            ? tree.branches.map((repo) => <RepoBranch branch={repo} key={repo.key} />)
-            : tree.branches.map((project) => <ProjectBranch branch={project} key={project.key} />)}
+            ? tree.branches.map((repo) => (
+                <RepoBranch branch={repo} onSelect={onSelectSource} key={repo.key} />
+              ))
+            : tree.branches.map((project) => (
+                <ProjectBranch branch={project} onSelect={onSelectSource} key={project.key} />
+              ))}
         </ul>
       )}
     </div>

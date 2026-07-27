@@ -73,19 +73,57 @@
   color: var(--ink-500);
 }
 
-.source-map-leaf {
+/* The <li> stays a bare listitem; the row inside it is the activation target
+   (role="button"), so hover/focus affordances belong there. */
+.source-map-leaf-row {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.25rem 0.35rem;
   border-radius: 4px;
+  cursor: pointer;
   font-family: var(--font-sans);
   font-size: 0.78rem;
   color: var(--ink-600);
+}
+
+.source-map-leaf-row:hover {
+  background: var(--surface-mut);
+}
+
+.source-map-leaf-row:focus-visible {
+  outline: 2px solid var(--accent, currentColor);
+  outline-offset: 1px;
 }
 
 .source-map-leaf-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Tags take whatever the label leaves and shrink first — the document name is
+   what the user is scanning for. */
+.source-map-leaf-tags {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 0.25rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.source-map-leaf-tag {
+  flex: none;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--surface-mut);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  color: var(--ink-500);
+}
+
+/* The reveal control sits at the row's trailing edge, as on the result cards. */
+.source-map-leaf-row .reveal-btn {
+  flex: none;
+  margin-left: auto;
 }

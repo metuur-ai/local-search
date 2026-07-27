@@ -168,7 +168,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
 
 ## Unit 3: Leaf rendering and interaction
 
-- [ ] 3.1 Leaf label and tags (deps: 1.1, 2.1, est: ~25m)
+- [x] 3.1 Leaf label and tags (deps: 1.1, 2.1, est: ~25m)
   - why: The leaf is where the user goes from "the mix looks wrong" to "this specific document".
     Tags arrive as a string on this path, so they must go through the shared normalizer or they
     render as one long fake tag.
@@ -178,7 +178,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
   - verify: Fixture rows with a bare string, a bracketed string, and an array of tags all render as
     discrete tags; a row with no `title` shows its `name`.
 
-- [ ] 3.2 Leaf activation and identity (deps: 3.1, est: ~25m)
+- [x] 3.2 Leaf activation and identity (deps: 3.1, est: ~25m)
   - why: Users already learned this interaction from the result cards; a leaf that behaves
     differently is a second thing to learn for no gain.
   - acceptance:
@@ -186,7 +186,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
     - R-3.6 — leaves are identified by the same source-identity key used to dedupe the sources array.
   - verify: Click a leaf; the Sources tab opens with that document's detail block showing.
 
-- [ ] 3.3 Reveal control with fullpath fallback (deps: 3.1, est: ~20m)
+- [x] 3.3 Reveal control with fullpath fallback (deps: 3.1, est: ~20m)
   - why: `json related` rows carry a synthetic `path` and an empty `fullpath` (`cli/db/query.go:501-510`),
     and the prompt explicitly instructs Claude to run `json related` — so these rows will occur in
     real runs, and a reveal button that silently does nothing is worse than none.
