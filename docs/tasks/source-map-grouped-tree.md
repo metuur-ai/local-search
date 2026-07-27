@@ -243,12 +243,22 @@ the code it governs can be written. Each is a five-minute decision, not a work i
     `web/backend/`, `cli/`, and no change to `EVENT_TYPES` in `web/frontend/src/api.js`;
     `npm --workspace frontend run build` succeeds.
 
-- [ ] 5.2 Full regression pass (deps: all, est: ~20m)
+- [x] 5.2 Full regression pass (deps: all, est: ~20m)
   - why: The single largest risk of an additive change is that it quietly perturbs the four panes
     that already work.
   - acceptance: All existing frontend and backend tests pass; the other four panes are unchanged.
   - verify: `cd web && npm test`; then manually exercise AI Answer, Sources & Provenance,
     Neighborhood Map, and Top Tags on a real run.
+  - **DONE 2026-07-27, with one gap stated plainly.** `cd web && npm test` passes: backend 99/99,
+    frontend 199/199 across 20 files. All five tabs were driven in a real browser (Chrome DevTools
+    against the dev server): each reveals exactly one pane, each renders content, each shows the right
+    right-aligned label, and the console is free of errors and warnings.
+  - **NOT verified — needs an indexed corpus.** `~/.local-search/repos/` is empty on this machine, so
+    every run returns zero sources and no acceptance criterion that depends on real retrieved rows
+    could be exercised in a browser: branch counts against a real corpus, R-4.1 growth during a live
+    streaming run, R-4.3's run-A/run-B/restore-A cycle, and R-3.3/R-3.5 reveal on a leaf derived from
+    `json related`. All four are covered by unit and component tests over fixtures, which is not the
+    same as having been seen working. Register a repo and re-run this story to close the gap.
 
 ## Kill signal
 
