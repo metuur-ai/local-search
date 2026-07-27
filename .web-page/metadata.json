@@ -1,0 +1,6 @@
+{
+  "name": "Local Search & Knowledge Graph Guide",
+  "description": "An interactive tutorial and sandbox explaining Local Search, FTS5 BM25, 256-d vector hybrid search, and knowledge graph exploration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
