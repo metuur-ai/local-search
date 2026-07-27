@@ -51,6 +51,74 @@ describe('buildSourceTree — grouping (R-2.1)', () => {
   });
 });
 
+describe('buildSourceTree — ordering (R-2.6, R-2.7)', () => {
+  it('orders sibling branches by descending count', () => {
+    // The smallest branch is seen FIRST at every level, so insertion order is the
+    // exact opposite of the expected order — an unsorted implementation cannot pass.
+    const tree = buildSourceTree([
+      { repo: 'small', project: 'only' },
+      { repo: 'big', project: 'thin' },
+      { repo: 'big', project: 'fat' },
+      { repo: 'big', project: 'fat' },
+    ]);
+
+    expect(tree.repos.map((r) => [r.name, r.count])).toEqual([
+      ['big', 3],
+      ['small', 1],
+    ]);
+    expect(repoNamed(tree, 'big').projects.map((p) => [p.name, p.count])).toEqual([
+      ['fat', 2],
+      ['thin', 1],
+    ]);
+  });
+
+  it('breaks count ties alphabetically by branch name', () => {
+    // Three repos of one row each, fed in reverse-alphabetical order so an
+    // insertion-order implementation cannot pass.
+    const tree = buildSourceTree([
+      { repo: 'zeta', project: 'p' },
+      { repo: 'mid', project: 'p' },
+      { repo: 'alpha', project: 'p' },
+    ]);
+
+    expect(tree.repos.map((r) => r.name)).toEqual(['alpha', 'mid', 'zeta']);
+  });
+
+  it('sorts leaves by relevance ascending, because relevance is negative BM25', () => {
+    const tree = buildSourceTree([
+      { repo: 'r', project: 'p', name: 'b.md', relevance: -2.1 },
+      { repo: 'r', project: 'p', name: 'a.md', relevance: -5.3 },
+      { repo: 'r', project: 'p', name: 'c.md', relevance: -3.8 },
+    ]);
+
+    expect(projectNamed(repoNamed(tree, 'r'), 'p').sources.map((s) => s.relevance)).toEqual([
+      -5.3, -3.8, -2.1,
+    ]);
+  });
+
+  it('keeps branch keys unchanged when a rebuild re-orders branches (R-2.6a)', () => {
+    // `local-search` starts behind, then overtakes as streamed rows arrive. Its
+    // key must not change with its new position, or the user's expansion state
+    // would follow a slot rather than a branch.
+    const early = buildSourceTree(FIXTURE);
+    const late = buildSourceTree([
+      ...FIXTURE,
+      { repo: 'local-search', project: 'ears', name: 'extra-a.md' },
+      { repo: 'local-search', project: 'ears', name: 'extra-b.md' },
+    ]);
+
+    expect(early.repos[0].name).toBe('foyer-platform');
+    expect(late.repos[0].name).toBe('local-search');
+
+    for (const name of ['foyer-platform', 'local-search']) {
+      expect(repoNamed(late, name).key).toBe(repoNamed(early, name).key);
+      expect(projectNamed(repoNamed(late, name), repoNamed(early, name).projects[0].name).key).toBe(
+        repoNamed(early, name).projects[0].key,
+      );
+    }
+  });
+});
+
 describe('buildSourceTree — counts (R-2.4, R-2.5)', () => {
   it('labels every branch with the number of documents beneath it', () => {
     const tree = buildSourceTree(FIXTURE);

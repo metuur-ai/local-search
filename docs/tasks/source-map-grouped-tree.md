@@ -66,7 +66,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
   - verify: New `web/frontend/test/sourceTree.test.js` asserts grouping and count-sum on a fixture
     spanning 2 repos and 4 projects; the module imports nothing from `preact`.
 
-- [ ] 2.2 Ordering and stable branch identity (deps: 2.1, est: ~25m)
+- [x] 2.2 Ordering and stable branch identity (deps: 2.1, est: ~25m)
   - why: Counts change as rows stream in, so branch order changes with them. Without identity-based
     keys the user's expansion state would follow a position rather than a branch — the defect the
     pre-mortem caught in the first draft of this spec.
