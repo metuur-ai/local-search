@@ -1228,10 +1228,19 @@ export function App() {
               <p>Retrieved sources are outlined; node size tracks relevance.</p>
               {/* Two tabs are named "…Map", so each states its own claim rather
                   than leaving the user to guess which answers their question
-                  (story 1.5; HLD non-goal amended 2026-07-27). */}
+                  (story 1.5; HLD non-goal amended 2026-07-27).
+
+                  Says nothing about what the EDGES mean, on purpose. This pane has
+                  two modes: with an explicit `graph` event from `json related` it
+                  does carry document-to-document links, but the fallback
+                  `graphFromSources` is a pure star of query→document links only
+                  (graphElements.js:74-96). Copy claiming the map "shows which
+                  documents relate to each other" — as this line first did — is
+                  false in the fallback mode, and is exactly the semantic overclaim
+                  the honesty doctrine forbids (constraint 7). */}
               <p class="graph-intro-contrast">
-                This map shows which documents relate to each other. For where the
-                results came from, see <strong>Source Map</strong>.
+                This map answers what your query pulled in, and how strongly. For
+                where those documents live on disk, see <strong>Source Map</strong>.
               </p>
             </div>
             <div class="graph-frame">
@@ -1253,10 +1262,9 @@ export function App() {
               <h3>
                 <i class="fa-solid fa-folder-tree" /> Source map
               </h3>
-              <p>
-                Where the retrieved documents came from. Counts cover all{' '}
-                {sources.length} retrieved sources, not the filtered view (D8).
-              </p>
+              {/* Deliberately does NOT repeat the counted scope — the pane's own
+                  header states it, and that is the tested copy (R-2.12). */}
+              <p>Where the retrieved documents came from.</p>
             </div>
             <SourceMap
               sources={sources}
