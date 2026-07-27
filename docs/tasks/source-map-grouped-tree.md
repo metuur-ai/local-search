@@ -78,7 +78,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
     unchanged when a rebuild reorders branches, and that a fixture with relevance
     `[-2.1, -5.3, -3.8]` orders as `[-5.3, -3.8, -2.1]`.
 
-- [ ] 2.3 Single-repo elision (deps: 2.1, est: ~20m)
+- [x] 2.3 Single-repo elision (deps: 2.1, est: ~20m)
   - why: Measured runs frequently return a single repo (all 28 sources from `foyer-platform`).
     A lone root branch wrapping everything costs a click and conveys nothing.
   - acceptance: R-2.3 — where exactly one distinct repo is present, the repo level is omitted,

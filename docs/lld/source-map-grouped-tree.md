@@ -26,6 +26,24 @@ repo            ← row.repo               (elided when only one distinct repo p
         └── tags ← normalizeTags(row.tags)
 ```
 
+### Builder contract
+
+`buildSourceTree(sources)` returns:
+
+```js
+{
+  total,     // number of rows grouped; equals the sum of top-level branch counts (R-2.5)
+  repoName,  // single repo's name when the repo level was elided, else null (R-2.3)
+  branches,  // repo branches (each with `projects`), or project branches (each with
+             // `sources`) when elided — `repoName` tells the caller which
+}
+```
+
+Every branch carries `{ key, name, count }`. `key` is `repo`+`project` joined by NUL and never
+encodes position, so streaming re-order cannot move one branch's expansion state onto another
+(R-2.6a) — and a project's key is identical whether or not the repo level was elided, so a run that
+gains a second repo mid-stream does not renumber branches under the user.
+
 ### Grouping axis — why `project`, not `kindFromPath`
 
 `kindFromPath` (`web/frontend/src/components/graphElements.js:46-56`) classifies by matching a

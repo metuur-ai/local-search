@@ -33,8 +33,12 @@ function byRelevance(a, b) {
   return av - bv;
 }
 
-// buildSourceTree(sources) → { total, repos: [{ key, name, count, projects:
-// [{ key, name, count, sources }] }] }
+// buildSourceTree(sources) → { total, repoName, branches }
+//
+//   repoName  the single repo's name when the repo level was elided, else null.
+//             The pane names it in the header instead of drawing a lone branch.
+//   branches  repo branches — each with `projects` — or, when elided, the project
+//             branches themselves, each with `sources`. `repoName` says which.
 //
 // Every branch carries the number of documents beneath it (R-2.4), and no row is
 // dropped, so top-level counts always sum to the total (R-2.5).
@@ -71,15 +75,25 @@ export function buildSourceTree(sources) {
     repo.count += 1;
   }
 
-  return {
-    total: [...repos.values()].reduce((n, repo) => n + repo.count, 0),
-    repos: [...repos.values()]
-      .map((repo) => ({
-        ...repo,
-        projects: [...repo.projects.values()]
-          .map((project) => ({ ...project, sources: project.sources.sort(byRelevance) }))
-          .sort(byCountThenName),
-      }))
-      .sort(byCountThenName),
-  };
+  const built = [...repos.values()]
+    .map((repo) => ({
+      ...repo,
+      projects: [...repo.projects.values()]
+        .map((project) => ({ ...project, sources: project.sources.sort(byRelevance) }))
+        .sort(byCountThenName),
+    }))
+    .sort(byCountThenName);
+
+  const total = built.reduce((n, repo) => n + repo.count, 0);
+
+  // Runs frequently return a single repo. A lone root branch wrapping everything
+  // costs a click and conveys nothing, so the repo level is dropped and its name
+  // moves to the pane header (R-2.3, D4). Project keys are unaffected — they
+  // already encode the repo — so a run that gains a second repo mid-stream does
+  // not renumber branches out from under the user.
+  if (built.length === 1) {
+    return { total, repoName: built[0].name, branches: built[0].projects };
+  }
+
+  return { total, repoName: null, branches: built };
 }

@@ -17,14 +17,15 @@ const FIXTURE = [
   { repo: 'local-search', project: 'tasks', name: 'scan-overhaul.md', relevance: -1.9 },
 ];
 
-const repoNamed = (tree, name) => tree.repos.find((r) => r.name === name);
-const projectNamed = (repo, name) => repo.projects.find((p) => p.name === name);
+const named = (branches, name) => branches.find((b) => b.name === name);
+const repoNamed = (tree, name) => named(tree.branches, name);
+const projectNamed = (repo, name) => named(repo.projects, name);
 
 describe('buildSourceTree — grouping (R-2.1)', () => {
   it('groups by repo at the top level and by project within each repo', () => {
     const tree = buildSourceTree(FIXTURE);
 
-    expect(tree.repos.map((r) => r.name).sort()).toEqual(['foyer-platform', 'local-search']);
+    expect(tree.branches.map((r) => r.name).sort()).toEqual(['foyer-platform', 'local-search']);
 
     expect(
       projectNamed(repoNamed(tree, 'foyer-platform'), 'hld').sources.map((s) => s.name),
@@ -46,7 +47,7 @@ describe('buildSourceTree — grouping (R-2.1)', () => {
     expect(keyOf(tree, 'foyer-platform', 'hld')).toBe(keyOf(reversed, 'foyer-platform', 'hld'));
     expect(repoNamed(tree, 'local-search').key).toBe(repoNamed(reversed, 'local-search').key);
 
-    const allKeys = tree.repos.flatMap((r) => [r.key, ...r.projects.map((p) => p.key)]);
+    const allKeys = tree.branches.flatMap((r) => [r.key, ...r.projects.map((p) => p.key)]);
     expect(new Set(allKeys).size).toBe(allKeys.length);
   });
 });
@@ -62,7 +63,7 @@ describe('buildSourceTree — ordering (R-2.6, R-2.7)', () => {
       { repo: 'big', project: 'fat' },
     ]);
 
-    expect(tree.repos.map((r) => [r.name, r.count])).toEqual([
+    expect(tree.branches.map((r) => [r.name, r.count])).toEqual([
       ['big', 3],
       ['small', 1],
     ]);
@@ -81,7 +82,7 @@ describe('buildSourceTree — ordering (R-2.6, R-2.7)', () => {
       { repo: 'alpha', project: 'p' },
     ]);
 
-    expect(tree.repos.map((r) => r.name)).toEqual(['alpha', 'mid', 'zeta']);
+    expect(tree.branches.map((r) => r.name)).toEqual(['alpha', 'mid', 'zeta']);
   });
 
   it('sorts leaves by relevance ascending, because relevance is negative BM25', () => {
@@ -91,9 +92,7 @@ describe('buildSourceTree — ordering (R-2.6, R-2.7)', () => {
       { repo: 'r', project: 'p', name: 'c.md', relevance: -3.8 },
     ]);
 
-    expect(projectNamed(repoNamed(tree, 'r'), 'p').sources.map((s) => s.relevance)).toEqual([
-      -5.3, -3.8, -2.1,
-    ]);
+    expect(named(tree.branches, 'p').sources.map((s) => s.relevance)).toEqual([-5.3, -3.8, -2.1]);
   });
 
   it('keeps branch keys unchanged when a rebuild re-orders branches (R-2.6a)', () => {
@@ -107,8 +106,8 @@ describe('buildSourceTree — ordering (R-2.6, R-2.7)', () => {
       { repo: 'local-search', project: 'ears', name: 'extra-b.md' },
     ]);
 
-    expect(early.repos[0].name).toBe('foyer-platform');
-    expect(late.repos[0].name).toBe('local-search');
+    expect(early.branches[0].name).toBe('foyer-platform');
+    expect(late.branches[0].name).toBe('local-search');
 
     for (const name of ['foyer-platform', 'local-search']) {
       expect(repoNamed(late, name).key).toBe(repoNamed(early, name).key);
@@ -116,6 +115,45 @@ describe('buildSourceTree — ordering (R-2.6, R-2.7)', () => {
         repoNamed(early, name).projects[0].key,
       );
     }
+  });
+});
+
+describe('buildSourceTree — single-repo elision (R-2.3)', () => {
+  const SINGLE_REPO = FIXTURE.filter((s) => s.repo === 'foyer-platform');
+
+  it('omits the repo level and promotes projects when one repo is present', () => {
+    const tree = buildSourceTree(SINGLE_REPO);
+
+    expect(tree.repoName).toBe('foyer-platform');
+    expect(tree.branches.map((b) => b.name)).toEqual(['hld', 'lld']);
+    // Promoted branches are project branches — they carry leaves, not sub-branches.
+    expect(tree.branches.every((b) => Array.isArray(b.sources))).toBe(true);
+    expect(tree.branches.every((b) => b.projects === undefined)).toBe(true);
+  });
+
+  it('keeps the repo level and names no repo when more than one is present', () => {
+    const tree = buildSourceTree(FIXTURE);
+
+    expect(tree.repoName).toBe(null);
+    expect(tree.branches.every((b) => Array.isArray(b.projects))).toBe(true);
+  });
+
+  it('still sums promoted branch counts to the total', () => {
+    const tree = buildSourceTree(SINGLE_REPO);
+
+    expect(tree.total).toBe(SINGLE_REPO.length);
+    expect(tree.branches.reduce((n, b) => n + b.count, 0)).toBe(SINGLE_REPO.length);
+  });
+
+  it('keeps promoted branch keys identical to their un-elided form (R-2.6a)', () => {
+    // A run that starts single-repo and gains a second repo mid-stream must not
+    // renumber the first repo's project branches out from under the user.
+    const elided = buildSourceTree(SINGLE_REPO);
+    const full = buildSourceTree(FIXTURE);
+
+    expect(named(elided.branches, 'hld').key).toBe(
+      projectNamed(repoNamed(full, 'foyer-platform'), 'hld').key,
+    );
   });
 });
 
@@ -133,11 +171,11 @@ describe('buildSourceTree — counts (R-2.4, R-2.5)', () => {
     const tree = buildSourceTree(FIXTURE);
 
     expect(tree.total).toBe(FIXTURE.length);
-    expect(tree.repos.reduce((n, r) => n + r.count, 0)).toBe(FIXTURE.length);
+    expect(tree.branches.reduce((n, r) => n + r.count, 0)).toBe(FIXTURE.length);
   });
 
   it('keeps a repo count equal to the sum of its project counts', () => {
-    for (const repo of buildSourceTree(FIXTURE).repos) {
+    for (const repo of buildSourceTree(FIXTURE).branches) {
       expect(repo.projects.reduce((n, p) => n + p.count, 0)).toBe(repo.count);
     }
   });
@@ -146,7 +184,7 @@ describe('buildSourceTree — counts (R-2.4, R-2.5)', () => {
 describe('buildSourceTree — degenerate input', () => {
   it('returns an empty tree for no sources', () => {
     for (const input of [[], null, undefined]) {
-      expect(buildSourceTree(input)).toEqual({ total: 0, repos: [] });
+      expect(buildSourceTree(input)).toEqual({ total: 0, repoName: null, branches: [] });
     }
   });
 
@@ -154,7 +192,7 @@ describe('buildSourceTree — degenerate input', () => {
     const tree = buildSourceTree([FIXTURE[0], null, FIXTURE[1]]);
 
     expect(tree.total).toBe(2);
-    expect(tree.repos.reduce((n, r) => n + r.count, 0)).toBe(2);
+    expect(tree.branches.reduce((n, r) => n + r.count, 0)).toBe(2);
   });
 });
 
