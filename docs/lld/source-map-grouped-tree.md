@@ -36,6 +36,9 @@ repo            ← row.repo               (elided when only one distinct repo p
   repoName,  // single repo's name when the repo level was elided, else null (R-2.3)
   branches,  // repo branches (each with `projects`), or project branches (each with
              // `sources`) when elided — `repoName` tells the caller which
+  flat,      // true when fewer than 2 top-level branches carry rows; the pane then
+             // renders `branches[0].sources` as a plain list (R-2.11, D9). False for
+             // zero sources — that is the empty state R-1.5 owns, not a flat tree
 }
 ```
 

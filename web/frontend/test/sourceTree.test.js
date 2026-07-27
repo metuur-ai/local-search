@@ -157,6 +157,61 @@ describe('buildSourceTree — single-repo elision (R-2.3)', () => {
   });
 });
 
+describe('buildSourceTree — degenerate tree (R-2.11)', () => {
+  // A repo registered at its ROOT, not at its `docs/` directory. The first path
+  // segment is then `src`/`docs`/`tests` rather than a doc type, and a query can
+  // land entirely inside one of them — the one-branch tree D9 refuses to draw.
+  const ONE_GROUP = [
+    { repo: 'root-registered', project: 'src', name: 'index.ts', relevance: -4.1 },
+    { repo: 'root-registered', project: 'src', name: 'router.ts', relevance: -2.6 },
+    { repo: 'root-registered', project: 'src', name: 'server.ts', relevance: -3.3 },
+  ];
+
+  it('flags a single-branch tree as flat', () => {
+    expect(buildSourceTree(ONE_GROUP).flat).toBe(true);
+  });
+
+  it('does not flag two branches as flat, because two is enough to group by', () => {
+    // Same single repo as ONE_GROUP, so the repo level is still elided — the only
+    // difference is a second project. Two branches is the boundary R-2.11 draws.
+    const tree = buildSourceTree([
+      ...ONE_GROUP,
+      { repo: 'root-registered', project: 'tests', name: 'router.test.ts', relevance: -1.8 },
+    ]);
+
+    expect(tree.repoName).toBe('root-registered');
+    expect(tree.branches).toHaveLength(2);
+    expect(tree.flat).toBe(false);
+  });
+
+  it('does not flag a multi-repo tree as flat', () => {
+    // Two or more repos can never elide, so they can never fall below 2 branches.
+    expect(buildSourceTree(FIXTURE).flat).toBe(false);
+  });
+
+  it('does not flag an empty tree as flat, because nothing grouped is not one group', () => {
+    // R-1.5 owns the empty pane. Reporting `flat` here would send the component
+    // down the plain-list path with no list to render.
+    for (const input of [[], null, undefined]) {
+      expect(buildSourceTree(input).flat).toBe(false);
+    }
+  });
+
+  it('leaves every row on the single branch when flat, so the plain list is complete', () => {
+    // The component renders `branches[0].sources` directly in the flat case, so
+    // that array — not some other level — has to hold the whole result set.
+    const tree = buildSourceTree(ONE_GROUP);
+
+    expect(tree.flat).toBe(true);
+    expect(tree.branches).toHaveLength(1);
+    expect(tree.branches[0].sources.map((s) => s.name).sort()).toEqual(
+      ONE_GROUP.map((s) => s.name).sort(),
+    );
+    expect(tree.total).toBe(ONE_GROUP.length);
+    expect(tree.branches[0].count).toBe(ONE_GROUP.length);
+  });
+});
+
 describe('buildSourceTree — irregular rows (R-2.8, R-2.9)', () => {
   // A row with no `repo`/`project` must never silently vanish from a pane whose
   // counts are supposed to be trustworthy, and `_root` is a real value the
@@ -235,8 +290,15 @@ describe('buildSourceTree — counts (R-2.4, R-2.5)', () => {
 
 describe('buildSourceTree — degenerate input', () => {
   it('returns an empty tree for no sources', () => {
+    // Exact shape on purpose: this pins the whole return value, so a field added
+    // to the builder has to be declared here rather than appearing unannounced.
     for (const input of [[], null, undefined]) {
-      expect(buildSourceTree(input)).toEqual({ total: 0, repoName: null, branches: [] });
+      expect(buildSourceTree(input)).toEqual({
+        total: 0,
+        repoName: null,
+        branches: [],
+        flat: false,
+      });
     }
   });
 

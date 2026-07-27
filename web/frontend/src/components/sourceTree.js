@@ -58,12 +58,15 @@ function byRelevance(a, b) {
   return av - bv;
 }
 
-// buildSourceTree(sources) → { total, repoName, branches }
+// buildSourceTree(sources) → { total, repoName, branches, flat }
 //
 //   repoName  the single repo's name when the repo level was elided, else null.
 //             The pane names it in the header instead of drawing a lone branch.
 //   branches  repo branches — each with `projects` — or, when elided, the project
 //             branches themselves, each with `sources`. `repoName` says which.
+//   flat      true when the tree came out with fewer than 2 top-level branches
+//             while still holding rows — the pane then renders `branches[0].sources`
+//             as a plain list and says there was nothing to group by (R-2.11, D9).
 //
 // Every branch carries the number of documents beneath it (R-2.4), and no row is
 // dropped, so top-level counts always sum to the total (R-2.5).
@@ -124,8 +127,24 @@ export function buildSourceTree(sources) {
   // already encode the repo — so a run that gains a second repo mid-stream does
   // not renumber branches out from under the user.
   if (built.length === 1) {
-    return { total, repoName: built[0].name, branches: built[0].projects };
+    return withFlatness({ total, repoName: built[0].name, branches: built[0].projects });
   }
 
-  return { total, repoName: null, branches: built };
+  return withFlatness({ total, repoName: null, branches: built });
+}
+
+// Below 2 top-level branches there is no grouping to show, and drawing one box
+// around the whole result set performs structure the data does not have — so the
+// tree reports itself flat and the pane degrades to a plain list (R-2.11, D9).
+//
+// Zero sources is NOT flat. That is the empty state, which R-1.5 owns; calling it
+// flat would point the pane at a `branches[0]` that does not exist.
+//
+// Applied on both return paths, because `flat` describes `branches` as returned —
+// after any elision, not before. Post-elision `branches.length < 2` can only mean
+// one project under one repo: two or more repos never elide, so they never drop
+// below 2 branches, and a single repo always holds at least one project. `flat`
+// therefore guarantees `branches[0].sources` exists and holds every counted row.
+function withFlatness(tree) {
+  return { ...tree, flat: tree.branches.length < 2 && tree.total > 0 };
 }
