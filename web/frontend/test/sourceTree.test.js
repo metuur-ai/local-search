@@ -157,6 +157,58 @@ describe('buildSourceTree — single-repo elision (R-2.3)', () => {
   });
 });
 
+describe('buildSourceTree — irregular rows (R-2.8, R-2.9)', () => {
+  // A row with no `repo`/`project` must never silently vanish from a pane whose
+  // counts are supposed to be trustworthy, and `_root` is a real value the
+  // extractor writes for files sitting at a repo root — not a bug to hide.
+  const IRREGULAR = [
+    { repo: 'a', project: '_root', name: 'README.md' },
+    { repo: 'a', project: 'hld', name: 'design.md' },
+    { repo: 'b', project: undefined, name: 'orphan-project.md' },
+    { repo: undefined, project: 'hld', name: 'orphan-repo.md' },
+    { repo: 'b', project: '', name: 'blank-project.md' },
+  ];
+
+  it('labels a _root project readably instead of showing the raw token', () => {
+    const tree = buildSourceTree(IRREGULAR);
+    const labels = repoNamed(tree, 'a').projects.map((p) => p.name);
+
+    expect(labels).not.toContain('_root');
+    expect(labels.some((l) => /root/i.test(l))).toBe(true);
+  });
+
+  it('keeps the _root branch keyed on the raw value, not the label', () => {
+    const tree = buildSourceTree(IRREGULAR);
+    const rootBranch = repoNamed(tree, 'a').projects.find((p) => /root/i.test(p.name));
+
+    expect(rootBranch.key).toContain('_root');
+  });
+
+  it('places rows missing repo or project under an explicit unknown branch', () => {
+    const tree = buildSourceTree(IRREGULAR);
+
+    expect(tree.branches.some((b) => /unknown/i.test(b.name))).toBe(true);
+    expect(repoNamed(tree, 'b').projects.some((p) => /unknown/i.test(p.name))).toBe(true);
+  });
+
+  it('collapses every unknown-project row into one branch, not one per row', () => {
+    // `undefined` and `''` are both "no project" and must share a branch.
+    const unknowns = buildSourceTree(IRREGULAR)
+      .branches.flatMap((b) => b.projects ?? [])
+      .filter((p) => /unknown/i.test(p.name));
+
+    expect(unknowns).toHaveLength(1);
+    expect(unknowns[0].count).toBe(2);
+  });
+
+  it('drops nothing — the total still equals the number of rows', () => {
+    const tree = buildSourceTree(IRREGULAR);
+
+    expect(tree.total).toBe(IRREGULAR.length);
+    expect(tree.branches.reduce((n, b) => n + b.count, 0)).toBe(IRREGULAR.length);
+  });
+});
+
 describe('buildSourceTree — counts (R-2.4, R-2.5)', () => {
   it('labels every branch with the number of documents beneath it', () => {
     const tree = buildSourceTree(FIXTURE);

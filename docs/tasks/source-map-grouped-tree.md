@@ -86,7 +86,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
   - verify: Test with a single-repo fixture returns projects at the top level and reports the repo
     name; a two-repo fixture keeps the repo level.
 
-- [ ] 2.4 Irregular-row handling (deps: 2.1, est: ~20m)
+- [x] 2.4 Irregular-row handling (deps: 2.1, est: ~20m)
   - why: `_root` is a real `project` value for repo-root files, and a row missing `repo` or
     `project` must never silently vanish from a pane whose counts are supposed to be trustworthy.
   - acceptance:

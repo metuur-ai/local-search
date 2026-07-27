@@ -8,20 +8,45 @@
 // arrive as `hld/mobile-app-features.md` with no `docs/` segment to match and
 // every row collapses into one `doc` bucket. See docs/lld — "Grouping axis".
 
-// Branch identity, derived from names only — never from position — so ordering
-// changes during streaming cannot transfer one branch's expansion state to
-// another (R-2.6a). NUL-separated because it cannot occur in a path segment, so
-// no repo or project name can forge another branch's key.
-function branchKey(...names) {
-  return names.join('\0');
+// The extractor writes "_root" as the `project` of any file sitting at a repo
+// root (`cli/extract/extract.go:443-450`). It is a real value, not a bug — but it
+// is an internal token, so it gets a readable label (R-2.8).
+const ROOT_PROJECT = '_root';
+
+// Stands in for a missing `repo` or `project` in a branch key. NUL-prefixed so no
+// real repo or project name can collide with it, which keeps every row with an
+// absent field in ONE explicit branch rather than one branch per row (R-2.9).
+const UNKNOWN = '\0?';
+
+// A usable field value, or null when the row simply doesn't have one. Blank and
+// whitespace-only count as absent: they would otherwise render as a nameless
+// branch, which reads as a rendering bug rather than as missing data.
+function fieldOrNull(value) {
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
+}
+
+// Branch identity, derived from field values only — never from position — so
+// ordering changes during streaming cannot transfer one branch's expansion state
+// to another (R-2.6a). NUL-separated because NUL cannot occur in a path segment,
+// so no repo or project name can forge another branch's key. Keys carry the RAW
+// values, never the display label, so relabeling can never merge two branches.
+function branchKey(...parts) {
+  return parts.map((p) => p ?? UNKNOWN).join('\0');
+}
+
+// What a project branch is called on screen (R-2.8, R-2.9). The raw value stays in
+// the key; only this changes.
+function projectLabel(projectName) {
+  if (projectName === null) return 'unknown project';
+  return projectName === ROOT_PROJECT ? 'repo root' : projectName;
 }
 
 // Sibling branch order: biggest first, because the skew is what the pane exists
 // to show; alphabetical on a tie so equal-sized branches hold a stable position
-// across rebuilds (R-2.6). Names are coerced because a row may be missing `repo`
-// or `project` — story 2.4 gives those branches real labels.
+// across rebuilds (R-2.6). Compared on the displayed label, so the order the user
+// sees is the order the rule describes.
 function byCountThenName(a, b) {
-  return b.count - a.count || String(a.name ?? '').localeCompare(String(b.name ?? ''));
+  return b.count - a.count || a.name.localeCompare(b.name);
 }
 
 // Leaves ascend by `relevance` because it is raw negative BM25 — lower is better
@@ -50,24 +75,31 @@ export function buildSourceTree(sources) {
   for (const row of rows) {
     if (!row) continue;
 
-    const repoName = row.repo;
-    const projectName = row.project;
+    const repoName = fieldOrNull(row.repo);
+    const projectName = fieldOrNull(row.project);
 
-    let repo = repos.get(repoName);
+    const repoId = repoName ?? UNKNOWN;
+    let repo = repos.get(repoId);
     if (!repo) {
-      repo = { key: branchKey(repoName), name: repoName, count: 0, projects: new Map() };
-      repos.set(repoName, repo);
+      repo = {
+        key: branchKey(repoName),
+        name: repoName ?? 'unknown repo',
+        count: 0,
+        projects: new Map(),
+      };
+      repos.set(repoId, repo);
     }
 
-    let project = repo.projects.get(projectName);
+    const projectId = projectName ?? UNKNOWN;
+    let project = repo.projects.get(projectId);
     if (!project) {
       project = {
         key: branchKey(repoName, projectName),
-        name: projectName,
+        name: projectLabel(projectName),
         count: 0,
         sources: [],
       };
-      repo.projects.set(projectName, project);
+      repo.projects.set(projectId, project);
     }
 
     project.sources.push(row);
