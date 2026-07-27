@@ -1,0 +1,91 @@
+/* Source Map pane. Plain nested lists with native <details> disclosure — the
+   Top Tags pane (app.css .tag-rank) is the in-repo precedent for a real
+   analytical view delivered by markup and CSS with no library. */
+
+.source-map {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.source-map-header,
+.source-map-empty {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ink-500);
+}
+
+.source-map-empty {
+  padding: 1.25rem 0;
+}
+
+.source-map-branches,
+.source-map-leaves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Nested levels step in far enough to read as containment without pushing long
+   document titles off the edge of a narrow inspector. */
+.source-map-branch .source-map-branches,
+.source-map-branch .source-map-leaves {
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--line);
+  margin-left: 0.35rem;
+}
+
+.source-map-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.35rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-700);
+}
+
+.source-map-summary:hover {
+  background: var(--surface-mut);
+}
+
+.source-map-branch-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-map-count {
+  flex: none;
+  min-width: 1.5rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--surface-mut);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem;
+  text-align: center;
+  color: var(--ink-500);
+}
+
+.source-map-leaf {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--ink-600);
+}
+
+.source-map-leaf-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -855,8 +855,13 @@ body {
   background: var(--surface-mut);
 }
 
+/* Five tabs, and the app has no media queries — so the strip wraps rather than
+   scrolling. A tab that scrolls out of sight is a feature nobody finds, and the
+   fifth one is always the first to go (story 1.6). `overflow-x` stays as a
+   last-resort fallback for a single label too long to fit on its own line. */
 .inspector-tablist {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
   overflow-x: auto;
 }
@@ -998,6 +1003,14 @@ body {
   margin: 0;
   font-size: 0.78rem;
   color: var(--ink-500);
+}
+/* Distinguishes the two "…Map" tabs from each other (story 1.5). Set apart from
+   the intro copy above it so it reads as a signpost, not more description. */
+.graph-intro-contrast {
+  margin-top: 0.35rem !important;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--line);
+  font-style: italic;
 }
 
 /* Top-tags ranking (inspector "Top Tags" tab) */

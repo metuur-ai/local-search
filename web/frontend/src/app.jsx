@@ -35,6 +35,7 @@ import { ActivityFeed } from './components/ActivityFeed.jsx';
 import { ReplyInput } from './components/ReplyInput.jsx';
 import { ElapsedTimer } from './components/ElapsedTimer.jsx';
 import { RankedSources } from './components/RankedSources.jsx';
+import { SourceMap } from './components/SourceMap.jsx';
 import { RevealButton } from './components/RevealButton.jsx';
 import RetrievalPath from './components/RetrievalPath.jsx';
 
@@ -1089,6 +1090,13 @@ export function App() {
               </button>
               <button
                 type="button"
+                class={`inspector-tab${inspectorTab === 'sourcemap' ? ' is-active' : ''}`}
+                onClick={() => setInspectorTab('sourcemap')}
+              >
+                <i class="fa-solid fa-folder-tree" /> Source Map
+              </button>
+              <button
+                type="button"
                 class={`inspector-tab${inspectorTab === 'tags' ? ' is-active' : ''}`}
                 onClick={() => setInspectorTab('tags')}
               >
@@ -1100,9 +1108,11 @@ export function App() {
                 ? 'AI Synthesis'
                 : inspectorTab === 'sources'
                   ? `${sources.length} sources`
-                  : inspectorTab === 'tags'
-                    ? `${topTags.length} tags`
-                    : 'Graph'}
+                  : inspectorTab === 'sourcemap'
+                    ? `${sources.length} sources`
+                    : inspectorTab === 'tags'
+                      ? `${topTags.length} tags`
+                      : 'Graph'}
             </span>
           </div>
 
@@ -1219,6 +1229,13 @@ export function App() {
                 <i class="fa-solid fa-diagram-project" /> Knowledge graph
               </h3>
               <p>Retrieved sources are outlined; node size tracks relevance.</p>
+              {/* Two tabs are named "…Map", so each states its own claim rather
+                  than leaving the user to guess which answers their question
+                  (story 1.5; HLD non-goal amended 2026-07-27). */}
+              <p class="graph-intro-contrast">
+                This map shows which documents relate to each other. For where the
+                results came from, see <strong>Source Map</strong>.
+              </p>
             </div>
             <div class="graph-frame">
               <GraphView
@@ -1229,7 +1246,25 @@ export function App() {
             </div>
           </div>
 
-          {/* Pane 4: top tags across the retrieved sources */}
+          {/* Pane 4: source map — where the retrieved documents came from */}
+          <div
+            class="inspector-pane"
+            data-testid="region-source-map"
+            hidden={inspectorTab !== 'sourcemap'}
+          >
+            <div class="graph-intro">
+              <h3>
+                <i class="fa-solid fa-folder-tree" /> Source map
+              </h3>
+              <p>
+                Where the retrieved documents came from. Counts cover all{' '}
+                {sources.length} retrieved sources, not the filtered view (D8).
+              </p>
+            </div>
+            <SourceMap sources={sources} active={inspectorTab === 'sourcemap'} />
+          </div>
+
+          {/* Pane 5: top tags across the retrieved sources */}
           <div
             class="inspector-pane"
             data-testid="region-tags"

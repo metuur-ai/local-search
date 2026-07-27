@@ -25,6 +25,7 @@ describe('App shell', () => {
       'region-answer',
       'region-graph',
       'region-sources',
+      'region-source-map',
       'region-provenance',
     ];
 
