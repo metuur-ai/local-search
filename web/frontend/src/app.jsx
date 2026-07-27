@@ -1371,7 +1371,7 @@ export function App() {
                   <i class="fa-solid fa-download" /> Install
                 </h4>
                 <p class="help-text">One command installs the CLI, the Claude skill, and this web UI:</p>
-                <pre class="help-code"><code>curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash</code></pre>
+                <pre class="help-code"><code>tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"</code></pre>
                 <p class="help-text">Then launch the UI (needs Node ≥ 18):</p>
                 <pre class="help-code"><code>local-search ui</code></pre>
                 <p class="help-text">

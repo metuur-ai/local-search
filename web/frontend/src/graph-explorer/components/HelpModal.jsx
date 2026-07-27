@@ -53,7 +53,7 @@ export function HelpModal({ onClose }) {
             Install
           </div>
           <p>One command installs the CLI, the Claude skill, and this web UI:</p>
-          <code class="block">curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash</code>
+          <code class="block">tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"</code>
           <p>Then launch the UI (needs Node ≥ 18) and open the graph explorer:</p>
           <code class="block">local-search ui</code>
           <p>More install options (release bundle, prebuilt binary, build from source) on <a href="https://github.com/metuur-ai/local-search/blob/main/README.md#install" target="_blank" rel="noopener noreferrer">the install guide ↗</a>.</p>
