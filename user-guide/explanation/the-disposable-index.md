@@ -34,4 +34,4 @@ Nothing you do to `specs.db` can touch your actual spec files. The arrow of trut
 
 - [../how-to/](../how-to/) for rebuilding the index or troubleshooting a stale scan
 - [../reference/troubleshooting.md](../reference/troubleshooting.md) for the full list of reset commands
-- [two-config-files.md](two-config-files.md) for the other pieces of on-disk state (the scope files), which are *not* disposable in the same way — they hold configuration you wrote, not a derived cache
+- [two-config-files.md](two-config-files.md) for the other piece of on-disk state (the config file), which is *not* disposable in the same way — it holds configuration you wrote, not a derived cache

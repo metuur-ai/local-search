@@ -84,7 +84,7 @@ Prints current scope plus everything available.
 
 ```bash
 $ local-search init
-Project scope config: /Users/you/work/api/.agent/local-search-config.yaml
+Project config: /Users/you/work/api/.agent/local-search-config.yaml
 
 Included repositories:
   - squirrel

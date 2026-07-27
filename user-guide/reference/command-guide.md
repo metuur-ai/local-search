@@ -518,7 +518,7 @@ and comments survive.
 
 ```bash
 $ local-search scope set payments,billing
-Wrote /Users/you/work/.agent/local-search-config.yaml with scope = [payments billing]
+Wrote /Users/you/work/.agent/local-search-config.yaml with repositories = [payments billing]
 ```
 
 **Why.** Committing this file is the point. It makes "which repos matter here"

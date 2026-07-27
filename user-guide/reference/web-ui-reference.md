@@ -6,7 +6,7 @@ guided first run, see
 what's actually happening in the retrieval pipeline, see
 **[../explanation/how-search-works.md](../explanation/how-search-works.md)**.
 
-Verified against `web/backend/src/*.js` and `web/frontend/src/*.jsx` (v0.3.1).
+Verified against `web/backend/src/*.js` and `web/frontend/src/*.jsx` (v0.4.0).
 
 ## Screen layout
 
@@ -87,11 +87,32 @@ giving up).
 
 ### `GET /api/repos`
 
-Runs `local-search json repos` under the hood.
+Runs **two** CLI calls and merges them: `local-search repo list` (the registered
+set, paths, and the graph column) enriched with per-repo spec counts from
+`local-search init --json`. Neither forces the git incremental reindex that
+`json repos` does on every call — that reindex was the page-load stall users
+saw. The result is memoized per server process.
 
 - **200** — array of repo objects (name, path, spec count, graph presence).
-- **500** `{ "error": "repos_failed", "message": "..." }` — the underlying CLI
-  call failed.
+- **500** `{ "error": "repos_failed", "message": "..." }` — `repo list` itself
+  failed.
+
+Spec counts are **best-effort**: if `init --json` fails, the repo list still
+renders with every count at `0` rather than the endpoint erroring. Since v0.4.0
+a malformed config makes that call exit 1 while still emitting valid JSON with
+an `error` field, and the server logs it:
+
+```
+local-search config problem — spec counts unavailable:
+/Users/you/proj/.agent/local-search-config.yaml:4:1: unknown key "repositorys"
+   4 | repositorys:
+     | ^
+   did you mean "repositories"?
+Fix it, or run `local-search config validate` for the full report.
+```
+
+So "every repo shows 0 specs" in the picker means *check the server log* — see
+[troubleshooting](troubleshooting.md#every-repo-shows-0-specs-in-the-web-ui).
 
 ### `POST /api/query`
 
@@ -211,6 +232,13 @@ Filter by Type / Repo / Project / Tag (with removable "Active" chips), or by
 name/title substring. Tags include the `spec:` and `link:` tags derived from
 `@spec` references and `[[wikilinks]]` during indexing — filtering by a
 `link:<slug>` tag isolates every file that wikilinks to that target.
+
+The **?** button opens a help modal covering how to use the explorer, install
+commands, a short list of handy CLI commands (`doctor`, `size`, `scan`,
+`config validate`), and a **"Which repos get searched"** section naming the
+config file, its walk-up rule, and the v0.4.0 migration. It is the only
+in-product documentation surface, so it is worth keeping current when config
+behaviour changes.
 
 Edges are filtered separately, from the **Links** toggles at the end of the
 filter bar:

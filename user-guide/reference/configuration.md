@@ -72,20 +72,21 @@ honoured (use it to disable a source entirely). Unknown keys are a hard error
 with a "did you mean" suggestion — except `x-` prefixed keys, which are reserved
 for third-party tooling.
 
-`scope set` only ever writes the `scope = [...]` line — `[weights]` and
-`[limits]` are optional and fall back to the defaults below if omitted or if
-the file doesn't have those sections at all.
+`scope set` and `init --set` rewrite only the `repositories:` list; a `weights:`
+or `limits:` block already in the file is preserved byte-for-byte, along with
+your comments and key order. (Before v0.4.0 the writer emitted only the repo
+list, silently wiping both.) Omitted keys fall back to the defaults below.
 
 | Key | Section | Default | Meaning |
 |---|---|---|---|
-| `specs` | `[weights]` | `1.0` | Ranking weight for spec/doc matches |
-| `graphify` | `[weights]` | `0.7` | Ranking weight for graphify-sourced matches |
-| `codegraph` | `[weights]` | `0.8` | Ranking weight for code-review-graph matches |
-| `specs` | `[limits]` | `20` | Max spec results returned |
-| `graphify` | `[limits]` | `10` | Max graphify results returned |
-| `codegraph` | `[limits]` | `10` | Max code-review-graph results returned |
-| `blast_depth` | `[limits]` | `2` | Default traversal depth for `code blast` |
-| `blast_cap` | `[limits]` | `50` | Default max nodes returned by `code blast` |
+| `specs` | `weights` | `1.0` | Ranking weight for spec/doc matches |
+| `graphify` | `weights` | `0.7` | Ranking weight for graphify-sourced matches |
+| `codegraph` | `weights` | `0.8` | Ranking weight for code-review-graph matches |
+| `specs` | `limits` | `20` | Max spec results returned |
+| `graphify` | `limits` | `10` | Max graphify results returned |
+| `codegraph` | `limits` | `10` | Max code-review-graph results returned |
+| `blast_depth` | `limits` | `2` | Default traversal depth for `code blast` |
+| `blast_cap` | `limits` | `50` | Default max nodes returned by `code blast` |
 
 A scope entry can also point at a standalone graph rather than a spec repo, by
 prefixing it with `graph:` (e.g. a `- graph:my-graph` list entry).

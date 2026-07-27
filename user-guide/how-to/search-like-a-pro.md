@@ -63,6 +63,19 @@ local-search search "auth" --repos all          # every repo (the default)
 local-search search "auth" --repos graph-only   # only repos with a graphify-out/ graph attached
 ```
 
+> **`search` does not read your config file.** `--repos` defaults to `all`, so
+> setting a project scope has no effect on `search` — only on `find` and `code`,
+> which take `--scope` and fall back to the resolved config. Two different flags
+> for the same idea; it's the sharpest edge in the CLI.
+>
+> ```bash
+> local-search scope set payments   # writes .agent/local-search-config.yaml
+> local-search find "refund"        # payments only
+> local-search search "refund"      # ALL registered repos
+> ```
+>
+> See [scope-a-project.md](scope-a-project.md).
+
 ## Choose where results come from
 
 ```bash
