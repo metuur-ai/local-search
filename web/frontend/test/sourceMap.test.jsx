@@ -69,6 +69,58 @@ describe('SourceMap — header honesty (R-1.6)', () => {
   });
 });
 
+describe('SourceMap — degenerate tree (R-2.11)', () => {
+  // A root-registered repo, so the first path segment is `src` rather than a doc
+  // type and every hit lands in the same group.
+  const ONE_GROUP = [
+    { repo: 'root-registered', project: 'src', name: 'index.ts', path: 'src/index.ts' },
+    { repo: 'root-registered', project: 'src', name: 'router.ts', path: 'src/router.ts' },
+  ];
+
+  it('renders a plain list with no disclosure elements', () => {
+    const { container } = render(<SourceMap sources={ONE_GROUP} active />);
+
+    expect(screen.getByTestId('source-list')).toBeTruthy();
+    expect(screen.queryByTestId('source-tree')).toBeNull();
+    expect(container.querySelectorAll('details')).toHaveLength(0);
+  });
+
+  it('says there was nothing to group by', () => {
+    render(<SourceMap sources={ONE_GROUP} active />);
+
+    expect(screen.getByTestId('source-map-header').textContent).toMatch(/nothing to group by/i);
+  });
+
+  it('still lists every source', () => {
+    render(<SourceMap sources={ONE_GROUP} active />);
+
+    expect(screen.getAllByTestId('source-map-leaf')).toHaveLength(ONE_GROUP.length);
+  });
+
+  it('keeps the disclosure tree once a second group appears', () => {
+    const { container } = render(
+      <SourceMap
+        sources={[...ONE_GROUP, { repo: 'root-registered', project: 'docs', name: 'readme.md' }]}
+        active
+      />,
+    );
+
+    expect(screen.getByTestId('source-tree')).toBeTruthy();
+    expect(screen.queryByTestId('source-list')).toBeNull();
+    expect(container.querySelectorAll('details').length).toBeGreaterThan(0);
+  });
+});
+
+describe('SourceMap — counted scope (R-2.12)', () => {
+  it('names the scope the counts cover so it cannot be confused with the filtered view', () => {
+    render(<SourceMap sources={SOURCES} active />);
+
+    const header = screen.getByTestId('source-map-header').textContent;
+    expect(header).toMatch(new RegExp(`all ${SOURCES.length} retrieved sources`, 'i'));
+    expect(header).toMatch(/not the filtered view/i);
+  });
+});
+
 describe('SourceMap — branch rendering (R-2.4)', () => {
   it('renders a branch per group with its document count', () => {
     render(<SourceMap sources={SOURCES} active />);

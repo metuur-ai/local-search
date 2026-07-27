@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, within } from '@testing-library/preact';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { App } from '../src/app.jsx';
+import appSrc from '../src/app.jsx?raw';
 
 // App fetches repos on mount; stub fetch so the test never hits the network.
 beforeEach(() => {
@@ -82,6 +83,17 @@ describe('inspector right-aligned label (R-1.4)', () => {
     // Zero sources in this shell, but the label must name the source count rather
     // than fall through to the graph pane's static 'Graph'.
     expect(container.querySelector('.inspector-ext').textContent).toMatch(/0 sources/);
+  });
+});
+
+describe('counted scope wiring (R-2.12)', () => {
+  it('feeds the pane unfiltered sources', () => {
+    // D8: the tree counts every retrieved source, matching SourcesPanel and
+    // topTags. Swapping this to `filteredSources` would make the header's "all N
+    // retrieved" claim false, and no rendering test would catch it — the pane
+    // cannot tell which array it was handed.
+    expect(appSrc).toMatch(/<SourceMap\s+sources=\{sources\}/);
+    expect(appSrc).not.toMatch(/<SourceMap\s+sources=\{filteredSources\}/);
   });
 });
 

@@ -101,14 +101,14 @@ the code it governs can be written. Each is a five-minute decision, not a work i
   - verify: Fixture containing a `_root` row and a row with `project: undefined`; assert the labels
     and that the total count still equals the input length.
 
-- [ ] 2.5 Apply the filter-semantics decision (deps: 2.1, 0.1, est: ~15m)
+- [x] 2.5 Apply the filter-semantics decision (deps: 2.1, 0.1, est: ~15m)
   - why: Implements whatever 0.1 concluded, so the counts and the header agree.
   - acceptance: The tree is built from the source set chosen in 0.1, and the pane header names that
     set explicitly.
   - verify: With a tag filter active, the header text and the branch totals agree with the decision
     recorded in the LLD.
 
-- [ ] 2.6 Apply the degenerate-tree fallback (deps: 2.1, 0.2, est: ~20m)
+- [x] 2.6 Apply the degenerate-tree fallback (deps: 2.1, 0.2, est: ~20m)
   - why: Implements whatever 0.2 concluded, so a low-cardinality corpus degrades honestly instead of
     rendering a flat list dressed as a tree.
   - acceptance: The requirement added to EARS Unit 2 by 0.2 is satisfied.
@@ -116,7 +116,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
 
 ## Unit 1: Pane registration and lifecycle
 
-- [ ] 1.1 Register the fifth tab and pane (deps: 2.1, est: ~30m)
+- [x] 1.1 Register the fifth tab and pane (deps: 2.1, est: ~30m)
   - why: Gives the tree a surface. Panes are always mounted and toggled by `hidden`, so the pane must
     join that pattern rather than invent a new one.
   - acceptance:
@@ -128,7 +128,7 @@ the code it governs can be written. Each is a five-minute decision, not a work i
   - verify: `npm run dev`, run a query, click through all five tabs; the other four behave as before.
     Existing frontend tests still pass.
 
-- [ ] 1.2 Gate rendering on tab visibility (deps: 1.1, est: ~15m)
+- [x] 1.2 Gate rendering on tab visibility (deps: 1.1, est: ~15m)
   - why: All panes stay mounted, so an ungated pane rebuilds on every `sources` event of every run
     while the user is reading something else — the exact problem documented at `GraphView.jsx:170-174`.
   - acceptance: R-1.3 — while the Source Map tab is not selected, the tree is neither built nor
@@ -136,13 +136,13 @@ the code it governs can be written. Each is a five-minute decision, not a work i
   - verify: Instrument the builder with a temporary counter (or a spy in a component test); run a
     query while sitting on AI Answer and confirm zero invocations until the tab is selected.
 
-- [ ] 1.3 Empty state (deps: 1.1, est: ~10m)
+- [x] 1.3 Empty state (deps: 1.1, est: ~10m)
   - why: A blank pane reads as broken. The prior graph pane already establishes an explicit empty
     state as the house style.
   - acceptance: R-1.5 — zero sources renders an explicit message, never a blank pane.
   - verify: Open the tab before running any query; the message is visible.
 
-- [ ] 1.4 Honest header copy (deps: 1.1, est: ~15m)
+- [x] 1.4 Honest header copy (deps: 1.1, est: ~15m)
   - why: Every graph-ish surface in this product is governed by the rule that a connection must not
     claim more than it means. Tree branches are file-location containment, and the header has to say
     so before a user infers relationship or similarity.
@@ -150,14 +150,14 @@ the code it governs can be written. Each is a five-minute decision, not a work i
     them as relationship, similarity, or relevance connections.
   - verify: Read the rendered header; it names grouping, not relationship.
 
-- [ ] 1.5 Disambiguate the Neighborhood Map header (deps: 0.3, est: ~10m)
+- [x] 1.5 Disambiguate the Neighborhood Map header (deps: 0.3, est: ~10m)
   - why: Resolves the two-"Map"-tabs confusion at its source. In scope — 0.3 amended the HLD
     non-goal on 2026-07-27 to permit a header-copy-only change.
   - acceptance: The Neighborhood Map header states its own claim in one line, distinct from the
     Source Map's.
   - verify: Both headers read side by side make it obvious which tab answers which question.
 
-- [ ] 1.6 Verify the five-tab strip does not clip (deps: 1.1, est: ~20m)
+- [x] 1.6 Verify the five-tab strip does not clip (deps: 1.1, est: ~20m)
   - why: `.inspector-tablist` is `overflow-x: auto` with nowrap tabs (`app.css:858-868`) and the app
     has no media queries at all. A fifth tab lands last, so it is the first to scroll out of sight —
     and a feature nobody can find is a feature that failed. Pre-mortem risk 1.
