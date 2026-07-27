@@ -70,7 +70,7 @@ Work through these in order:
    `local-search repo add <folder> <name>` first.
 2. **Is your scope excluding it?** `local-search scope show` tells you the
    resolved scope and where it came from. If the repo you expect isn't in
-   scope, either pass `--repos <name>` explicitly or adjust `.local-search.toml`
+   scope, either pass `--repos <name>` explicitly or adjust `.agent/local-search-config.yaml`
    (see **[configuration.md](configuration.md)**, "Engine scope" section).
 3. **Is the index stale?** Local Search usually rescans automatically on git
    changes, but if you edited files without committing, or the auto-rescan

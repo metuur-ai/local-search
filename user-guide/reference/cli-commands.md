@@ -5,8 +5,12 @@ task-oriented walkthroughs (adding a repo, narrowing a search, writing hooks so
 scans run automatically) see **[../how-to/](../how-to/)**. For what a flag or
 ranking mode actually *does* under the hood, see **[../explanation/](../explanation/)**.
 
-Verified against `local-search help` (v0.3.1) and the `cli/` source. Where the two
+Verified against `local-search help` (v0.4.0) and the `cli/` source. Where the two
 disagree, this page follows the source and calls the gap out explicitly.
+
+For *what each command is for* rather than its exact signature, see
+**[command-guide.md](command-guide.md)** — the same commands with a
+What / How / Why write-up each.
 
 ## Synopsis format
 
@@ -72,9 +76,11 @@ my-project               /Users/you/docs
 
 ## Searching
 
-### `search <query>` (alias `find`)
+### `search <query>` (alias `s`)
 
 The main command. Auto-routes between full-text search and the knowledge graph.
+(`find` is **not** an alias of `search` — it is a separate command; see
+[`find`](#find-query---scope-repo1repo2-alias-f) below.)
 
 ```bash
 $ local-search search "refund"
@@ -118,7 +124,30 @@ Queries run against a Porter-stemmed, `unicode61`-tokenized full-text index, so:
   punctuation in it degrades gracefully to a literal-term match instead of
   erroring out. You'll only see an error if the *sanitized* fallback also fails.
 
-### `read <name> [repo]`
+### `find <query> [--scope repo1,repo2]` (alias `f`)
+
+Unified **scoped** search across three sources at once — indexed specs, the
+graphify graph, and the code-review-graph — merged into one score-ranked table.
+Distinct from `search`: `find` obeys the resolved scope (`.agent/local-search-config.yaml`)
+rather than `--repos`, and weights all three sources per the scope config.
+
+```bash
+$ local-search find "refund"
+─────────────────────────────────────────────────────────────
+Searched repos: payments, billing
+Scope source:   /Users/you/work/.agent/local-search-config.yaml
+Results:        7
+─────────────────────────────────────────────────────────────
+
+SCORE   TYPE        REPO      NAME                     LOCATION
+0.92    spec        payments  Refund flow              specs/refund.md
+0.81    codegraph   payments  payments.RefundService   src/refund.go:42
+```
+
+Repos in scope that are missing a source are reported under a `Missing sources:`
+block with the command that would fix each one.
+
+### `read <name> [repo]` (aliases `r`, `get`, `show`)
 
 Prints a spec's full content, frontmatter included.
 
@@ -274,13 +303,13 @@ spec/documentation index.
 
 Scope controls which repos a bare `search`/`find`/`code` call considers when you
 don't pass `--repos` explicitly. See **[configuration.md](configuration.md)** for
-how the underlying `.local-search.toml` file is resolved.
+how the underlying `.agent/local-search-config.yaml` file is resolved.
 
 - `scope show` — print the resolved scope, its source file, and the effective
   weights/limits.
-- `scope set repo1,repo2` — write `.local-search.toml` in the current directory
+- `scope set repo1,repo2` — write `.agent/local-search-config.yaml` in the current directory
   with that scope.
-- `scope clear` — remove `.local-search.toml` from the current directory.
+- `scope clear` — remove `.agent/local-search-config.yaml` from the current directory.
 - `scope init` — auto-detect the nearest enclosing registered repo and scope to
   it.
 
@@ -344,9 +373,11 @@ $ local-search ui --port 9000
 |---|---|
 | `-p`, `--port <n>` | Port to serve on (default `8787`) |
 
-> **Warning:** As of v0.3.1, `local-search ui` (the `start` subcommand) cannot
-> locate its own web assets and always fails with an error about a missing
-> `web/` directory — see
+> **Warning (v0.3.1):** on that version `local-search ui` (the `start`
+> subcommand) cannot locate its own web assets and always fails with an error
+> about a missing `web/` directory. Later versions resolve the web directory via
+> `LOCAL_SEARCH_WEB_DIR`, a walk-up from the binary and CWD, then
+> `~/.local/share/local-search/web`. If you hit the failure, see
 > **[troubleshooting.md](troubleshooting.md#local-search-ui-fails-to-start)**
 > for the exact messages and the working alternative.
 
@@ -355,6 +386,51 @@ work regardless of the `start` bug above.
 
 ## Index inspection & maintenance
 
+### `doctor [--json]` (aliases `diagnose`, `health`)
+
+Read-only health check across Environment, Database, Repos, Dependencies, and
+Web UI. Prints `✓` / `⚠` / `✗` per finding. **Exit codes:** `0` all clear, `1`
+warnings, `2` errors — so it's usable as a CI gate. `--json` emits the same
+findings as `{version, findings[], warnings, failures}`.
+
+Never triggers a scan and never creates a DB.
+
+```bash
+$ local-search doctor
+local-search doctor — v0.3.15
+
+Database
+  ✓ Database file: /Users/you/.local-search/specs.db (81.9 MB)
+  ✓ Integrity: ok
+  ✓ Schema version: v3
+
+Repos
+  ⚠ squirrel: changed since last scan (index is stale)
+
+Result: healthy with 1 warning(s).
+```
+
+### `size [--by repo|project] [--json]`
+
+Separates DB **file** size (storage cost — FTS index + WAL + SHM) from indexed
+**content** bytes (the corpus), then breaks the corpus down per repo (default)
+or per project.
+
+```bash
+$ local-search size
+DB file:          81.9 MB   /Users/you/.local-search/specs.db
+  ├─ WAL          4.1 KB
+  └─ SHM          32.0 KB
+Indexed content:  6.0 MB across 837 specs
+
+Per repo                        specs     content   share
+  --------------------------------------------------------
+  squirrel                        361      2.7 MB     45%
+  foyer-platform                  120      1.6 MB     27%
+```
+
+### Other
+
 - `stats` — index statistics (repos, specs, projects, unique tags, DB size, last
   scan time).
 - `db` — prints the database file path (`~/.local-search/specs.db`).
@@ -362,6 +438,50 @@ work regardless of the `start` bug above.
 - `reset` — deletes the repo registry and the index, after a `y/N` confirmation
   prompt. See **[configuration.md](configuration.md)** for what exactly gets
   removed.
+
+## Config
+
+One file, two possible locations: `<project>/.agent/local-search-config.yaml`
+(found by walking up, stopping at a git root) and `~/.local-search-config.yaml`
+as a global fallback. Same schema; read by the engine *and* the Claude skill.
+
+### `config show [--dir <path>] [--json]`
+
+Prints the resolved config and which file it came from.
+
+### `config path [--dir <path>]`
+
+Prints the config path in use, or where a new one would go.
+
+### `config validate [--dir <path>] [--global] [--json]`
+
+Strict-checks the config. Exit 1 on problems, each with a line number and a
+"did you mean" suggestion. This is the non-destructive way to see an error, since
+a broken config makes `find`/`code` refuse to run.
+
+```bash
+$ local-search config validate
+/Users/you/proj/.agent/local-search-config.yaml:4:1: unknown key "repositorys"
+   4 | repositorys:
+     | ^
+   did you mean "repositories"?
+```
+
+### `config migrate [--dir <path>] [--dry-run] [--keep-toml] [--all]`
+
+Converts a pre-0.4.0 `.local-search.toml` into the YAML config. Also runs
+automatically on the first read after upgrading; `LOCAL_SEARCH_NO_AUTO_MIGRATE=1`
+opts out. `--all` sweeps a whole tree (useful in a monorepo, so the conversion
+lands in one reviewable commit).
+
+Migration refuses to delete a TOML it cannot parse, or one carrying settings this
+version does not understand — in both cases it leaves the file and says why.
+
+### `config schema [--write <path>]`
+
+Prints the JSON Schema. The generated config carries a `# yaml-language-server:`
+modeline pointing at it, so editors validate and autocomplete inline; `--write`
+saves a local copy for air-gapped setups.
 
 ## Claude Code integration
 
@@ -428,7 +548,14 @@ local-search json repos
 local-search json related <name>
 local-search json tags
 local-search json stats
+local-search json find <query> [--scope repo1,repo2]
+local-search json context <query> [--scope repo1,repo2]
 ```
+
+> **Discrepancy:** `json find` and `json context` exist in the source but are not
+> listed in `local-search help`'s JSON section. `json find` is the JSON form of
+> `find`; `json context` returns the same payload *plus* the inlined blast radius
+> of the top code-graph hit — the one-call agent payload.
 
 ## Supported file types
 

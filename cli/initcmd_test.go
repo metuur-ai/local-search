@@ -1,76 +1,69 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"local-search/config"
 )
 
-// The minimal YAML helpers are pure (no DB), so they're unit-tested directly.
-// The command wiring (--add/--remove/--json validation) goes through openDBForResolve
-// and is exercised by the manual CLI smoke test in the plan's verification section.
-
-func TestParseProjectYAML_BlockList(t *testing.T) {
-	in := []byte("# comment\nrepositories:\n  - platform\n  - docs\n")
-	got := parseProjectYAML(in)
-	if want := []string{"platform", "docs"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("parseProjectYAML = %v, want %v", got, want)
-	}
-}
-
-func TestParseProjectYAML_EmptyForms(t *testing.T) {
-	for _, in := range []string{"repositories: []\n", "repositories:\n", "# only a comment\n", ""} {
-		if got := parseProjectYAML([]byte(in)); len(got) != 0 {
-			t.Fatalf("parseProjectYAML(%q) = %v, want empty", in, got)
-		}
-	}
-}
-
-func TestParseProjectYAML_InlineFlowAndQuotes(t *testing.T) {
-	got := parseProjectYAML([]byte(`repositories: ["platform", 'docs']`))
-	if want := []string{"platform", "docs"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("inline flow parse = %v, want %v", got, want)
-	}
-}
-
-func TestParseProjectYAML_StopsAtNextKey(t *testing.T) {
-	in := []byte("repositories:\n  - a\nother: value\n  - not-a-repo\n")
-	if got := parseProjectYAML(in); !reflect.DeepEqual(got, []string{"a"}) {
-		t.Fatalf("parse stopped wrong: got %v, want [a]", got)
-	}
-}
-
-func TestRenderParseRoundTrip(t *testing.T) {
-	for _, repos := range [][]string{nil, {"platform"}, {"platform", "docs", "graph:external"}} {
-		got := parseProjectYAML(renderProjectYAML(repos))
-		want := repos
-		if len(repos) == 0 {
-			want = nil
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("round-trip %v -> %v", repos, got)
-		}
-	}
-}
+// The pure helpers (no DB) are unit-tested directly. Config parsing, rendering,
+// and round-tripping moved to local-search/config when the hand-rolled YAML
+// parser was deleted — see cli/config/config_test.go.
+//
+// The command wiring (--add/--remove/--json validation) goes through
+// openDBForResolve and is exercised by the CLI golden tests.
 
 func TestWriteReadProjectConfig(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, agentDir, projectConfigName)
+	path := config.ProjectPath(dir)
 
 	// Missing file → not exists.
-	if _, ok := readProjectConfig(path); ok {
-		t.Fatal("readProjectConfig should report not-exists for a missing file")
+	if _, err := config.LoadFile(path); !config.IsNotExist(err) {
+		t.Fatalf("want not-exists for a missing file, got %v", err)
 	}
 	// Write creates the .agent/ dir and the file.
-	if err := writeProjectConfig(path, []string{"platform", "docs"}); err != nil {
-		t.Fatalf("writeProjectConfig: %v", err)
+	if err := config.SetRepositories(path, []string{"platform", "docs"}); err != nil {
+		t.Fatalf("SetRepositories: %v", err)
 	}
-	got, ok := readProjectConfig(path)
-	if !ok {
-		t.Fatal("readProjectConfig should find the written file")
+	got, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
 	}
-	if want := []string{"platform", "docs"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("read back = %v, want %v", got, want)
+	if want := []string{"platform", "docs"}; !reflect.DeepEqual(got.Repositories, want) {
+		t.Fatalf("read back = %v, want %v", got.Repositories, want)
+	}
+}
+
+// The headline regression: `scope set` / `init --set` used to wipe a user's
+// weights and limits because the writer emitted only the repo list.
+func TestWriteProjectConfig_KeepsWeights(t *testing.T) {
+	dir := t.TempDir()
+	path := config.ProjectPath(dir)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	original := "repositories:\n  - old\n\nweights:\n  specs: 3.5\n\nlimits:\n  blast_cap: 9\n"
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := config.SetRepositories(path, []string{"new"}); err != nil {
+		t.Fatalf("SetRepositories: %v", err)
+	}
+	got, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.Weights.Specs != 3.5 {
+		t.Errorf("weights.specs = %v, want 3.5 preserved", got.Weights.Specs)
+	}
+	if got.Limits.BlastCap != 9 {
+		t.Errorf("limits.blast_cap = %v, want 9 preserved", got.Limits.BlastCap)
+	}
+	if !reflect.DeepEqual(got.Repositories, []string{"new"}) {
+		t.Errorf("repositories = %v, want [new]", got.Repositories)
 	}
 }
 

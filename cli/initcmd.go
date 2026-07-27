@@ -1,18 +1,18 @@
 package main
 
-// local-search init | setup — manage the per-project search-scope file at
-// <project>/.agent/local-search-config.yaml. This file declares which registered
-// repositories the LocalSearch skill includes when searching from that project.
+// local-search init | setup — manage the project config at
+// <project>/.agent/local-search-config.yaml, which declares the repositories
+// this project searches.
+//
+// Since v0.4.0 that file is THE config: the same file and the same
+// `repositories:` key are read by the search engine (via local-search/scope)
+// and by the bundled Claude skill. Parsing, validation, and writing live in
+// local-search/config — this file owns only the CLI surface and the validation
+// of names against the registered repo set.
 //
 // The command is deliberately NON-interactive: it exposes scriptable primitives
-// (--json to read state, --add/--remove/--set to mutate) that the LocalSearch
-// skill drives conversationally. The Go search engine (scope package) is not
-// changed — the skill reads this file and passes `--scope repo1,repo2` to
-// `local-search search`/`find`.
-//
-// The on-disk schema is intentionally tiny (a single `repositories:` list), so
-// it is read/written with a purpose-built minimal YAML helper rather than a new
-// third-party dependency.
+// (--json to read state, --add/--remove/--set to mutate) that the skill drives
+// conversationally.
 
 import (
 	"encoding/json"
@@ -22,13 +22,9 @@ import (
 	"sort"
 	"strings"
 
+	"local-search/config"
 	localdb "local-search/db"
 	"local-search/scope"
-)
-
-const (
-	agentDir          = ".agent"
-	projectConfigName = "local-search-config.yaml"
 )
 
 // initRepo is one registered repo as reported in the --json `available` list.
@@ -47,6 +43,12 @@ type initState struct {
 	Repositories []string   `json:"repositories"`
 	Available    []initRepo `json:"available"`
 	Unknown      []string   `json:"unknown"` // configured entries not currently registered
+
+	// Error carries a config-validation failure so `init --json` stays valid
+	// JSON even when the config is broken. The web backend and the skill both
+	// parse this stream; dying with plain text on stderr would leave them
+	// guessing. Exit status is 1 when set.
+	Error string `json:"error,omitempty"`
 }
 
 // cmdInit implements `local-search init` and its alias `setup`.
@@ -106,9 +108,13 @@ func cmdInit(args []string) {
 	if err != nil {
 		die("cannot resolve dir: " + err.Error())
 	}
-	path := filepath.Join(abs, agentDir, projectConfigName)
+	// --dir and every write are EXACT-PATH, always. Walk-up applies only to
+	// resolution reads (scope.Resolve). If writes walked up, `init --dir
+	// packages/api --add x` would mutate the monorepo root instead of the
+	// subdirectory the user named.
+	path := config.ProjectPath(abs)
 
-	// Registered repos + external graphs define the set of valid scope entries.
+	// Registered repos + external graphs define the set of valid entries.
 	db := openDBForResolve()
 	defer db.Close()
 	repos, err := localdb.Repos(db)
@@ -118,11 +124,27 @@ func cmdInit(args []string) {
 	externals, _ := localdb.ExternalGraphs(db)
 	valid := validNameSet(repos, externals)
 
-	current, exists := readProjectConfig(path)
+	existing, loadErr := config.LoadFile(path)
+	exists := loadErr == nil
+	switch {
+	case loadErr == nil, config.IsNotExist(loadErr):
+		// fine: present-and-valid, or absent
+	default:
+		// Present but broken. Report it rather than silently overwriting the
+		// file the user is mid-edit — that overwrite was a real pre-0.4.0 bug.
+		if jsonOut {
+			emitInitJSONError(path, loadErr)
+			return
+		}
+		die(loadErr.Error())
+	}
+
+	current := append([]string(nil), existing.Repositories...)
 	mutated := false
 
-	// --set replaces the whole list; --add/--remove adjust it. Validation dies
-	// before any write, so a bad name never leaves a half-applied file.
+	// --set replaces the whole list; --add/--remove adjust it. Order is fixed
+	// (set → add → remove) regardless of flag order. Validation dies before any
+	// write, so a bad name never leaves a half-applied file.
 	if setGiven {
 		current = dedupe(validateNames(setList, valid))
 		mutated = true
@@ -136,26 +158,51 @@ func cmdInit(args []string) {
 		mutated = true
 	}
 
-	// `init` always leaves a real file behind (create-if-missing), so the user
-	// ends up with something tangible to inspect and the skill can rely on it.
-	if mutated || !exists {
-		if err := writeProjectConfig(path, current); err != nil {
+	// Only an explicit mutation writes. `init` and `init --json` are pure
+	// READS as of v0.4.0.
+	//
+	// The old create-if-missing was how a stray config ended up shipped in
+	// every release bundle (the web server runs `init --json` from its own
+	// cwd), and — now that resolution walks up — one such run from $HOME would
+	// have captured the scope of every project on the machine.
+	if mutated {
+		if err := config.SetRepositories(path, current); err != nil {
+			if jsonOut {
+				emitInitJSONError(path, err)
+				return
+			}
 			die("cannot write " + path + ": " + err.Error())
 		}
+		exists = true
 	}
 
 	if jsonOut {
-		printInitJSON(path, current, repos, valid)
+		printInitJSON(path, current, exists, repos, valid)
 		return
 	}
-	printInitHuman(path, current, repos)
+	printInitHuman(path, current, exists, repos)
+}
+
+// emitInitJSONError keeps `init --json` emitting valid JSON on failure, so the
+// skill and the web backend can surface the problem instead of guessing.
+func emitInitJSONError(path string, err error) {
+	st := initState{
+		Path:         path,
+		Repositories: []string{},
+		Available:    []initRepo{},
+		Unknown:      []string{},
+		Error:        err.Error(),
+	}
+	b, _ := json.MarshalIndent(st, "", "  ")
+	fmt.Println(string(b))
+	os.Exit(1)
 }
 
 // printInitJSON emits the machine-readable state the skill consumes.
-func printInitJSON(path string, current []string, repos []localdb.RepoRow, valid map[string]bool) {
+func printInitJSON(path string, current []string, exists bool, repos []localdb.RepoRow, valid map[string]bool) {
 	st := initState{
 		Path:         path,
-		Exists:       true, // we always create-if-missing before reaching here
+		Exists:       exists, // truthful now that reads no longer create the file
 		Empty:        len(current) == 0,
 		Repositories: current,
 		Unknown:      unknownEntries(current, valid),
@@ -177,8 +224,12 @@ func printInitJSON(path string, current []string, repos []localdb.RepoRow, valid
 }
 
 // printInitHuman prints a readable summary of the current scope + what's available.
-func printInitHuman(path string, current []string, repos []localdb.RepoRow) {
-	fmt.Printf("Project scope config: %s\n\n", path)
+func printInitHuman(path string, current []string, exists bool, repos []localdb.RepoRow) {
+	fmt.Printf("Project config: %s\n", path)
+	if !exists {
+		fmt.Println("(not created yet — run with --set/--add to create it)")
+	}
+	fmt.Println()
 	if len(current) == 0 {
 		fmt.Println("Included repositories: (none yet)")
 	} else {
@@ -198,88 +249,6 @@ func printInitHuman(path string, current []string, repos []localdb.RepoRow) {
 	}
 	fmt.Println()
 	fmt.Println("Edit with: local-search init --add <a,b> | --remove <a> | --set <a,b>")
-}
-
-// ── Config file I/O (minimal YAML for the `repositories:` list) ───────────────
-
-// readProjectConfig reads the repositories list; ok=false when the file is absent.
-func readProjectConfig(path string) ([]string, bool) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, false
-	}
-	return parseProjectYAML(data), true
-}
-
-// writeProjectConfig writes the .agent/local-search-config.yaml, creating the
-// .agent/ directory if needed. Existing files are overwritten.
-func writeProjectConfig(path string, repos []string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(path, renderProjectYAML(repos), 0o644)
-}
-
-// parseProjectYAML extracts the `repositories:` string list from our own tiny
-// schema. It tolerates block lists (`- name`), the empty inline form
-// (`repositories: []`), a simple inline flow list (`repositories: [a, b]`),
-// comments, and blank lines. It is not a general YAML parser — the file is
-// tool-owned.
-func parseProjectYAML(data []byte) []string {
-	var repos []string
-	inList := false
-	for _, raw := range strings.Split(string(data), "\n") {
-		trimmed := strings.TrimSpace(raw)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if !inList {
-			if trimmed == "repositories:" {
-				inList = true
-				continue
-			}
-			if rest, ok := strings.CutPrefix(trimmed, "repositories:"); ok {
-				rest = strings.TrimSpace(rest)
-				if strings.HasPrefix(rest, "[") && strings.HasSuffix(rest, "]") {
-					inner := strings.TrimSuffix(strings.TrimPrefix(rest, "["), "]")
-					for _, p := range strings.Split(inner, ",") {
-						if v := unquote(strings.TrimSpace(p)); v != "" {
-							repos = append(repos, v)
-						}
-					}
-					return repos
-				}
-				inList = true // "repositories:" followed by a block list below
-				continue
-			}
-			continue
-		}
-		// Inside the list: consume `- name` items; any other line ends the block.
-		if item, ok := strings.CutPrefix(trimmed, "-"); ok {
-			if v := unquote(strings.TrimSpace(item)); v != "" {
-				repos = append(repos, v)
-			}
-			continue
-		}
-		break
-	}
-	return repos
-}
-
-// renderProjectYAML writes the header comment plus the repositories list.
-func renderProjectYAML(repos []string) []byte {
-	var b strings.Builder
-	b.WriteString("# LocalSearch project scope — repositories searched when running from this project.\n")
-	b.WriteString("# Names must match `local-search repo list`. Managed by `local-search init`.\n")
-	if len(repos) == 0 {
-		b.WriteString("repositories: []\n")
-		return []byte(b.String())
-	}
-	b.WriteString("repositories:\n")
-	for _, r := range repos {
-		fmt.Fprintf(&b, "  - %s\n", r)
-	}
-	return []byte(b.String())
 }
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -372,16 +341,6 @@ func splitList(s string) []string {
 		}
 	}
 	return out
-}
-
-// unquote strips surrounding single/double quotes from a scalar.
-func unquote(s string) string {
-	if len(s) >= 2 {
-		if (s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'') {
-			return s[1 : len(s)-1]
-		}
-	}
-	return s
 }
 
 // sortedKeys returns the map keys sorted, for stable user-facing messages.

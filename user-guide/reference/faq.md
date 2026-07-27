@@ -39,13 +39,15 @@ re-scan the repo to clear the old ones from the index.
 By design. local-search refuses to silently fan a query across every repo you've
 ever registered. Set a scope for the project and searches resolve to it. See
 [Scope a project](../how-to/scope-a-project.md) and
-[Two config files](../explanation/two-config-files.md).
+[One config file](../explanation/two-config-files.md).
 
-**There are two config files — which one controls what gets searched?**
-`<cwd>/.local-search.toml` controls the **CLI engine** (`scope set`/`init`, plus
-weights and limits). `.agent/local-search-config.yaml` controls the **Claude Code
-skill** (a plain `repositories:` list). Different callers, different files —
-[Two config files](../explanation/two-config-files.md) explains why.
+**Which config file controls what gets searched?**
+One file, in one of two places: `<project>/.agent/local-search-config.yaml`
+(found by walking up) or `~/.local-search-config.yaml` as a global fallback. Its
+`repositories:` list is read by **both** the CLI engine and the Claude Code
+skill. Note that `local-search search` reads neither — it takes `--repos`,
+defaulting to `all`; only `find` and `code` resolve scope.
+[One config file](../explanation/two-config-files.md) has the details.
 
 **Can I search across multiple repos at once?**
 Yes — register them and set a multi-repo scope. See

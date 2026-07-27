@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"local-search/codegraph"
+	"local-search/config"
 	localdb "local-search/db"
 	"local-search/extract"
 	"local-search/find"
@@ -25,7 +27,7 @@ import (
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const Version = "0.3.15"
+const Version = "0.4.0"
 
 var (
 	appDir    = filepath.Join(homeDir(), ".local-search")
@@ -102,6 +104,9 @@ func main() {
 		// Manage the per-project search-scope file (.agent/local-search-config.yaml).
 		// `setup` is an exact alias.
 		cmdInit(args)
+	case "config":
+		// Inspect / validate / migrate the config file.
+		cmdConfig(args)
 	case "install-skill":
 		cmdInstallSkill(args)
 	case "scan-hooks":
@@ -1886,18 +1891,27 @@ func extractScopeFlag(args []string) (string, []string) {
 // resolved scope, opening the DB along the way.
 //
 // Auto-init policy: if --scope was not passed AND there is no
-// .local-search.toml in CWD (nor in any parent dir), create one in CWD seeded
-// from CWD walk-up:
+// .agent/local-search-config.yaml in CWD (nor in any parent dir up to a git
+// root), create one in CWD seeded from CWD walk-up:
 //
-//   - If a registered repo encloses CWD, write `scope = ["that-repo"]`.
-//   - Otherwise write empty `scope = []` and warn — the search will return
-//     no results, but the user gets a tangible config file to edit.
+//   - If a registered repo encloses CWD, write `repositories: [that-repo]`.
+//   - Otherwise write an empty list and warn — the search will return no
+//     results, but the user gets a tangible config file to edit.
 //
-// This guarantees the user always ends up with a real .local-search.toml in
-// the directory they ran the command from, which is what they asked for. The
-// notice is printed to stderr so JSON output on stdout stays clean.
+// Legacy .local-search.toml files are migrated FIRST, before either the
+// code-graph bootstrap or the auto-create gate — see migrateLegacyConfigs for
+// why the order matters.
+//
+// The notice is printed to stderr so JSON output on stdout stays clean.
 func resolveScope(flagValue string) (scope.Scope, []localdb.RepoRow, *sql.DB) {
 	cwd, _ := os.Getwd()
+	home := homeDir()
+
+	// Phase 0: convert any pre-0.4.0 TOML before anything reads or creates a
+	// config. Must precede both gates below.
+	if flagValue == "" {
+		migrateLegacyConfigs(cwd, home)
+	}
 
 	// Open DB up front. ensureDB used to die on a fresh install with no
 	// repos because cmdScan("all") calls loadReposOrDie. We avoid that path
@@ -1916,7 +1930,7 @@ func resolveScope(flagValue string) (scope.Scope, []localdb.RepoRow, *sql.DB) {
 	// returned name is the "graph:"-prefixed scope entry to seed the config.
 	autoSeed := ""
 	if flagValue == "" {
-		if _, _, found := scope.FindProjectConfig(cwd); !found {
+		if _, found := scope.FindProjectConfig(cwd, home); !found {
 			autoSeed = autoBootstrapFromCWD(cwd, db)
 		}
 	}
@@ -1931,12 +1945,12 @@ func resolveScope(flagValue string) (scope.Scope, []localdb.RepoRow, *sql.DB) {
 		externalNames = append(externalNames, e.Name)
 	}
 
-	// Create .local-search.toml if missing. Seeding precedence:
+	// Create the project config if missing. Seeding precedence:
 	//   1. autoSeed (newly-registered external graph) if any
 	//   2. CWD walk-up to a registered repo
 	//   3. Empty
 	if flagValue == "" {
-		if _, _, found := scope.FindProjectConfig(cwd); !found {
+		if _, found := scope.FindProjectConfig(cwd, home); !found {
 			autoInitLocalConfig(cwd, scopeRepos, autoSeed)
 		}
 	}
@@ -1951,28 +1965,32 @@ func resolveScope(flagValue string) (scope.Scope, []localdb.RepoRow, *sql.DB) {
 		ExternalGraphs: externalNames,
 		FlagValue:      flagValue,
 		Repos:          scopeRepos,
-		HomeDir:        homeDir(),
+		HomeDir:        home,
 	}
 	sc, err := res.Resolve()
 	if err == nil {
 		return sc, repos, db
 	}
-	if err == scope.ErrNoScope {
+	if errors.Is(err, scope.ErrNoScope) {
 		// Should not happen now that auto-init always writes a config — but
 		// belt-and-braces in case the flag was passed and no config exists.
 		db.Close()
 		die("no scope configured. Pass --scope or remove the flag to auto-init " + scope.ConfigFileName)
 	}
-	// Empty scope config (scope = []) → Resolve returns "config lists scope
-	// but none are registered". Treat that as a usable empty-result Scope so
-	// the user sees the banner + footer instead of a crash.
+	// Empty repositories list → a usable empty-result Scope, so the user sees
+	// the banner + remediation footer instead of a crash. Report the path that
+	// was ACTUALLY read (walk-up may have found it in an ancestor), not a
+	// synthesized cwd path.
 	if isEmptyScopeError(err) {
-		cfgPath := filepath.Join(cwd, scope.ConfigFileName)
+		cfgPath, ok := scope.FindProjectConfig(cwd, home)
+		if !ok {
+			cfgPath = config.ProjectPath(cwd)
+		}
 		return scope.Scope{
 			Repos:   nil,
 			Source:  cfgPath,
-			Weights: defaultScopeWeights(),
-			Limits:  defaultScopeLimits(),
+			Weights: config.Defaults().Weights,
+			Limits:  config.Defaults().Limits,
 		}, repos, db
 	}
 	db.Close()
@@ -2158,13 +2176,18 @@ func applyIncrementalUpdate(db *sql.DB, repo repoEntry) (changed bool, err error
 	return n > 0, nil
 }
 
-// autoInitLocalConfig writes .local-search.toml in cwd. Seeding precedence:
+// autoInitLocalConfig writes .agent/local-search-config.yaml in cwd. Seeding
+// precedence:
 //
 //  1. autoSeed (e.g. a "graph:foo" entry just produced by autoBootstrapFromCWD)
 //  2. CWD walk-up to a registered repo
 //  3. Empty (with a friendly warning + remediation hint)
 //
 // Prints a one-line notice to stderr so the user knows what just happened.
+//
+// A write failure is a WARNING, not a fatal error: read-only checkouts, CI
+// images, and containers are legitimate, and a query must never fail because a
+// convenience write failed. Pre-0.4.0 this die()d.
 func autoInitLocalConfig(cwd string, scopeRepos []scope.Repo, autoSeed string) {
 	var seed []string
 	switch {
@@ -2177,51 +2200,68 @@ func autoInitLocalConfig(cwd string, scopeRepos []scope.Repo, autoSeed string) {
 	}
 	cfgPath, werr := scope.WriteProjectConfig(cwd, seed)
 	if werr != nil {
-		die("could not auto-init " + scope.ConfigFileName + ": " + werr.Error())
+		fmt.Fprintf(os.Stderr, "Warning: could not create %s (%v) — continuing without it.\n",
+			config.ProjectPath(cwd), werr)
+		return
 	}
 	switch {
 	case autoSeed != "":
-		fmt.Fprintf(os.Stderr, "Created %s with scope = %v (using detected code-graph).\n",
+		fmt.Fprintf(os.Stderr, "Created %s with repositories = %v (using detected code-graph).\n",
 			cfgPath, seed)
 	case len(seed) > 0:
-		fmt.Fprintf(os.Stderr, "Created %s with scope = %v (CWD is inside registered repo %q).\n",
+		fmt.Fprintf(os.Stderr, "Created %s with repositories = %v (CWD is inside registered repo %q).\n",
 			cfgPath, seed, seed[0])
 	default:
 		fmt.Fprintf(os.Stderr,
 			"Created empty %s — CWD is not inside any registered repo.\n"+
-				"Edit it to add scope, e.g.:  scope = [\"repo1\", \"repo2\"]\n"+
+				"Edit it to add repositories, e.g.:\n"+
+				"  repositories:\n    - repo1\n    - repo2\n"+
 				"See available repos: local-search repo list\n",
 			cfgPath)
 	}
 }
 
-// isEmptyScopeError reports whether err is the "config lists scope but none
-// are registered" error from scope.Resolve when the config has scope = [].
-// Match is by message substring because scope.Resolve uses fmt.Errorf, not
-// a sentinel error.
+// migrateLegacyConfigs converts any pre-0.4.0 .local-search.toml reachable from
+// cwd, plus the global one, BEFORE anything reads or creates a config.
+//
+// Ordering is load-bearing. resolveScope auto-creates a config when none is
+// found; if migration ran at read time instead, that auto-create would fire
+// first, manufacture a YAML at the target path, and the adjacent TOML would be
+// deleted having never been read — silently replacing the user's explicit scope
+// with whatever repo happens to enclose cwd.
+//
+// Never fatal: a migration failure must not break a search. Notices go to
+// stderr so JSON output on stdout stays clean.
+func migrateLegacyConfigs(cwd, home string) {
+	if config.AutoMigrateDisabled() {
+		return
+	}
+	report := func(res config.MigrateResult, err error) {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+			return
+		}
+		if s := res.Summary(); s != "" {
+			fmt.Fprintln(os.Stderr, s)
+		}
+	}
+	if dir, ok := config.FindLegacy(cwd, home); ok {
+		report(config.Migrate(dir, config.MigrateOptions{}))
+	}
+	if home != "" {
+		report(config.MigrateGlobal(home, config.MigrateOptions{}))
+	}
+}
+
+// isEmptyScopeError reports whether err means "the config parsed, but nothing
+// in it resolves to a registered repo or graph".
+//
+// Checked via errors.Is against a sentinel. The pre-0.4.0 version matched the
+// substring "lists scope", which silently stopped working the moment the
+// wording changed — and the fall-through it guards is what turns an empty scope
+// into a helpful banner instead of a hard exit.
 func isEmptyScopeError(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "lists scope")
-}
-
-// defaultScopeWeights / defaultScopeLimits mirror the package-level defaults
-// in scope/. Used by resolveScope's empty-scope fall-through so the returned
-// Scope has the same defaults a parsed config would have.
-func defaultScopeWeights() scope.Weights {
-	return scope.Weights{
-		Specs:     scope.DefaultWeightSpecs,
-		Graphify:  scope.DefaultWeightGraphify,
-		CodeGraph: scope.DefaultWeightCodeGraph,
-	}
-}
-
-func defaultScopeLimits() scope.Limits {
-	return scope.Limits{
-		Specs:      scope.DefaultLimitSpecs,
-		Graphify:   scope.DefaultLimitGraphify,
-		CodeGraph:  scope.DefaultLimitCodeGraph,
-		BlastDepth: scope.DefaultBlastDepth,
-		BlastCap:   scope.DefaultBlastCap,
-	}
+	return errors.Is(err, scope.ErrEmptyScope)
 }
 
 func cmdFind(args []string) {
@@ -2415,7 +2455,7 @@ func cmdScope(args []string) {
 	case "set":
 		cmdScopeSet(args[1:])
 	case "clear":
-		cmdScopeClear()
+		cmdScopeClear(args[1:])
 	case "init":
 		cmdScopeInit()
 	default:
@@ -2452,18 +2492,41 @@ func cmdScopeSet(args []string) {
 	if err != nil {
 		die(err.Error())
 	}
-	fmt.Printf("Wrote %s with scope = %v\n", path, scopeList)
+	fmt.Printf("Wrote %s with repositories = %v\n", path, scopeList)
 }
 
-func cmdScopeClear() {
+// cmdScopeClear empties the repository list rather than deleting the file.
+//
+// Deleting would discard the user's weights and limits too, now that there is
+// one unified config. `--delete` keeps the pre-0.4.0 remove-the-file behaviour
+// for anyone who wants it.
+func cmdScopeClear(args []string) {
+	del := false
+	for _, a := range args {
+		switch a {
+		case "--delete", "-d":
+			del = true
+		default:
+			die("Usage: local-search scope clear [--delete]")
+		}
+	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		die(err.Error())
 	}
-	if err := scope.RemoveProjectConfig(cwd); err != nil {
+	if del {
+		if err := scope.RemoveProjectConfig(cwd); err != nil {
+			die(err.Error())
+		}
+		fmt.Printf("Deleted %s (or it did not exist)\n", config.ProjectPath(cwd))
+		return
+	}
+	path, err := scope.ClearProjectConfig(cwd)
+	if err != nil {
 		die(err.Error())
 	}
-	fmt.Printf("Removed %s/%s (or it did not exist)\n", cwd, scope.ConfigFileName)
+	fmt.Printf("Cleared repositories in %s (weights and limits kept).\n", path)
+	fmt.Println("Use --delete to remove the file entirely.")
 }
 
 func cmdScopeInit() {
@@ -2513,8 +2576,8 @@ func printFindResponse(resp find.Response, query string) {
 		fmt.Println("No results for: " + query)
 		if len(resp.Scope) == 0 {
 			fmt.Println()
-			fmt.Println("Scope is empty. Edit .local-search.toml to add repos:")
-			fmt.Println("  scope = [\"repo1\", \"repo2\"]")
+			fmt.Printf("Scope is empty. Edit %s to add repos:\n", config.FileName)
+			fmt.Println("  repositories:\n    - repo1\n    - repo2")
 			fmt.Println("Available repos: local-search repo list")
 		}
 	} else {
@@ -2545,7 +2608,7 @@ func printFindResponse(resp find.Response, query string) {
 	} else {
 		// Non-file source (--scope flag, cwd-walk). Tell the user how to make
 		// it permanent if they want to.
-		fmt.Printf("(scope source: %s — run `local-search scope set repo1,repo2` to write a permanent .local-search.toml)\n", resp.ScopeSource)
+		fmt.Printf("(scope source: %s — run `local-search scope set repo1,repo2` to write a permanent %s)\n", resp.ScopeSource, config.FileName)
 	}
 }
 
@@ -2605,8 +2668,8 @@ Usage:
   local-search code callees <qualified> [--scope ...] Direct callees
 
   local-search scope show                             Print resolved scope and where it came from
-  local-search scope set repo1,repo2                  Write .local-search.toml in CWD
-  local-search scope clear                            Remove .local-search.toml from CWD
+  local-search scope set repo1,repo2                  Write .agent/local-search-config.yaml in CWD
+  local-search scope clear [--delete]                 Empty the repositories list (--delete removes the file)
   local-search scope init                             Auto-detect nearest enclosing repo as scope
 
   local-search init | setup                           Show/create the project scope file (.agent/local-search-config.yaml)
@@ -2655,6 +2718,12 @@ Usage:
   local-search inspect                    Dump full index
   local-search reset                      Delete everything and start over
 
+  local-search config show                Print the resolved config and where it came from
+  local-search config path                Print the config path in use
+  local-search config validate            Strict-check the config (exit 1 on problems)
+  local-search config migrate [--dry-run] Convert a pre-0.4.0 .local-search.toml
+  local-search config schema              Print the JSON Schema for editors
+
   local-search install-skill              Install the bundled Claude skill globally (~/.claude/skills)
   local-search install-skill --local      Install into this project (./.claude/skills)
   local-search install-skill --dir <path> Install into a specific skills directory
@@ -2677,8 +2746,10 @@ Supported file types:
   With companion .md:       .jpg .jpeg .png .gif .webp .svg .pdf
 
 File locations:
-  Repo list:  ~/.local-search/repos
-  Database:   ~/.local-search/specs.db
+  Repo list:      ~/.local-search/repos
+  Database:       ~/.local-search/specs.db
+  Project config: <project>/.agent/local-search-config.yaml   (found by walking up)
+  Global config:  ~/.local-search-config.yaml
 `)
 }
 

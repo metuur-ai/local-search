@@ -50,8 +50,9 @@ Background reading for the curious. No steps, just understanding.
   no-model semantic embedder, rank fusion, and graph-aware ranking.
 - [The disposable index](explanation/the-disposable-index.md) — why deleting
   `specs.db` is always safe.
-- [Two config files](explanation/two-config-files.md) — `.local-search.toml`
-  vs `.agent/local-search-config.yaml`, and who reads what.
+- [One config file](explanation/two-config-files.md) —
+  `.agent/local-search-config.yaml`, its schema, how it's found, and what
+  changed in v0.4.0.
 - [CLI and web, together](explanation/cli-and-web-together.md) — how the
   console is a thin, private layer over the same binary.
 
@@ -61,14 +62,22 @@ Complete, source-verified lookup material.
 
 - [CLI commands](reference/cli-commands.md) — every command, flag, and the
   query syntax, with examples.
+- [Every command, explained](reference/command-guide.md) — the same commands,
+  but *what* each one does, *how* to drive it, and *why* it exists. Read this
+  when you're choosing a command; read the page above when you already know
+  which one and just need the flag.
 - [Configuration](reference/configuration.md) — every file, path, and
   environment variable.
+- [The `/local-search` skill](reference/skill-reference.md) — every option the
+  Claude Code skill exposes, with a deep dive on `init` (project scope).
 - [Web UI reference](reference/web-ui-reference.md) — screens, controls, HTTP
   API, SSE events, and error codes.
 - [EARS spec annotations](reference/ears-spec-annotations.md) — the `@spec <ID>`
   convention that turns requirement IDs into browsable `spec:` tags.
 - [FAQ](reference/faq.md) — quick answers to the questions that come up most,
   each linking to the page that covers it in full.
+- [Upgrading to v0.4.0](reference/upgrading-to-0.4.md) — the config migration:
+  what moved, what auto-migration does, and the behaviour changes.
 - [Troubleshooting](reference/troubleshooting.md) — symptom → cause → fix,
   including the known `local-search ui` startup issue.
 
@@ -80,4 +89,4 @@ Complete, source-verified lookup material.
 > [troubleshooting](reference/troubleshooting.md). Everything else is a search
 > away — fittingly.
 
-*Verified against Local Search v0.3.1.*
+*Verified against Local Search v0.4.0.*

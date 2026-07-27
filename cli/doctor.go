@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"local-search/config"
 	localdb "local-search/db"
 	"local-search/git"
 )
@@ -88,10 +89,66 @@ func cmdDoctor(args []string) {
 
 func runDoctorChecks(rep *doctorReport) {
 	checkEnvironment(rep)
+	checkConfig(rep)
 	checkDatabase(rep)
 	checkRepos(rep)
 	checkDependencies(rep)
 	checkWebUI(rep)
+}
+
+// ── Config ────────────────────────────────────────────────────────────────────
+
+// checkConfig reports on the project and global config files.
+//
+// This exists because a malformed config now makes `find` and `code` refuse to
+// run: there has to be a read-only command that shows the problem without
+// trying to rewrite anything. It also surfaces leftover pre-0.4.0 TOML files
+// that auto-migration has not reached.
+func checkConfig(rep *doctorReport) {
+	const g = "Config"
+	cwd, _ := os.Getwd()
+	home := homeDir()
+
+	// Project config, found by walking up.
+	if path, ok := config.FindProjectConfigPath(cwd, home); ok {
+		if s, err := config.Load(path); err != nil {
+			rep.add(g, "Project config", statusFail, err.Error())
+		} else if len(s.Repositories) == 0 {
+			rep.add(g, "Project config", statusWarn,
+				path+" lists no repositories — `local-search init --set <a,b>`")
+		} else {
+			rep.add(g, "Project config", statusOK,
+				fmt.Sprintf("%s (%d repositories)", path, len(s.Repositories)))
+		}
+	} else {
+		rep.add(g, "Project config", statusOK, "none for this directory (using defaults)")
+	}
+
+	// Global config.
+	if gp := config.GlobalPath(home); gp != "" {
+		if _, err := os.Stat(gp); err == nil {
+			if _, lerr := config.Load(gp); lerr != nil {
+				rep.add(g, "Global config", statusFail, lerr.Error())
+			} else {
+				rep.add(g, "Global config", statusOK, gp)
+			}
+		}
+	}
+
+	// Leftover pre-0.4.0 TOML.
+	var legacy []string
+	if dir, ok := config.FindLegacy(cwd, home); ok {
+		legacy = append(legacy, config.LegacyProjectPath(dir))
+	}
+	if lg := config.LegacyGlobalPath(home); lg != "" {
+		if _, err := os.Stat(lg); err == nil {
+			legacy = append(legacy, lg)
+		}
+	}
+	if len(legacy) > 0 {
+		rep.add(g, "Legacy TOML", statusWarn,
+			strings.Join(legacy, ", ")+" — run `local-search config migrate`")
+	}
 }
 
 // ── Environment ───────────────────────────────────────────────────────────────

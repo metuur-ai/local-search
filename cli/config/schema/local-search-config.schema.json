@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/metuur-ai/local-search/main/cli/config/schema/local-search-config.schema.json",
+  "title": "LocalSearch config",
+  "description": "Project or global configuration for local-search. Lives at <project>/.agent/local-search-config.yaml or ~/.local-search-config.yaml. Read by both the search engine (find, code) and the bundled Claude Code skill.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1,
+      "description": "Schema version. Absent means 1. A value higher than the running local-search supports is a hard error, so a future format change fails loudly instead of being silently misread."
+    },
+    "repositories": {
+      "type": "array",
+      "description": "Repositories this project searches. Names must match `local-search repo list`. An entry prefixed with \"graph:\" refers to a registered external graph rather than a repo.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^\\S(.*\\S)?$"
+      },
+      "uniqueItems": true,
+      "examples": [["payments", "docs", "graph:legacy"]]
+    },
+    "weights": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How much each source contributes to the final 0-1 score. Omit a key to take its default; set it to 0 to disable that source entirely.",
+      "properties": {
+        "specs": {
+          "type": "number",
+          "minimum": 0,
+          "default": 1.0,
+          "description": "Weight of indexed spec/markdown results."
+        },
+        "graphify": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0.7,
+          "description": "Weight of graphify knowledge-graph results."
+        },
+        "codegraph": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0.8,
+          "description": "Weight of code-review-graph results."
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-source result caps and graph traversal bounds. Omit a key to take its default.",
+      "properties": {
+        "specs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 20,
+          "description": "Maximum spec results returned."
+        },
+        "graphify": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 10,
+          "description": "Maximum graphify results returned."
+        },
+        "codegraph": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 10,
+          "description": "Maximum code-graph results returned."
+        },
+        "blast_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 2,
+          "description": "Breadth-first traversal depth for `code blast`."
+        },
+        "blast_cap": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 50,
+          "description": "Maximum nodes returned by `code blast`."
+        }
+      }
+    }
+  }
+}
