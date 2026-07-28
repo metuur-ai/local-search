@@ -1,12 +1,18 @@
 # Local Search User Guide
 
+
+> Check out web version on [https://metuur-ai.github.io/local-search](https://metuur-ai.github.io/local-search)
+
 Welcome! Local Search is a fast, fully offline search engine for the markdown
 specs, design docs, and notes scattered across your repositories. One small Go
 binary indexes everything into a local SQLite cache, and from there you can
 search it three ways: from the command line, from a friendly web console, or
 straight from Claude Code via a skill. No cloud, no API keys, no waiting.
 
-This guide follows the [Diátaxis](https://diataxis.fr/) framework — four kinds
+
+
+
+> This guide follows the [Diátaxis](https://diataxis.fr/) framework — four kinds
 of documentation for four kinds of moments. Pick the door that matches yours.
 
 ## 🧑‍🎓 Tutorials — *"I'm new here, show me around"*

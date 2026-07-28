@@ -2,6 +2,8 @@
 
 A fast, offline spec registry that searches your project documentation across multiple repos. Single Go binary, no runtime dependencies.
 
+> Check out web version on [https://metuur-ai.github.io/local-search](https://metuur-ai.github.io/local-search)
+
 ## Why
 
 Teams store specs as markdown files scattered across repos. Finding the right spec means grepping, scrolling, or asking someone. MCP servers add latency and complexity. `local-search` gives you instant full-text search across all your spec repos with a 3-word command.
