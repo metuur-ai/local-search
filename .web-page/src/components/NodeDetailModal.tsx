@@ -22,7 +22,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({ node, onClose,
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 text-blue-400 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-panel text-blue-400 flex items-center justify-center font-bold">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
@@ -122,7 +122,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({ node, onClose,
         <div className="pt-3 border-t border-slate-200 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-all"
+            className="px-4 py-2 bg-panel text-white rounded-xl text-xs font-semibold hover:bg-panel-raised transition-all"
           >
             Close Inspector
           </button>

@@ -13,7 +13,7 @@ Teams store specs as markdown files scattered across repos. Finding the right sp
 Installs the **CLI**, the **Claude Code skill**, and the local **web UI** in one shot:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash
+tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"
 ```
 
 It pulls the latest release bundle and installs:

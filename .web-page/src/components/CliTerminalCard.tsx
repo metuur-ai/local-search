@@ -23,7 +23,7 @@ interface CliTerminalCardProps {
 }
 
 export const CliTerminalCard: React.FC<CliTerminalCardProps> = ({ onTaskCompleted }) => {
-  const [activeSection, setActiveSection] = useState<'terminal' | 'commands' | 'mechanics'>('terminal');
+  const [activeSection, setActiveSection] = useState<'terminal' | 'commands'>('terminal');
   const [inputVal, setInputVal] = useState('local-search search "refund"');
   const [filterQuery, setFilterQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -59,11 +59,11 @@ export const CliTerminalCard: React.FC<CliTerminalCardProps> = ({ onTaskComplete
             <div className="text-emerald-400 font-bold">[product-specs · FTS] payments/refund.md</div>
             <div className="text-slate-300">Refund Flow & Policy (billing, payments, @spec:r-1.3, @spec:tasks-012)</div>
           </div>
-          <div className="pl-2 border-l-2 border-slate-700 my-1">
+          <div className="pl-2 border-l-2 border-panel-edge my-1">
             <div className="text-slate-300">[billing-service · FTS] integrations/stripe.md</div>
             <div className="text-slate-400">Stripe Integration Spec (billing, stripe, webhooks)</div>
           </div>
-          <div className="pl-2 border-l-2 border-slate-700 my-1">
+          <div className="pl-2 border-l-2 border-panel-edge my-1">
             <div className="text-slate-300">[product-specs · FTS] payments/chargeback.md</div>
             <div className="text-slate-400">Chargeback & Dispute Management (billing, fraud, disputes)</div>
           </div>
@@ -71,7 +71,7 @@ export const CliTerminalCard: React.FC<CliTerminalCardProps> = ({ onTaskComplete
       );
     } else if (lower.startsWith('local-search read') || lower.startsWith('read')) {
       outputNode = (
-        <pre className="font-mono text-[11px] text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 overflow-x-auto">
+        <pre className="font-mono text-[11px] text-slate-300 bg-panel-inset p-2 rounded border border-panel-edge overflow-x-auto">
 {`---
 id: capability://payments/refund
 tags: billing, payments, customer-support
@@ -89,7 +89,7 @@ relationships: product-specs:chargeback
       outputNode = (
         <div className="font-mono text-[11px] text-slate-300 space-y-1">
           <div><span className="text-blue-400">Scope:</span>   product-specs, platform-docs, billing-service</div>
-          <div><span className="text-blue-400">Source:</span>  /Users/you/work/.local-search.toml</div>
+          <div><span className="text-blue-400">Source:</span>  /Users/you/work/.agent/local-search-config.yaml</div>
           <div><span className="text-blue-400">Weights:</span> specs=1.00 graphify=0.70 codegraph=0.80</div>
           <div><span className="text-blue-400">Limits:</span>  specs=20 graphify=10 codegraph=10 blast_depth=2</div>
         </div>
@@ -135,7 +135,7 @@ relationships: product-specs:chargeback
           <div>• <span className="text-emerald-400">find &lt;query&gt;</span> [--scope repo1,repo2]</div>
           <div>• <span className="text-emerald-400">read &lt;name&gt;</span> — Print full spec file content</div>
           <div>• <span className="text-emerald-400">repo add &lt;path&gt; &lt;name&gt;</span> — Register folder</div>
-          <div>• <span className="text-emerald-400">scope show / set / clear</span> — Manage CLI scope (.local-search.toml)</div>
+          <div>• <span className="text-emerald-400">scope show / set / clear</span> — Manage project scope (.agent/local-search-config.yaml)</div>
           <div>• <span className="text-emerald-400">tags</span> — View requirement @spec tags and frequencies</div>
           <div>• <span className="text-emerald-400">graph explain &lt;entity&gt;</span> — 1-hop neighborhood walkthrough</div>
           <div>• <span className="text-emerald-400">doctor</span> — Comprehensive health &amp; index diagnostic check</div>
@@ -195,7 +195,7 @@ relationships: product-specs:chargeback
       flags: ['--scope <repo1,repo2>', '--json'],
       category: '03 Unified Multi-Source Search',
       what: 'Runs unified scoped search across 3 distinct sources simultaneously: indexed specs, Graphify knowledge graphs, and code-review call graphs.',
-      how: 'Reads project scope from .local-search.toml, executes sub-queries against all three sources, normalizes scores with configured weight multipliers, and outputs a merged table.',
+      how: 'Reads project scope from .agent/local-search-config.yaml, executes sub-queries against all three sources, normalizes scores with configured weight multipliers, and outputs a merged table.',
       why: 'Answers "Where is refund logic implemented and specified?" in a single query by linking specification documents directly to code symbols.',
     },
     {
@@ -210,8 +210,8 @@ relationships: product-specs:chargeback
       cmd: 'local-search scope show / set / clear',
       flags: ['--set <repo1,repo2>', '--config <path>'],
       category: '05 Configuration Scoping',
-      what: 'Inspects, sets, or clears repository boundaries, BM25 weight multipliers, and blast radius query limits in .local-search.toml.',
-      how: 'Walks up parent directories from CWD to find .local-search.toml and pins search operations to specific repos in monorepos.',
+      what: 'Inspects, sets, or clears repository boundaries, BM25 weight multipliers, and blast radius query limits in .agent/local-search-config.yaml.',
+      how: 'Walks up parent directories from CWD (stopping at the git root) to find .agent/local-search-config.yaml and pins search operations to specific repos in monorepos.',
       why: 'Prevents query noise in massive monorepos by restricting search operations strictly to the microservices or spec repositories relevant to your current project.',
     },
     {
@@ -298,7 +298,7 @@ relationships: product-specs:chargeback
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center gap-1 text-xs font-semibold">
+        <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex flex-wrap items-center gap-1 text-xs font-semibold">
           <button
             onClick={() => setActiveSection('terminal')}
             className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
@@ -326,25 +326,14 @@ relationships: product-specs:chargeback
             </span>
           </button>
 
-          <button
-            onClick={() => setActiveSection('mechanics')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
-              activeSection === 'mechanics'
-                ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Index Mechanics</span>
-          </button>
         </div>
       </div>
 
       {/* Section 1: Terminal Simulator */}
       {activeSection === 'terminal' && (
-        <div className="bg-slate-950 text-slate-100 rounded-2xl p-5 flex flex-col shadow-lg border border-slate-800 font-sans h-[520px]">
+        <div className="bg-panel-inset text-slate-100 rounded-2xl p-5 flex flex-col shadow-lg border border-panel-edge font-sans h-[520px]">
           {/* Terminal Titlebar */}
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs">
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-panel-edge text-xs">
             <div className="flex items-center gap-2">
               <div className="flex gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
@@ -359,7 +348,7 @@ relationships: product-specs:chargeback
 
             <button
               onClick={() => setHistory([])}
-              className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+              className="text-[10px] text-slate-400 hover:text-slate-200 transition-colors"
             >
               Clear Screen
             </button>
@@ -367,7 +356,7 @@ relationships: product-specs:chargeback
 
           {/* Quick Run Buttons for Non-Technical Users */}
           <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-[10px] font-semibold text-slate-500">Quick Commands:</span>
+            <span className="text-[10px] font-semibold text-slate-400">Quick Commands:</span>
             {presetButtons.map((btn, idx) => (
               <button
                 key={idx}
@@ -375,7 +364,7 @@ relationships: product-specs:chargeback
                   setInputVal(btn.cmd);
                   handleRunCommand(btn.cmd);
                 }}
-                className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-blue-300 border border-slate-800 hover:border-slate-700 rounded-lg text-[11px] font-mono transition-all flex items-center gap-1 cursor-pointer"
+                className="px-2 py-1 bg-panel-raised hover:bg-panel-edge text-blue-200 border border-panel-edge hover:border-panel-raised rounded-lg text-[11px] font-mono transition-all flex items-center gap-1 cursor-pointer"
               >
                 <Play className="w-2.5 h-2.5 fill-current text-blue-400" />
                 <span>{btn.label}</span>
@@ -392,7 +381,7 @@ relationships: product-specs:chargeback
                     <span className="text-emerald-400 font-bold">$</span>
                     <span className="text-slate-100 font-semibold">{item.command}</span>
                   </div>
-                  <span className="text-slate-600 text-[10px]">{item.timestamp}</span>
+                  <span className="text-slate-400 text-[10px]">{item.timestamp}</span>
                 </div>
                 <div className="pl-3 text-slate-300">{item.output}</div>
               </div>
@@ -411,7 +400,7 @@ relationships: product-specs:chargeback
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleRunCommand()}
               placeholder="type local-search command or 'help'..."
-              className="w-full pl-7 pr-20 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              className="w-full pl-7 pr-20 py-2 bg-panel border border-panel-edge rounded-xl text-xs font-mono text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
             />
             <button
               onClick={() => handleRunCommand()}
@@ -515,127 +504,6 @@ relationships: product-specs:chargeback
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Section 3: Index Mechanics & Requirements Tags */}
-      {activeSection === 'mechanics' && (
-        <div className="space-y-6 animate-fadeIn">
-          {/* SQLite FTS5 Mechanics */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Database className="w-5 h-5 text-emerald-600" />
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">How the Local Index Works</h3>
-                <p className="text-xs text-slate-500">
-                  Fast, fully offline SQLite FTS5 engine storing specifications in <code className="font-mono text-slate-700">~/.local-search/specs.db</code>.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center gap-1.5 text-emerald-700 font-bold">
-                  <Cpu className="w-4 h-4" />
-                  <span>1. SQLite FTS5 &amp; Porter Stemmer</span>
-                </div>
-                <p className="text-slate-600 leading-relaxed">
-                  The local engine parses markdown documents into <code className="font-mono text-emerald-700">~/.local-search/specs.db</code>. Words are tokenized with <code className="font-mono">unicode61</code> and Porter Stemming, so queries for &quot;refunding&quot; or &quot;refunds&quot; automatically match &quot;refund&quot;.
-                </p>
-                <div className="bg-white p-2.5 rounded-lg border border-slate-200 font-mono text-[10px] text-slate-700">
-                  Stemming Rule: &quot;processing&quot; → &quot;process&quot;<br />
-                  Fallback: Punctuation syntax errors are auto-quoted &amp; retried.
-                </div>
-              </div>
-
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center gap-1.5 text-blue-700 font-bold">
-                  <Zap className="w-4 h-4" />
-                  <span>2. BM25 + Hybrid Vector Scoring</span>
-                </div>
-                <p className="text-slate-600 leading-relaxed">
-                  Results are scored using BM25 frequency-density logic. When <code className="font-mono text-blue-700">--semantic</code> is passed, local 256-dimensional embeddings re-rank results using Reciprocal Rank Fusion (RRF) for semantic matches.
-                </p>
-                <div className="bg-white p-2.5 rounded-lg border border-slate-200 font-mono text-[10px] text-slate-700">
-                  Score = (0.6 * BM25) + (0.4 * Vector Cosine)<br />
-                  Ranking Time: ~12ms for 1,000 documents
-                </div>
-              </div>
-
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center gap-1.5 text-purple-700 font-bold">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>3. Disposable &amp; Rebuildable Cache</span>
-                </div>
-                <p className="text-slate-600 leading-relaxed">
-                  Markdown files on disk remain the absolute source of truth. The SQLite database is 100% disposable and can be deleted or rebuilt anytime using <code className="font-mono text-purple-700">local-search rebuild</code> without data loss.
-                </p>
-                <div className="bg-white p-2.5 rounded-lg border border-slate-200 font-mono text-[10px] text-slate-700">
-                  Safety: Deleting specs.db loses zero source data.<br />
-                  Incremental: Auto-detects git HEAD changes on search.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* EARS Tag & Wikilinks Mechanics */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Tag className="w-5 h-5 text-purple-600" />
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Requirement Tags (@spec) &amp; Wikilinks ([[doc]]) Mechanics</h3>
-                <p className="text-xs text-slate-500">
-                  How inline requirement annotations and cross-document Wikilinks become searchable facets and knowledge graph edges across all repositories.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 bg-amber-50/80 rounded-xl border border-amber-200 space-y-2">
-                <h4 className="font-bold text-amber-900 text-sm flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-amber-700" />
-                  <span>1. EARS Requirement Extraction</span>
-                </h4>
-                <p className="text-amber-950 leading-relaxed">
-                  When scanning markdown files, <code className="font-mono font-bold">local-search</code> parses inline Easy Approach to Requirements Syntax (EARS) tags formatted as <code className="font-mono bg-white px-1 py-0.5 rounded text-amber-800">@spec &lt;ID&gt;</code>.
-                </p>
-                <div className="bg-white p-3 rounded-lg border border-amber-200 font-mono text-[11px] text-slate-800 space-y-1">
-                  <div>- <span className="text-amber-700 font-bold">@spec R-1.3</span> — WHEN customer submits refund request within 30 days, THE SYSTEM SHALL process refund.</div>
-                  <div>- <span className="text-amber-700 font-bold">@spec TASKS-012</span> — WHEN refund exceeds $500, THE SYSTEM SHALL require manager approval.</div>
-                </div>
-              </div>
-
-              <div className="p-4 bg-purple-50/80 rounded-xl border border-purple-200 space-y-2">
-                <h4 className="font-bold text-purple-900 text-sm flex items-center gap-1.5">
-                  <Tag className="w-4 h-4 text-purple-700" />
-                  <span>2. Traceability &amp; Facet Filtering</span>
-                </h4>
-                <p className="text-purple-950 leading-relaxed">
-                  Extracted requirement IDs automatically create searchable tag facets (<code className="font-mono text-purple-800 bg-white px-1 rounded">spec:r-1.3</code>). Developers and automated test runners can query tags to verify compliance.
-                </p>
-                <div className="bg-white p-3 rounded-lg border border-purple-200 font-mono text-[11px] text-slate-800 space-y-1">
-                  <div><span className="text-purple-700 font-bold">$ local-search tags spec:r-1.3</span></div>
-                  <div className="text-slate-500">payments/refund.md (spec)</div>
-                  <div className="text-slate-500">billing/override.md (architecture decision)</div>
-                </div>
-              </div>
-
-              <div className="p-4 bg-blue-50/80 rounded-xl border border-blue-200 space-y-2">
-                <h4 className="font-bold text-blue-900 text-sm flex items-center gap-1.5">
-                  <Tag className="w-4 h-4 text-blue-700" />
-                  <span>3. Wikilinks Indexing ([[target]])</span>
-                </h4>
-                <p className="text-blue-950 leading-relaxed">
-                  Inline <code className="font-mono font-bold text-blue-800">[[target-page]]</code> links are indexed as document relationship edges and searchable tag facets (<code className="font-mono text-blue-800 bg-white px-1 rounded">link:target-page</code>).
-                </p>
-                <div className="bg-white p-3 rounded-lg border border-blue-200 font-mono text-[11px] text-slate-800 space-y-1">
-                  <div><span className="text-blue-700 font-bold">$ local-search tags link:chargeback-doc</span></div>
-                  <div className="text-slate-500">payments/refund.md → chargeback.md</div>
-                  <div className="text-slate-500">Indexed in graph &amp; FTS5 text tables</div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       )}

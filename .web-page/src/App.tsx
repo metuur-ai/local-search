@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ActiveTab, AudienceLevel, GraphNode, SpecFile, ViewMode } from './types';
+import { useHashRoute } from './hooks/useHashRoute';
 import { TUTORIAL_STEPS } from './data/tutorialSteps';
 import { Navigation } from './components/Navigation';
 import { OverviewSection } from './components/OverviewSection';
@@ -9,13 +10,15 @@ import { SearchSandboxCard } from './components/SearchSandboxCard';
 import { GraphExplorerCard } from './components/GraphExplorerCard';
 import { CliTerminalCard } from './components/CliTerminalCard';
 import { AiSkillSection } from './components/AiSkillSection';
+import { IndexingSection } from './components/IndexingSection';
+import { SiteFooter } from './components/SiteFooter';
 import { ConceptSpotlightCard } from './components/ConceptSpotlightCard';
 import { SpecDetailModal } from './components/SpecDetailModal';
 import { NodeDetailModal } from './components/NodeDetailModal';
 import confetti from 'canvas-confetti';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  const [activeTab, setActiveTab] = useHashRoute();
   const [audienceLevel, setAudienceLevel] = useState<AudienceLevel>('beginner');
   const [completedSteps, setCompletedSteps] = useState<number[]>([1]);
   const [showSidebar, setShowSidebar] = useState<boolean>(false);
@@ -39,7 +42,7 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-screen bg-slate-50 text-slate-900 font-sans flex flex-col overflow-hidden select-none">
+    <div className="w-full h-screen bg-slate-50 text-slate-900 font-sans flex flex-col overflow-hidden">
       {/* Top Header Navigation matching example layout */}
       <Navigation
         activeTab={activeTab}
@@ -52,7 +55,7 @@ export default function App() {
       />
 
       {/* Main Content Area with Tab Switching */}
-      <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+      <main className="app-scroll flex-1 py-4 sm:py-6 overflow-y-auto">
         {activeTab === 'overview' && (
           <OverviewSection
             audienceLevel={audienceLevel}
@@ -61,7 +64,7 @@ export default function App() {
         )}
 
         {activeTab === 'search' && (
-          <div className="max-w-[90%] w-full mx-auto space-y-3">
+          <div className="app-container space-y-3">
             <div className="flex items-center justify-end">
               <button
                 type="button"
@@ -89,7 +92,7 @@ export default function App() {
         )}
 
         {activeTab === 'cli' && (
-          <div className="max-w-[90%] w-full mx-auto space-y-3">
+          <div className="app-container space-y-3">
             <div className="flex items-center justify-end">
               <button
                 type="button"
@@ -112,10 +115,12 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'indexing' && <IndexingSection />}
+
         {activeTab === 'aiskill' && <AiSkillSection />}
 
         {activeTab === 'graph' && (
-          <div className="max-w-[90%] w-full mx-auto space-y-3">
+          <div className="app-container space-y-3">
             <div className="flex items-center justify-end">
               <button
                 type="button"
@@ -161,29 +166,7 @@ export default function App() {
         onTagClick={() => {}}
       />
 
-      {/* Footer Status Bar */}
-      <footer className="h-10 bg-slate-900 text-slate-400 px-4 sm:px-8 flex items-center justify-between text-[11px] font-mono shrink-0 border-t border-slate-800 z-10">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1 text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Local Graph Index: 100% Ready (18 specs)
-          </span>
-          <span className="hidden sm:inline border-l border-slate-800 pl-4 text-slate-500">
-            Engine: FTS5 BM25 + 256-d Vector Hybrid
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-slate-400">Active Tab: {activeTab.toUpperCase()}</span>
-          <a
-            href="https://github.com/metuur-ai/local-search"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-white transition-colors hidden sm:inline"
-          >
-            GitHub v0.3.1
-          </a>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

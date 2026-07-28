@@ -2,7 +2,15 @@ import type React from 'react';
 
 export type ViewMode = 'tutorial' | 'playground';
 export type AudienceLevel = 'beginner' | 'technical';
-export type ActiveTab = 'overview' | 'search' | 'cli' | 'aiskill' | 'graph' | 'workflows' | 'config';
+export type ActiveTab =
+  | 'overview'
+  | 'search'
+  | 'indexing'
+  | 'cli'
+  | 'aiskill'
+  | 'graph'
+  | 'workflows'
+  | 'config';
 
 export type SearchMode = 'ai' | 'graph';
 export type RankingStrategy = 'bm25' | 'graph-aware' | 'semantic';

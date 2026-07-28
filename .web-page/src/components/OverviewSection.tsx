@@ -16,7 +16,45 @@ import {
   FileCode,
   Tag,
   BookOpen,
+  Download,
+  Copy,
+  Check,
+  AlertTriangle,
+  ChevronRight,
 } from 'lucide-react';
+
+/** A shell snippet with a copy button — the install commands are the most
+ *  copied strings on the page, so they should not need selecting by hand. */
+const CopyableCommand: React.FC<{ command: string }> = ({ command }) => {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard is unavailable over plain http or without permission;
+      // the text stays selectable, so there is nothing to recover from.
+    }
+  };
+
+  return (
+    <div className="relative group">
+      <pre className="bg-panel-inset text-emerald-200 p-3.5 pr-12 rounded-xl font-mono text-[11px] leading-relaxed overflow-x-auto border border-panel-edge whitespace-pre">
+{command.split('\n').map((line) => `$ ${line}`).join('\n')}
+      </pre>
+      <button
+        type="button"
+        onClick={copy}
+        aria-label={copied ? 'Copied' : 'Copy command'}
+        className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-panel-raised text-slate-300 hover:text-white hover:bg-panel-edge transition-colors cursor-pointer"
+      >
+        {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+    </div>
+  );
+};
 
 interface OverviewSectionProps {
   audienceLevel: AudienceLevel;
@@ -30,9 +68,9 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
   const [activeQuestion, setActiveQuestion] = useState<'why' | 'what' | 'how'>('why');
 
   return (
-    <div className="space-y-6 pb-12 max-w-[90%] w-full mx-auto">
+    <div className="space-y-6 pb-12 app-container">
       {/* Dark Hero Banner Header */}
-      <div className="bg-slate-950 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl relative overflow-hidden">
+      <div className="bg-panel text-white rounded-3xl p-6 sm:p-8 border border-panel-edge shadow-xl relative overflow-hidden">
         {/* Subtle grid background */}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
@@ -64,7 +102,7 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
             </button>
             <button
               onClick={() => onNavigateTab('cli')}
-              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+              className="px-5 py-2.5 bg-panel-raised hover:bg-panel-edge text-slate-100 border border-panel-edge font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
             >
               <Terminal className="w-4 h-4 text-blue-400" />
               <span>Launch CLI Simulator</span>
@@ -73,17 +111,17 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
         </div>
 
         {/* 3 Interactive Question Tabs */}
-        <div className="mt-8 pt-6 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="mt-8 pt-6 border-t border-panel-edge grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
             onClick={() => setActiveQuestion('why')}
             className={`p-3.5 rounded-2xl text-left border transition-all flex items-center gap-3 cursor-pointer ${
               activeQuestion === 'why'
                 ? 'bg-emerald-950/80 border-emerald-500 text-emerald-100 shadow-md ring-1 ring-emerald-500/50'
-                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                : 'bg-panel-inset border-panel-edge text-slate-400 hover:text-slate-100 hover:bg-panel-raised'
             }`}
           >
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-              activeQuestion === 'why' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'
+              activeQuestion === 'why' ? 'bg-emerald-600 text-white' : 'bg-panel-raised text-slate-300'
             }`}>
               1
             </div>
@@ -98,11 +136,11 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
             className={`p-3.5 rounded-2xl text-left border transition-all flex items-center gap-3 cursor-pointer ${
               activeQuestion === 'what'
                 ? 'bg-blue-950/80 border-blue-500 text-blue-100 shadow-md ring-1 ring-blue-500/50'
-                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                : 'bg-panel-inset border-panel-edge text-slate-400 hover:text-slate-100 hover:bg-panel-raised'
             }`}
           >
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-              activeQuestion === 'what' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
+              activeQuestion === 'what' ? 'bg-blue-600 text-white' : 'bg-panel-raised text-slate-300'
             }`}>
               2
             </div>
@@ -117,11 +155,11 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
             className={`p-3.5 rounded-2xl text-left border transition-all flex items-center gap-3 cursor-pointer ${
               activeQuestion === 'how'
                 ? 'bg-amber-950/80 border-amber-500 text-amber-100 shadow-md ring-1 ring-amber-500/50'
-                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                : 'bg-panel-inset border-panel-edge text-slate-400 hover:text-slate-100 hover:bg-panel-raised'
             }`}
           >
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-              activeQuestion === 'how' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400'
+              activeQuestion === 'how' ? 'bg-amber-600 text-white' : 'bg-panel-raised text-slate-300'
             }`}>
               3
             </div>
@@ -132,6 +170,66 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Install, on the landing itself. The full Step 0 lives inside "How do
+          I use it?", which nobody sees until they pick that question — so the
+          one command that everything else depends on gets a permanent home
+          here, and defers to Step 0 for archives, binaries, and source. It
+          steps aside when Step 0 is already on screen rather than showing the
+          same curl line twice. */}
+      {activeQuestion !== 'how' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-emerald-600 text-white rounded-xl flex items-center justify-center shrink-0">
+                <Download className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="font-bold text-slate-900 text-base">How to install</h2>
+                <p className="text-xs text-slate-500">
+                  One command installs the CLI, the Claude Code skill, and the local web UI.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveQuestion('how')}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+            >
+              <span>All install options</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <CopyableCommand
+            command={
+              'tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"'
+            }
+          />
+
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[11px] text-slate-600">
+            <span>
+              <span className="font-semibold text-slate-900">No runtime dependencies</span> — SQLite
+              is compiled in via pure Go
+            </span>
+            <span>
+              Web UI needs <span className="font-mono text-slate-900">Node ≥ 18</span>; skipped with a
+              warning without it
+            </span>
+            <span className="font-mono">
+              local-search → ~/.local/bin
+            </span>
+          </div>
+
+          <div className="border-t border-slate-100 pt-3.5 space-y-2">
+            <div className="text-xs font-bold text-slate-900">Then: register a folder and search</div>
+            <CopyableCommand
+              command={'local-search repo add ./product-specs product\nlocal-search search refund'}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Dynamic Content Panel based on Selected Question */}
       {activeQuestion === 'why' && (
@@ -277,33 +375,33 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
           </div>
 
           {/* Under the hood technical architecture box */}
-          <div className="bg-slate-900 text-slate-200 border border-slate-800 rounded-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-panel text-slate-200 border border-panel-edge rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-panel-edge pb-3">
               <div className="flex items-center gap-2">
                 <Cpu className="w-5 h-5 text-blue-400" />
                 <h4 className="font-bold text-slate-100 text-sm">Under the Hood Architecture</h4>
               </div>
-              <span className="font-mono text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+              <span className="font-mono text-[10px] text-slate-400 bg-panel-raised px-2 py-0.5 rounded">
                 Reciprocal Rank Fusion (RRF)
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
+              <div className="bg-panel-inset p-4 rounded-xl border border-panel-edge space-y-1">
                 <div className="text-blue-400 font-mono font-bold">1. Full-Text BM25</div>
                 <p className="text-slate-400 text-[11px]">
                   SQLite FTS5 scans tokenized terms, applying length normalization and term frequency weighting across title, tags, and content fields.
                 </p>
               </div>
 
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
+              <div className="bg-panel-inset p-4 rounded-xl border border-panel-edge space-y-1">
                 <div className="text-emerald-400 font-mono font-bold">2. Graph Centrality</div>
                 <p className="text-slate-400 text-[11px]">
                   Calculates node degree centrality from frontmatter fields. High-degree hub specs receive up to 1.5x rank multiplier.
                 </p>
               </div>
 
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-1">
+              <div className="bg-panel-inset p-4 rounded-xl border border-panel-edge space-y-1">
                 <div className="text-amber-400 font-mono font-bold">3. RRF Fusion Score</div>
                 <p className="text-slate-400 text-[11px]">
                   Merges BM25 and vector similarity ranks: <code className="text-amber-300">score = 1 / (60 + rank_fts) + 1 / (60 + rank_vec)</code>.
@@ -337,11 +435,130 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
 
       {activeQuestion === 'how' && (
         <div className="space-y-6 animate-fadeIn">
+          {/* Step 0: Install — nothing below works without it */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-xs">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-emerald-600 text-white rounded-xl flex items-center justify-center shrink-0">
+                  <Download className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Step 0 — Install</h3>
+                  <p className="text-xs text-slate-500">
+                    Installs the CLI, the Claude Code skill, and the local web UI in one shot.
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded border border-emerald-200 font-bold shrink-0">
+                Recommended
+              </span>
+            </div>
+
+            <CopyableCommand
+              command={
+                'tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"'
+              }
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                <div className="font-bold text-slate-900">What lands where</div>
+                <ul className="text-slate-600 text-[11px] space-y-1 font-mono">
+                  <li><span className="text-emerald-700">local-search</span> → ~/.local/bin</li>
+                  <li><span className="text-purple-700">skill</span> → ~/.claude/skills/local-search</li>
+                  <li><span className="text-blue-700">web UI</span> → ~/.local/share/local-search/web</li>
+                </ul>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                <div className="font-bold text-slate-900">Requirements</div>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  No runtime dependencies — SQLite is compiled in via pure Go, so there&apos;s no CGO
+                  and no C toolchain. The web UI needs <strong>Node ≥ 18</strong>; without it that
+                  piece is skipped with a warning and the CLI + skill still install.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                <div className="font-bold text-slate-900">Override or skip parts</div>
+                <p className="text-slate-600 text-[11px] leading-relaxed font-mono">
+                  INSTALL_DIR · SKILLS_DIR · WEB_DIR · INSTALL_WEB=0 · INSTALL_SKILLS=0
+                </p>
+              </div>
+            </div>
+
+            {/* Alternatives */}
+            <details className="group border border-slate-200 rounded-xl overflow-hidden">
+              <summary className="px-4 py-2.5 bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer flex items-center gap-2 hover:bg-slate-100 transition-colors">
+                <ChevronRight className="w-4 h-4 text-slate-500 group-open:rotate-90 transition-transform" />
+                <span>Other ways to install — offline archive, single binary, from source</span>
+              </summary>
+
+              <div className="p-4 space-y-4 border-t border-slate-200">
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold text-slate-900">Offline archive (everything included)</div>
+                  <p className="text-[11px] text-slate-600">
+                    Grab <code className="font-mono text-slate-800">local-search-&lt;version&gt;.zip</code> from the{' '}
+                    <a
+                      href="https://github.com/metuur-ai/local-search/releases/latest"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-700 hover:underline font-semibold"
+                    >
+                      latest release
+                    </a>
+                    . Self-contained, no build step.
+                  </p>
+                  <CopyableCommand command={'unzip local-search-<version>.zip\ncd local-search-<version>\n./install.sh'} />
+                  <div className="flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-900">
+                      Don&apos;t use GitHub&apos;s auto-generated <strong>&quot;Source code (zip)&quot;</strong> asset — it omits the prebuilt <code className="font-mono">frontend/dist</code>, so the web UI 404s.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold text-slate-900">Pre-built binary (CLI only)</div>
+                  <CopyableCommand
+                    command={
+                      'curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-mac-silicon-darwin-arm64 -o /usr/local/bin/local-search\nchmod +x /usr/local/bin/local-search'
+                    }
+                  />
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    macOS Intel → local-search-darwin-amd64 · Linux → -linux-amd64 / -linux-arm64 · Windows → -windows-amd64.exe
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold text-slate-900">Build from source</div>
+                  <CopyableCommand
+                    command={'git clone https://github.com/metuur-ai/local-search.git\ncd local-search/cli\ngo build -o local-search .'}
+                  />
+                  <p className="text-[11px] text-slate-500">Requires Go 1.25+ to build.</p>
+                </div>
+              </div>
+            </details>
+
+            {/* Quick start */}
+            <div className="border-t border-slate-100 pt-4 space-y-2">
+              <div className="text-xs font-bold text-slate-900">Then: register a folder and search</div>
+              <CopyableCommand
+                command={
+                  'local-search repo add ./product-specs product\nlocal-search search refund'
+                }
+              />
+              <p className="text-[11px] text-slate-500">
+                Adding a repo auto-scans immediately, and the index auto-detects changed files on your next search — no manual rebuild step.
+              </p>
+            </div>
+          </div>
+
           {/* 3 Entry points */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Entry 1: CLI Terminal */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
-              <div className="w-10 h-10 bg-slate-900 text-emerald-400 rounded-xl flex items-center justify-center font-bold font-mono">
+              <div className="w-10 h-10 bg-panel-inset text-emerald-300 rounded-xl flex items-center justify-center font-bold font-mono">
                 $&gt;
               </div>
               <h3 className="font-bold text-slate-900 text-base">1. Terminal CLI Commands</h3>
@@ -349,7 +566,7 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
                 Run automated search and spec inspections directly from your terminal terminal without requiring cloud network requests.
               </p>
 
-              <div className="bg-slate-950 text-slate-200 p-3 rounded-xl font-mono text-[11px] space-y-1 border border-slate-800">
+              <div className="bg-panel-inset text-slate-200 p-3 rounded-xl font-mono text-[11px] space-y-1 border border-panel-edge">
                 <div className="text-emerald-400">$ local-search repo add ./docs</div>
                 <div className="text-blue-300">$ local-search search &quot;refund&quot;</div>
                 <div className="text-slate-400">$ local-search graph explain &quot;ref&quot;</div>
@@ -374,7 +591,7 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
                 Connect local-search as a custom tool via <code className="text-purple-700 font-mono">.agent/local-search-config.yaml</code> so your AI agent reads specs before writing code.
               </p>
 
-              <div className="bg-slate-950 text-purple-200 p-3 rounded-xl font-mono text-[11px] space-y-1 border border-slate-800">
+              <div className="bg-panel-inset text-purple-200 p-3 rounded-xl font-mono text-[11px] space-y-1 border border-panel-edge">
                 <div className="text-slate-400"># .agent/local-search-config.yaml</div>
                 <div className="text-purple-300">name: local-search</div>
                 <div className="text-purple-300">command: local-search search</div>
@@ -416,7 +633,7 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
           </div>
 
           {/* Interactive Workflows Teaser */}
-          <div className="bg-slate-900 text-white rounded-2xl p-6 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-panel text-white rounded-2xl p-6 border border-panel-edge flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-center sm:text-left">
               <h4 className="font-bold text-slate-100 text-base">Want to practice real-world team scenarios?</h4>
               <p className="text-xs text-slate-400">

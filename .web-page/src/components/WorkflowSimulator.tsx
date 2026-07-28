@@ -45,9 +45,9 @@ export const WorkflowSimulator: React.FC = () => {
         {
           stepNumber: 3,
           title: 'Inspect CLI Scope Configuration',
-          description: 'Check active repository boundaries defined in .local-search.toml.',
+          description: 'Check active repository boundaries defined in .agent/local-search-config.yaml.',
           command: 'local-search scope show',
-          output: `Scope: product-specs, platform-docs, billing-service\nSource: /Users/you/work/.local-search.toml\nWeights: specs=1.00 graphify=0.70 codegraph=0.80`,
+          output: `Scope: product-specs, platform-docs, billing-service\nSource: /Users/you/work/.agent/local-search-config.yaml\nWeights: specs=1.00 graphify=0.70 codegraph=0.80`,
         },
       ],
     },
@@ -132,9 +132,9 @@ export const WorkflowSimulator: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-[90%] w-full mx-auto pb-12">
+    <div className="space-y-6 app-container pb-12">
       {/* Header Banner */}
-      <div className="bg-slate-900 text-slate-100 rounded-3xl p-6 border border-slate-800 shadow-lg space-y-4">
+      <div className="bg-panel text-slate-100 rounded-3xl p-6 border border-panel-edge shadow-lg space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <span className="text-[10px] font-mono uppercase tracking-wider text-blue-400 font-bold px-2 py-0.5 bg-blue-500/10 rounded border border-blue-500/20">
@@ -151,7 +151,7 @@ export const WorkflowSimulator: React.FC = () => {
               setExecutedSteps([]);
               setTerminalOutput(null);
             }}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border border-slate-700"
+            className="px-3 py-1.5 bg-panel-raised hover:bg-panel-edge text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border border-panel-edge"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Scenario</span>
@@ -160,21 +160,21 @@ export const WorkflowSimulator: React.FC = () => {
 
         {/* 3 Guidance Boxes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-          <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
+          <div className="bg-panel-inset p-3.5 rounded-2xl border border-panel-edge space-y-1">
             <div className="text-[10px] font-mono font-bold text-blue-400 uppercase">WHY IS THIS HERE?</div>
             <p className="text-xs text-slate-300 leading-relaxed">
               To practice real-world team scenarios (like indexing repos or tracing requirements) before running them in your production terminal.
             </p>
           </div>
 
-          <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
+          <div className="bg-panel-inset p-3.5 rounded-2xl border border-panel-edge space-y-1">
             <div className="text-[10px] font-mono font-bold text-emerald-400 uppercase">WHAT AM I LOOKING AT?</div>
             <p className="text-xs text-slate-300 leading-relaxed">
               Interactive scenarios below with step-by-step milestone execution and live terminal output simulation.
             </p>
           </div>
 
-          <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
+          <div className="bg-panel-inset p-3.5 rounded-2xl border border-panel-edge space-y-1">
             <div className="text-[10px] font-mono font-bold text-amber-400 uppercase">HOW DO I USE IT?</div>
             <p className="text-xs text-slate-300 leading-relaxed">
               Select a scenario card below, click <strong className="text-blue-300">Run Step Command</strong>, then click <strong className="text-emerald-300">Proceed to Next Step</strong>!
@@ -282,8 +282,8 @@ export const WorkflowSimulator: React.FC = () => {
             )}
 
             {/* Terminal Command Display Box */}
-            <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 space-y-2 font-mono text-xs text-slate-100 shadow-inner">
-              <div className="flex items-center justify-between text-[11px] text-slate-500 border-b border-slate-800 pb-2">
+            <div className="bg-panel-inset rounded-2xl p-4 border border-panel-edge space-y-2 font-mono text-xs text-slate-100 shadow-inner">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 border-b border-panel-edge pb-2">
                 <span>Simulator Terminal Command</span>
                 <span className="text-emerald-400 font-bold">~/.local-search/specs.db</span>
               </div>
@@ -295,7 +295,7 @@ export const WorkflowSimulator: React.FC = () => {
 
               {/* Console Output Stream */}
               {terminalOutput && (
-                <div className="mt-3 pt-3 border-t border-slate-800 text-slate-300 text-[11px] whitespace-pre-wrap leading-relaxed animate-fadeIn font-mono">
+                <div className="mt-3 pt-3 border-t border-panel-edge text-slate-300 text-[11px] whitespace-pre-wrap leading-relaxed animate-fadeIn font-mono">
                   {terminalOutput}
                 </div>
               )}

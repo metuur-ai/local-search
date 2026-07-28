@@ -48,7 +48,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         <div
           className={`absolute ${positionClasses[position]} z-50 pointer-events-none transition-all duration-200 animate-fadeIn`}
         >
-          <div className="bg-slate-900 text-white text-xs font-medium px-3 py-2 rounded-xl shadow-xl max-w-xs whitespace-normal leading-relaxed border border-slate-700">
+          <div className="bg-panel text-white text-xs font-medium px-3 py-2 rounded-xl shadow-xl max-w-xs whitespace-normal leading-relaxed border border-slate-700">
             {badgeText && (
               <span className="inline-block px-1.5 py-0.5 bg-blue-500 text-white text-[10px] font-bold uppercase rounded-md mb-1 mr-1.5">
                 {badgeText}

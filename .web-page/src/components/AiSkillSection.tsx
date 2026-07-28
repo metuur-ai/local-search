@@ -120,7 +120,7 @@ export const AiSkillSection: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-[90%] w-full mx-auto space-y-6">
+    <div className="app-container space-y-6">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-purple-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 shadow-md border border-purple-800/40 relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -147,13 +147,13 @@ export const AiSkillSection: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="bg-slate-950/80 border border-purple-500/30 p-3 rounded-xl font-mono text-[11px] text-purple-200 space-y-1">
+            <div className="bg-panel-inset border border-purple-500/30 p-3 rounded-xl font-mono text-[11px] text-purple-200 space-y-1">
               <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Installed via CLI</span>
               </div>
               <div className="text-slate-400">$ local-search install-skill</div>
-              <div className="text-[10px] text-slate-500">Target: ~/.claude/skills/local-search</div>
+              <div className="text-[10px] text-slate-400">Target: ~/.claude/skills/local-search</div>
             </div>
           </div>
         </div>
@@ -165,7 +165,7 @@ export const AiSkillSection: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
               activeTab === 'overview'
                 ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-slate-900/60 text-slate-300 hover:bg-slate-800'
+                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
@@ -177,7 +177,7 @@ export const AiSkillSection: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
               activeTab === 'init'
                 ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-slate-900/60 text-slate-300 hover:bg-slate-800'
+                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
             }`}
           >
             <Settings className="w-3.5 h-3.5" />
@@ -189,7 +189,7 @@ export const AiSkillSection: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
               activeTab === 'capabilities'
                 ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-slate-900/60 text-slate-300 hover:bg-slate-800'
+                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -201,7 +201,7 @@ export const AiSkillSection: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
               activeTab === 'sandbox'
                 ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-slate-900/60 text-slate-300 hover:bg-slate-800'
+                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
             }`}
           >
             <Play className="w-3.5 h-3.5" />
@@ -228,7 +228,7 @@ export const AiSkillSection: React.FC = () => {
               <p className="text-xs text-slate-600 leading-relaxed">
                 Installs the bundled skill into Claude Code's global skill directory so it is available across all workspaces on your machine.
               </p>
-              <div className="bg-slate-950 p-3 rounded-xl font-mono text-[11px] text-purple-200 flex items-center justify-between">
+              <div className="bg-panel-inset p-3 rounded-xl font-mono text-[11px] text-purple-200 flex items-center justify-between">
                 <span>$ local-search install-skill</span>
                 <button
                   onClick={() => handleCopy('local-search install-skill', 101)}
@@ -255,7 +255,7 @@ export const AiSkillSection: React.FC = () => {
               <p className="text-xs text-slate-600 leading-relaxed">
                 Lands the skill at <code className="font-mono text-slate-800">./.claude/skills/local-search</code> so everyone cloning the repository gets skill capabilities without extra setup.
               </p>
-              <div className="bg-slate-950 p-3 rounded-xl font-mono text-[11px] text-blue-200 flex items-center justify-between">
+              <div className="bg-panel-inset p-3 rounded-xl font-mono text-[11px] text-blue-200 flex items-center justify-between">
                 <span>$ local-search install-skill --local</span>
                 <button
                   onClick={() => handleCopy('local-search install-skill --local', 102)}
@@ -371,7 +371,7 @@ export const AiSkillSection: React.FC = () => {
                   <span>Copy YAML</span>
                 </button>
               </div>
-              <pre className="bg-slate-950 text-purple-200 p-4 rounded-xl font-mono text-[11px] leading-relaxed overflow-x-auto border border-slate-800">
+              <pre className="bg-panel-inset text-purple-200 p-4 rounded-xl font-mono text-[11px] leading-relaxed overflow-x-auto border border-panel-edge">
 {`# LocalSearch project scope — repositories searched when running from this project.
 # Names must match \`local-search repo list\`. Managed by \`local-search init\`.
 repositories:
@@ -443,7 +443,7 @@ repositories:
                   <span className="font-bold text-slate-900 text-sm">{opt.title}</span>
                 </div>
 
-                <div className="bg-slate-950 p-2.5 rounded-lg font-mono text-[11px] text-purple-200">
+                <div className="bg-panel-inset p-2.5 rounded-lg font-mono text-[11px] text-purple-200">
                   $ {opt.command}
                 </div>
 
@@ -462,26 +462,26 @@ repositories:
 
       {/* Tab 4: Agent Simulator */}
       {activeTab === 'sandbox' && (
-        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 text-slate-100 space-y-5 shadow-xl animate-fadeIn font-mono text-xs">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="bg-panel border border-panel-edge rounded-2xl p-6 text-slate-100 space-y-5 shadow-xl animate-fadeIn font-mono text-xs">
+          <div className="flex items-center justify-between border-b border-panel-edge pb-3">
             <div className="flex items-center gap-2">
               <Bot className="w-5 h-5 text-purple-400" />
               <span className="font-bold text-sm text-purple-200">Claude Code Skill Execution Simulator</span>
             </div>
-            <span className="text-[10px] text-slate-400 bg-slate-900 px-2 py-1 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 bg-panel-raised px-2 py-1 rounded border border-panel-edge">
               Contract: json context
             </span>
           </div>
 
           {/* Controls Form */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-panel-inset p-4 rounded-xl border border-panel-edge">
             <div className="space-y-1">
               <label className="text-[11px] text-slate-400 font-semibold">User Prompt / Query:</label>
               <input
                 type="text"
                 value={sandboxQuery}
                 onChange={(e) => setSandboxQuery(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-purple-200 focus:outline-none focus:border-purple-500"
+                className="w-full bg-panel border border-panel-edge rounded-lg px-3 py-1.5 text-xs text-purple-200 focus:outline-none focus:border-purple-500"
               />
             </div>
 
@@ -491,7 +491,7 @@ repositories:
                 type="text"
                 value={sandboxScope}
                 onChange={(e) => setSandboxScope(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-blue-200 focus:outline-none focus:border-purple-500"
+                className="w-full bg-panel border border-panel-edge rounded-lg px-3 py-1.5 text-xs text-blue-200 focus:outline-none focus:border-purple-500"
               />
             </div>
 
@@ -510,7 +510,7 @@ repositories:
           {/* Simulation Results Output */}
           {sandboxResult && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="p-3 bg-slate-900 rounded-xl border border-purple-900/60 space-y-1">
+              <div className="p-3 bg-panel-inset rounded-xl border border-purple-900/60 space-y-1">
                 <div className="text-[11px] text-slate-400 font-bold">1. Skill Command Dispatched:</div>
                 <div className="text-emerald-400 font-bold">$ {sandboxResult.command}</div>
               </div>
@@ -518,7 +518,7 @@ repositories:
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <div className="text-[11px] text-slate-400 font-bold">2. JSON Payload Returned to Claude:</div>
-                  <pre className="bg-slate-900 p-3 rounded-xl text-[10px] text-slate-300 overflow-x-auto max-h-56 border border-slate-800">
+                  <pre className="bg-panel-inset p-3 rounded-xl text-[10px] text-slate-300 overflow-x-auto max-h-56 border border-panel-edge">
 {JSON.stringify(
   {
     query: sandboxQuery,

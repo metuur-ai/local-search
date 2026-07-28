@@ -14,12 +14,12 @@ import {
 } from 'lucide-react';
 
 export const ConfigMatrixSection: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'toml' | 'ears' | 'locations'>('toml');
+  const [activeTab, setActiveTab] = useState<'yaml' | 'ears' | 'locations'>('yaml');
 
   return (
-    <div className="max-w-[90%] w-full mx-auto space-y-6">
+    <div className="app-container space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-panel via-blue-950 to-panel text-white rounded-2xl p-6 shadow-md border border-panel-edge relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -34,29 +34,29 @@ export const ConfigMatrixSection: React.FC = () => {
               Configuration File Matrix &amp; EARS Syntax
             </h2>
             <p className="text-xs text-slate-300">
-              Technical reference for <code className="font-mono text-blue-300">.local-search.toml</code>, storage paths, and EARS requirements annotations.
+              Technical reference for <code className="font-mono text-blue-300">.agent/local-search-config.yaml</code>, storage paths, and EARS requirements annotations.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl font-mono text-[11px] text-blue-200">
-              <span className="text-slate-400">Resolution:</span> Walk parent dirs up to root
+            <div className="bg-panel-inset border border-panel-edge p-2.5 rounded-xl font-mono text-[11px] text-blue-200">
+              <span className="text-slate-400">Resolution:</span> Walk up, stop at git root
             </div>
           </div>
         </div>
 
         {/* Tab Selection Row */}
-        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800/80 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-panel-edge overflow-x-auto no-scrollbar">
           <button
-            onClick={() => setActiveTab('toml')}
+            onClick={() => setActiveTab('yaml')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === 'toml'
+              activeTab === 'yaml'
                 ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-900/60 text-slate-300 hover:bg-slate-800'
+                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
             }`}
           >
             <FileCode className="w-3.5 h-3.5" />
-            <span>.local-search.toml Scoping</span>
+            <span>local-search-config.yaml Scoping</span>
           </button>
 
           <button
@@ -64,7 +64,7 @@ export const ConfigMatrixSection: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'ears'
                 ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-900/60 text-slate-300 hover:bg-slate-800'
+                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
             }`}
           >
             <Tag className="w-3.5 h-3.5 text-amber-400" />
@@ -76,7 +76,7 @@ export const ConfigMatrixSection: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'locations'
                 ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-900/60 text-slate-300 hover:bg-slate-800'
+                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
             }`}
           >
             <FolderGit2 className="w-3.5 h-3.5 text-purple-400" />
@@ -85,72 +85,161 @@ export const ConfigMatrixSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab 1: .local-search.toml Scoping */}
-      {activeTab === 'toml' && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-xs animate-fadeIn">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">Local Workspace Config (.local-search.toml)</h3>
-              <p className="text-xs text-slate-500">
-                Created at repository root or directory level to pin searches, adjust BM25 weight multipliers, and enforce blast depth caps.
-              </p>
+      {/* Tab 1: local-search-config.yaml Scoping */}
+      {activeTab === 'yaml' && (
+        <div className="space-y-5 animate-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-xs">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">
+                  Local Workspace Config (.agent/local-search-config.yaml)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  One file, read by both the CLI engine and the Claude Code skill. Pins which repos a bare <code className="font-mono text-slate-700">find</code> or <code className="font-mono text-slate-700">code</code> considers, and tunes ranking weights and result limits.
+                </p>
+              </div>
+              <span className="text-[10px] font-mono bg-blue-50 text-blue-800 px-2.5 py-1 rounded border border-blue-200 font-bold shrink-0">
+                YAML · JSON Schema
+              </span>
             </div>
-            <span className="text-[10px] font-mono bg-blue-50 text-blue-800 px-2.5 py-1 rounded border border-blue-200 font-bold">
-              TOML Schema v1
-            </span>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <span className="text-xs font-mono font-bold text-slate-700">
+                  Sample .agent/local-search-config.yaml
+                </span>
+                <pre className="bg-panel-inset text-blue-200 p-4 rounded-xl font-mono text-[11px] leading-relaxed overflow-x-auto border border-panel-edge">
+{`# yaml-language-server: $schema=https://raw.githubusercontent.com/
+#   metuur-ai/local-search/main/cli/config/schema/
+#   local-search-config.schema.json
+repositories:
+  - product-specs
+  - platform-docs
+  - graph:legacy      # graph: prefix = registered external graph
+
+weights:              # optional - omit to take defaults
+  specs: 1.0
+  graphify: 0.7
+  codegraph: 0.8
+
+limits:               # optional
+  specs: 20
+  graphify: 10
+  codegraph: 10
+  blast_depth: 2
+  blast_cap: 50`}
+                </pre>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  The first line is a <strong>modeline</strong>: editors with the YAML language server give you autocomplete, inline docs, and a red squiggle on a typo&apos;d key. <code className="font-mono text-slate-700">local-search config schema</code> prints the schema for air-gapped setups.
+                </p>
+              </div>
+
+              <div className="space-y-3 text-xs text-slate-700">
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <ChevronRight className="w-4 h-4 text-blue-600" />
+                    <span>Resolution Order</span>
+                  </div>
+                  <ol className="text-slate-600 leading-relaxed text-[11px] space-y-0.5 list-decimal list-inside">
+                    <li><code className="font-mono text-slate-900">--scope</code> flag on the command</li>
+                    <li><code className="font-mono text-slate-900">&lt;cwd&gt;/.agent/local-search-config.yaml</code>, walking up</li>
+                    <li><code className="font-mono text-slate-900">~/.local-search-config.yaml</code> global fallback</li>
+                    <li>Nearest registered repo enclosing the CWD</li>
+                    <li><strong className="text-red-700">Hard error</strong> — never a silent search of every repo</li>
+                  </ol>
+                  <p className="text-slate-500 text-[11px] pt-1">
+                    The walk stops at a git repository root and never reads at <code className="font-mono">$HOME</code> itself, so one stray parent config cannot capture everything beneath it.
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <ChevronRight className="w-4 h-4 text-blue-600" />
+                    <span>weights: and limits:</span>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed text-[11px]">
+                    Every key is optional — an absent key takes its default, and an explicit <code className="font-mono text-blue-700">0</code> is honoured (use it to disable a source). Unknown keys are a hard error with a &quot;did you mean&quot; suggestion, except <code className="font-mono">x-</code> prefixed keys reserved for third-party tooling.
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 space-y-1">
+                  <div className="font-bold text-emerald-950 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                    <span>Non-destructive writes</span>
+                  </div>
+                  <p className="text-emerald-900 leading-relaxed text-[11px]">
+                    <code className="font-mono">scope set</code> and <code className="font-mono">init --set</code> rewrite only the <code className="font-mono">repositories:</code> list — your weights, limits, comments and key order survive byte-for-byte. Writes are atomic, so a concurrent reader never sees a half-written file.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div className="space-y-2">
-              <span className="text-xs font-mono font-bold text-slate-700">Sample .local-search.toml File</span>
-              <pre className="bg-slate-950 text-blue-200 p-4 rounded-xl font-mono text-[11px] leading-relaxed overflow-x-auto border border-slate-800">
-{`# .local-search.toml - Local Search Directory Config
-scope = ["product-specs", "platform-docs", "billing-service"]
-
-[weights]
-specs = 1.00
-graphify = 0.70
-codegraph = 0.80
-
-[limits]
-specs = 20
-graphify = 10
-codegraph = 10
-blast_depth = 2
-blast_cap = 50`}
-              </pre>
+          {/* Defaults table */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <Database className="w-5 h-5 text-blue-600" />
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Keys &amp; Defaults</h3>
+                <p className="text-xs text-slate-500">
+                  Omitted keys fall back to these values.
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-700">
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <ChevronRight className="w-4 h-4 text-blue-600" />
-                  <span>Resolution Order</span>
-                </div>
-                <p className="text-slate-600 leading-relaxed text-[11px]">
-                  When executing <code className="font-mono text-slate-900">local-search find</code> or <code className="font-mono text-slate-900">code</code>, local-search walks up parent directories starting from CWD to find the nearest <code className="font-mono">.local-search.toml</code> file.
-                </p>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="text-left text-slate-500 border-b border-slate-200">
+                    <th className="py-2 pr-4 font-semibold">Key</th>
+                    <th className="py-2 pr-4 font-semibold">Section</th>
+                    <th className="py-2 pr-4 font-semibold">Default</th>
+                    <th className="py-2 font-semibold">Meaning</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-700">
+                  {[
+                    ['specs', 'weights', '1.0', 'Ranking weight for spec/doc matches'],
+                    ['graphify', 'weights', '0.7', 'Ranking weight for graphify-sourced matches'],
+                    ['codegraph', 'weights', '0.8', 'Ranking weight for code-review-graph matches'],
+                    ['specs', 'limits', '20', 'Max spec results returned'],
+                    ['graphify', 'limits', '10', 'Max graphify results returned'],
+                    ['codegraph', 'limits', '10', 'Max code-review-graph results returned'],
+                    ['blast_depth', 'limits', '2', 'Default traversal depth for code blast'],
+                    ['blast_cap', 'limits', '50', 'Default max nodes returned by code blast'],
+                  ].map(([key, section, def, meaning]) => (
+                    <tr key={`${section}.${key}`} className="border-b border-slate-100 last:border-0">
+                      <td className="py-2 pr-4 font-mono text-blue-700 font-semibold">{key}</td>
+                      <td className="py-2 pr-4 font-mono text-slate-500">{section}</td>
+                      <td className="py-2 pr-4 font-mono text-slate-900">{def}</td>
+                      <td className="py-2 text-slate-600">{meaning}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <ChevronRight className="w-4 h-4 text-blue-600" />
-                  <span>Weight Multipliers ([weights])</span>
-                </div>
-                <p className="text-slate-600 leading-relaxed text-[11px]">
-                  Controls score weighting across multi-source queries. For example, specs=1.00 keeps specifications as primary, while codegraph=0.80 slightly penalizes code symbols in unified search results.
-                </p>
+          {/* Gotcha + migration */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-2">
+              <div className="font-bold text-amber-950 text-sm flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-amber-700" />
+                <span>search reads neither file</span>
               </div>
+              <p className="text-xs text-amber-900 leading-relaxed">
+                Only <code className="font-mono font-bold">find</code> and <code className="font-mono font-bold">code</code> resolve scope. <code className="font-mono font-bold">local-search search</code> takes <code className="font-mono">--repos</code>, defaulting to <code className="font-mono">all</code> — which is why the Claude Code skill appends <code className="font-mono">--repos &lt;list&gt;</code> by hand to every search call.
+              </p>
+            </div>
 
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <ChevronRight className="w-4 h-4 text-blue-600" />
-                  <span>Blast Limits ([limits])</span>
-                </div>
-                <p className="text-slate-600 leading-relaxed text-[11px]">
-                  Enforces bounded graph reachability during <code className="font-mono text-slate-900">code blast</code>. <code className="font-mono text-blue-700">blast_depth = 2</code> limits transitive dependency search to 2 hops, preventing graph explosion.
-                </p>
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-2">
+              <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-slate-600" />
+                <span>Migrating from .local-search.toml (v0.3.x)</span>
               </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Three files became one in v0.4.0. Any <code className="font-mono">.local-search.toml</code> is migrated automatically on the first config read after upgrade, then deleted. Preview with <code className="font-mono text-slate-900">config migrate --dry-run</code>, or opt out with <code className="font-mono text-slate-900">LOCAL_SEARCH_NO_AUTO_MIGRATE=1</code>. Migration refuses to delete a TOML it could not parse.
+              </p>
             </div>
           </div>
         </div>
@@ -242,13 +331,18 @@ blast_cap = 50`}
             </div>
 
             <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-              <span className="text-purple-700 font-bold">.local-search.toml</span>
-              <p className="font-sans text-slate-600 text-[11px]">Project directory level CLI scope, weights, and blast depth limits.</p>
+              <span className="text-purple-700 font-bold">&lt;project&gt;/.agent/local-search-config.yaml</span>
+              <p className="font-sans text-slate-600 text-[11px]">Per-project scope, weights and limits, found by walking up. Read by the engine <strong>and</strong> the Claude Code skill.</p>
             </div>
 
             <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-              <span className="text-purple-700 font-bold">.agent/local-search-config.yaml</span>
-              <p className="font-sans text-slate-600 text-[11px]">Claude Code AI skill project scope definition file.</p>
+              <span className="text-purple-700 font-bold">~/.local-search-config.yaml</span>
+              <p className="font-sans text-slate-600 text-[11px]">Global fallback, same schema, used when no project config is found.</p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+              <span className="text-purple-700 font-bold">~/.local-search/ui.pid &amp; ui.log</span>
+              <p className="font-sans text-slate-600 text-[11px]">Written by <code className="font-mono">local-search ui</code>; how <code className="font-mono">ui stop</code> and <code className="font-mono">ui status</code> find the daemon.</p>
             </div>
           </div>
         </div>

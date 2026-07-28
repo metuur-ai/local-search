@@ -89,7 +89,7 @@ export const SpecDetailModal: React.FC<SpecDetailModalProps> = ({ spec, onClose,
         <div className="pt-4 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-all"
+            className="px-4 py-2 bg-panel text-white rounded-xl text-xs font-semibold hover:bg-panel-raised transition-all"
           >
             Close Spec Viewer
           </button>

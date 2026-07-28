@@ -18,7 +18,7 @@ Grab the repo and read the installer before running anything blind — always go
 practice for a `curl | bash` one-liner:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash
+tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"
 ```
 
 This one command installs three things: the `local-search` CLI to `~/.local/bin`,

@@ -221,12 +221,12 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
     return (
       <div
-        className={`absolute ${posClasses} z-[100] w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] bg-slate-900/95 text-white backdrop-blur-md rounded-2xl border border-teal-500/60 shadow-2xl p-4 text-xs space-y-3 animate-fadeIn ring-2 ring-amber-400/50`}
+        className={`absolute ${posClasses} z-[100] w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] bg-panel/95 text-white backdrop-blur-md rounded-2xl border border-teal-500/60 shadow-2xl p-4 text-xs space-y-3 animate-fadeIn ring-2 ring-amber-400/50`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Pointer Triangle */}
         <div
-          className={`absolute w-3 h-3 bg-slate-900 border-teal-500/60 rotate-45 ${
+          className={`absolute w-3 h-3 bg-panel border-teal-500/60 rotate-45 ${
             position.startsWith('top')
               ? 'bottom-[-6px] border-b border-r'
               : 'top-[-6px] border-t border-l'
@@ -234,7 +234,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
         />
 
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-slate-800 pb-2">
+        <div className="flex items-start justify-between border-b border-panel-edge pb-2">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-mono font-bold text-xs flex items-center justify-center shadow-xs">
               {item.id}
@@ -257,7 +257,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
         </div>
 
         {/* Description */}
-        <p className="text-[11px] text-slate-200 leading-relaxed bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80">
+        <p className="text-[11px] text-slate-200 leading-relaxed bg-panel-inset p-2.5 rounded-xl border border-panel-edge">
           {item.description}
         </p>
 
@@ -277,7 +277,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
         </div>
 
         {/* Footer Navigation */}
-        <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
+        <div className="pt-2 border-t border-panel-edge flex items-center justify-between text-[11px]">
           <span className="text-[10px] text-slate-400 font-mono">
             Item {id} of 8
           </span>
@@ -446,7 +446,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                       >
                         <span
                           className={`w-5 h-5 rounded-full text-[10px] font-mono font-bold flex items-center justify-center shrink-0 ${
-                            isSelected ? 'bg-slate-950 text-amber-400' : 'bg-teal-100 text-teal-800 border border-teal-200'
+                            isSelected ? 'bg-panel-inset text-amber-300' : 'bg-teal-100 text-teal-800 border border-teal-200'
                           }`}
                         >
                           {item.id}
@@ -466,7 +466,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
       )}
 
       {/* Main Graph Explorer Card */}
-      <div className="bg-slate-50 text-slate-900 rounded-3xl flex flex-col shadow-xl relative flex-1 border border-slate-200 select-none min-h-[680px]">
+      <div className="bg-slate-50 text-slate-900 rounded-3xl flex flex-col shadow-xl relative flex-1 border border-slate-200 min-h-[680px]">
         {/* 1. Header Bar matching screenshot */}
       <div
         className={`bg-white px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 transition-all ${
@@ -512,7 +512,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
         {/* Global Search Bar */}
         <div
-          className={`flex-1 max-w-md mx-2 relative hidden md:flex items-center gap-1 p-0.5 rounded-xl transition-all ${
+          className={`flex-1 min-w-[16rem] max-w-md mx-2 relative hidden md:flex items-center gap-1 p-0.5 rounded-xl transition-all ${
             activeUiBadge === 2 ? 'ring-2 ring-amber-400 bg-amber-100/50' : ''
           }`}
         >
@@ -548,7 +548,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
         {/* Action Controls & Rebuild Popover */}
         <div
-          className={`flex items-center gap-3 p-1 rounded-xl transition-all ${
+          className={`flex flex-wrap items-center justify-end gap-2 sm:gap-3 p-1 rounded-xl transition-all ${
             activeUiBadge === 3 ? 'ring-2 ring-amber-400 bg-amber-100/50' : ''
           }`}
         >
@@ -761,7 +761,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
         {/* Connection Filters & Stats Summary */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+          <div className="flex flex-wrap items-center gap-1.5 border-l border-slate-200 pl-3">
             <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
               CONNECTIONS
             </span>
@@ -825,7 +825,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
           </div>
 
           {/* Counts pill from screenshot */}
-          <div className="flex items-center gap-3 font-mono text-[10px] text-slate-500 border-l border-slate-200 pl-3">
+          <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] text-slate-500 border-l border-slate-200 pl-3">
             <div>
               <strong className="text-slate-800 font-bold">{filteredNodes.length}</strong> NODES
             </div>
