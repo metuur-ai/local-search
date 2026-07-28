@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createServer } from './backend/src/server.js';
 import { createRegistry } from './backend/src/sessions.js';
-import { parseReposStdout, mergeRepoRows } from './backend/src/repos.js';
+import { parseReposStdout, mergeRepoRows, configErrorFromInit } from './backend/src/repos.js';
+import { memoizeRepos } from './backend/src/reposCache.js';
 import { probeJsonContext } from './backend/src/smoke.js';
 import { createCliLog, tapChild } from './backend/src/cliLog.js';
 
@@ -68,10 +69,24 @@ async function runRepos() {
   }
   // Spec counts are best-effort enrichment — an init failure must not blank the
   // list, so the repos still render (with 0 counts) from `repo list` alone.
+  //
+  // CLI v0.4.0 exits 1 on a malformed config but still prints valid JSON with an
+  // `error` field. Read stdout regardless of exit code so that error reaches the
+  // log; otherwise a config typo shows up only as every count silently being 0.
   let initStdout = '';
   try {
     const init = await runLocalSearch(['init', '--json']);
-    if (init.code === 0) initStdout = init.stdout;
+    initStdout = init.stdout ?? '';
+    if (init.code !== 0) {
+      const cfgErr = configErrorFromInit(initStdout);
+      console.warn(
+        cfgErr
+          ? `local-search config problem — spec counts unavailable:\n${cfgErr}\n` +
+              'Fix it, or run `local-search config validate` for the full report.'
+          : `local-search init --json exited ${init.code}; spec counts unavailable.`,
+      );
+      initStdout = ''; // counts are not trustworthy from a failed run
+    }
   } catch {
     /* leave counts at 0 */
   }
@@ -81,7 +96,9 @@ async function runRepos() {
 const graphCacheFile = path.resolve(__dirname, 'data', 'graph.json');
 
 const registry = createRegistry();
-const deps = { runRepos };
+// Memoized: /api/repos is hit on every popover open and /api/reveal needs the
+// repo roots on every click. Both would otherwise re-spawn the CLI each time.
+const deps = { runRepos: memoizeRepos(runRepos) };
 deps.runLocalSearch = runLocalSearch;
 deps.graphCacheFile = graphCacheFile;
 if (cliLog) deps.cliLog = cliLog;

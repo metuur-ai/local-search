@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Dark surfaces.
+
+   Nothing dark in this app is black any more. Section panels, terminals and
+   code samples all draw from one blue-slate ramp, so a code block reads as a
+   recessed step of the same material rather than a hole punched in the page.
+
+   The ramp, light to dark:
+
+     panel-edge    #3d4d70  borders and dividers
+     panel-raised  #33415e  controls sitting on a panel
+     panel         #26324a  surface of a dark section
+     panel-inset   #1e2839  recessed: nested cards, terminals, code blocks
+
+   Syntax colours (emerald-400, blue-300, amber-400, purple-200) all clear 7:1
+   against panel-inset, so shell output stays legible on the lifted background.
+--------------------------------------------------------------------------- */
+@theme {
+  --color-panel: #26324a;
+  --color-panel-inset: #1e2839;
+  --color-panel-raised: #33415e;
+  --color-panel-edge: #3d4d70;
+}
+
+/* ---------------------------------------------------------------------------
+   Shared page container.
+   Replaces the previous `max-w-[90%]` pattern, which had two problems:
+   the header and the nav pill row resolved to different left edges, and
+   percentage-only width let line lengths grow without bound on wide screens
+   while leaving just 5% gutters on phones.
+--------------------------------------------------------------------------- */
+.app-container {
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .app-container {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-container {
+    padding-inline: 2rem;
+  }
+}
+
+/* The main region is the app's only scroll container. Reserving the gutter
+   keeps the centred container from shifting sideways when switching between
+   a short tab and a tall one, and keeps it aligned with the fixed header. */
+.app-scroll {
+  scrollbar-gutter: stable;
+}
+
+/* ---------------------------------------------------------------------------
+   Utilities referenced throughout the components that had no definition,
+   so they silently resolved to nothing.
+--------------------------------------------------------------------------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.22s ease-out both;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* All eight section pills fit on one row from 1366px up. Below that the row
+   scrolls, and since its scrollbar is hidden a fade on the trailing edge is
+   the only cue that there are more sections off-screen. Keep this breakpoint
+   in step with the real fit width whenever a tab is added or renamed. */
+.nav-scroller {
+  position: relative;
+}
+
+@media (max-width: 1365px) {
+  .nav-scroller::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 2.5rem;
+    pointer-events: none;
+    background: linear-gradient(
+      to left,
+      var(--color-slate-50) 20%,
+      transparent 100%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeIn {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

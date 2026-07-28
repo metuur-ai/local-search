@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { fetchRepos, refreshGraph } from '../../api.js';
+import { loadCachedRepos, saveCachedRepos } from '../../repoCache.js';
 import { toGraph } from '../graphData.js';
 
 export function RefreshReposPanel({ onRebuilt }) {
@@ -26,13 +27,22 @@ export function RefreshReposPanel({ onRebuilt }) {
     return () => document.removeEventListener('click', onDoc);
   }, [open]);
 
+  // Cached-first: the last known list (shared with the search console via
+  // localStorage) renders immediately, so reopening the popover costs no spinner
+  // and no round trip to see. A live fetch still runs behind it to revalidate.
   async function loadRepoCheckboxes() {
-    setRows(null);
+    const cached = loadCachedRepos();
+    const hasCache = !!cached && cached.repos.length > 0;
+    setRows(hasCache ? cached.repos : null);
     setLoadError(null);
     try {
       const data = await fetchRepos();
-      setRows(Array.isArray(data) ? data : (data.repos || []));
+      const list = Array.isArray(data) ? data : (data.repos || []);
+      setRows(list);
+      saveCachedRepos(list, Date.now());
     } catch (err) {
+      // Keep any cached rows on screen — a failed revalidation must not blank a
+      // list the user can still act on.
       setLoadError('Failed to load repos: ' + (err?.message || String(err)));
     }
   }
@@ -58,7 +68,9 @@ export function RefreshReposPanel({ onRebuilt }) {
 
   async function onRebuild() {
     setRebuilding(true);
-    setStatus({ text: 'Rebuilding…', error: false });
+    // The button itself now reads "Rebuilding…" — clear the status line so the
+    // progress isn't stated twice, then let it carry the outcome.
+    setStatus({ text: '', error: false });
     try {
       const data = await refreshGraph([...checked]);
       const g = toGraph(data);
@@ -89,10 +101,16 @@ export function RefreshReposPanel({ onRebuilt }) {
             Rebuild graph from repos
           </div>
           <div style="max-height:240px; overflow:auto; padding:8px 11px; display:flex; flex-direction:column; gap:6px; font-family:var(--font-sans); font-size:12.5px; color:var(--ink);">
-            {loadError ? (
-              <span style="color:#c0392b;">{loadError}</span>
-            ) : rows === null ? (
-              <span style="color:var(--ink-faint);">Loading repos…</span>
+            {loadError && (
+              <span class="repos-error" data-testid="repos-error">{loadError}</span>
+            )}
+            {rows === null ? (
+              loadError ? null : (
+                <span class="repos-loading" data-testid="repos-loading">
+                  <span class="repos-spinner" aria-hidden="true" />
+                  Loading repos…
+                </span>
+              )
             ) : rows.length === 0 ? (
               <span style="color:var(--ink-faint);">No repos found. Rebuild will use all repos.</span>
             ) : (
@@ -116,8 +134,15 @@ export function RefreshReposPanel({ onRebuilt }) {
             <span style={`font-family:var(--font-sans); font-size:11.5px; color:${status.error ? '#c0392b' : 'var(--ink-faint)'};`}>
               {status.text}
             </span>
-            <button type="button" class="btn btn-primary" disabled={rebuilding} onClick={onRebuild}>
-              Rebuild graph
+            <button
+              type="button"
+              class="btn btn-primary"
+              disabled={rebuilding}
+              aria-busy={rebuilding ? 'true' : 'false'}
+              onClick={onRebuild}
+            >
+              {rebuilding && <span class="repos-spinner" aria-hidden="true" />}
+              {rebuilding ? 'Rebuilding…' : 'Rebuild graph'}
             </button>
           </div>
         </div>

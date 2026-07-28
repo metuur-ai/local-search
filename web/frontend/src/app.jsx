@@ -35,6 +35,12 @@ import { ActivityFeed } from './components/ActivityFeed.jsx';
 import { ReplyInput } from './components/ReplyInput.jsx';
 import { ElapsedTimer } from './components/ElapsedTimer.jsx';
 import { RankedSources } from './components/RankedSources.jsx';
+import { SourceMap } from './components/SourceMap.jsx';
+// Re-exported so existing importers of these two keep working; they live in their
+// own module so components can use them without importing the app shell back.
+export { sourceKey, normalizeTags } from './sourceIdentity.js';
+import { sourceKey, normalizeTags } from './sourceIdentity.js';
+import { RevealButton } from './components/RevealButton.jsx';
 import RetrievalPath from './components/RetrievalPath.jsx';
 
 // Derive a lowercase file extension from a source path ("code/db/index.go" -> "go").
@@ -47,27 +53,6 @@ function extOf(path) {
 
 // A run searches each selected repo separately, so `sources`/`provenance`
 // arrive incrementally. Merge helpers keep the accumulated view stable.
-
-// Stable identity for a source row (fullpath is unique; fall back to repo/name).
-function sourceKey(s) {
-  return s?.fullpath || `${s?.repo ?? ''}/${s?.name ?? s?.path ?? ''}`;
-}
-
-// Normalize a source's `tags` to a string array. The graph-DB (no-AI) path emits
-// `tags` as a string — either "" or a bracketed list like "[a, b, c]" — while
-// consumers (facets, filters, render) all expect an array. Coerce here so the
-// whole app sees one shape.
-export function normalizeTags(tags) {
-  if (Array.isArray(tags)) return tags.filter((t) => t != null).map(String);
-  if (typeof tags === 'string') {
-    return tags
-      .replace(/^\[|\]$/g, '')
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
-  }
-  return [];
-}
 
 // Append new source rows, de-duplicating by identity (later repos don't clobber
 // earlier ones, and a re-emitted row is not duplicated). Tags are normalized to
@@ -170,7 +155,9 @@ export function App() {
   const [inspectorTab, setInspectorTab] = useState('ai');
   const [fileFilter, setFileFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
-  const [activeSourceIdx, setActiveSourceIdx] = useState(null);
+  // The selected source, held as its `sourceKey` rather than as a position. See
+  // the `activeSource` resolution below for why position was wrong.
+  const [activeSourceKey, setActiveSourceKey] = useState(null);
 
   // Last-5 completed runs, persisted in localStorage (client-side only).
   const [history, setHistory] = useState(() => loadHistory());
@@ -323,7 +310,7 @@ export function App() {
     setDone(false);
     setModel(null);
     setPhase('idle');
-    setActiveSourceIdx(null);
+    setActiveSourceKey(null);
   }, []);
 
   const onSubmit = useCallback(async () => {
@@ -554,8 +541,23 @@ export function App() {
     return items.length ? items.join(' → ') : 'None';
   })();
 
+  // Resolved by identity, against the UNFILTERED `sources`. This used to be a
+  // positional index into `filteredSources`, which broke two ways. The Source Map
+  // is built from unfiltered `sources` (D8), so a leaf's position is not its
+  // position in `filteredSources` — with a filter active a leaf would open a
+  // different document, or none. And changing the filter after selecting silently
+  // re-pointed this block at whatever row landed on that index next.
   const activeSource =
-    activeSourceIdx != null ? filteredSources[activeSourceIdx] : null;
+    activeSourceKey == null
+      ? null
+      : sources.find((s) => sourceKey(s) === activeSourceKey) ?? null;
+
+  // One selection path for the result cards and the Source Map leaves, so a leaf
+  // and its list row always land on the same detail block (R-3.3, R-3.6).
+  const selectSource = useCallback((row) => {
+    setActiveSourceKey(sourceKey(row));
+    setInspectorTab('sources');
+  }, []);
 
   // The Neighborhood Map uses the explicit `graph` event when Claude ran
   // `json related`; otherwise it falls back to a star synthesized from the
@@ -628,7 +630,7 @@ export function App() {
       setProvenance(run.provenance || {});
       setGraph(run.graph || null);
       setDone(true);
-      setActiveSourceIdx(null);
+      setActiveSourceKey(null);
       setStartedAt(null);
       setInspectorTab('ai');
       setShowHistory(false);
@@ -995,15 +997,23 @@ export function App() {
               filteredSources.map((src, i) => {
                 const label = src.title || src.name || '(untitled)';
                 const ext = extOf(src.path);
-                const isActive = i === activeSourceIdx;
+                const isActive = sourceKey(src) === activeSourceKey;
+                const select = () => selectSource(src);
                 return (
-                  <button
-                    type="button"
+                  // A div, not a button: the card nests its own reveal action and
+                  // a button inside a button is invalid. role/tabIndex/onKeyDown
+                  // restore the keyboard and a11y behaviour a <button> gave us.
+                  <div
+                    role="button"
+                    tabIndex={0}
                     key={`${src.path || label}-${i}`}
                     class={`result-card${isActive ? ' is-active' : ''}`}
-                    onClick={() => {
-                      setActiveSourceIdx(i);
-                      setInspectorTab('sources');
+                    onClick={select}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        select();
+                      }
                     }}
                   >
                     <div class="result-card-top">
@@ -1018,6 +1028,12 @@ export function App() {
                         {src.path || label}
                       </span>
                       {src.repo != null && <span class="result-repo">{src.repo}</span>}
+                      <RevealButton
+                        repo={src.repo}
+                        path={src.path}
+                        fullpath={src.fullpath}
+                        compact
+                      />
                     </div>
                     <h4 class="result-title">{label}</h4>
                     <div class="result-card-bottom">
@@ -1032,7 +1048,7 @@ export function App() {
                         </span>
                       )}
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -1071,6 +1087,13 @@ export function App() {
               </button>
               <button
                 type="button"
+                class={`inspector-tab${inspectorTab === 'sourcemap' ? ' is-active' : ''}`}
+                onClick={() => setInspectorTab('sourcemap')}
+              >
+                <i class="fa-solid fa-folder-tree" /> Source Map
+              </button>
+              <button
+                type="button"
                 class={`inspector-tab${inspectorTab === 'tags' ? ' is-active' : ''}`}
                 onClick={() => setInspectorTab('tags')}
               >
@@ -1082,9 +1105,11 @@ export function App() {
                 ? 'AI Synthesis'
                 : inspectorTab === 'sources'
                   ? `${sources.length} sources`
-                  : inspectorTab === 'tags'
-                    ? `${topTags.length} tags`
-                    : 'Graph'}
+                  : inspectorTab === 'sourcemap'
+                    ? `${sources.length} sources`
+                    : inspectorTab === 'tags'
+                      ? `${topTags.length} tags`
+                      : 'Graph'}
             </span>
           </div>
 
@@ -1165,6 +1190,11 @@ export function App() {
                     <span class="source-detail-repo">{activeSource.repo}</span>
                   )}
                 </div>
+                <RevealButton
+                  repo={activeSource.repo}
+                  path={activeSource.path}
+                  fullpath={activeSource.fullpath}
+                />
                 <h2 class="source-detail-title">
                   {activeSource.title || activeSource.name || '(untitled)'}
                 </h2>
@@ -1196,6 +1226,22 @@ export function App() {
                 <i class="fa-solid fa-diagram-project" /> Knowledge graph
               </h3>
               <p>Retrieved sources are outlined; node size tracks relevance.</p>
+              {/* Two tabs are named "…Map", so each states its own claim rather
+                  than leaving the user to guess which answers their question
+                  (story 1.5; HLD non-goal amended 2026-07-27).
+
+                  Says nothing about what the EDGES mean, on purpose. This pane has
+                  two modes: with an explicit `graph` event from `json related` it
+                  does carry document-to-document links, but the fallback
+                  `graphFromSources` is a pure star of query→document links only
+                  (graphElements.js:74-96). Copy claiming the map "shows which
+                  documents relate to each other" — as this line first did — is
+                  false in the fallback mode, and is exactly the semantic overclaim
+                  the honesty doctrine forbids (constraint 7). */}
+              <p class="graph-intro-contrast">
+                This map answers what your query pulled in, and how strongly. For
+                where those documents live on disk, see <strong>Source Map</strong>.
+              </p>
             </div>
             <div class="graph-frame">
               <GraphView
@@ -1206,7 +1252,28 @@ export function App() {
             </div>
           </div>
 
-          {/* Pane 4: top tags across the retrieved sources */}
+          {/* Pane 4: source map — where the retrieved documents came from */}
+          <div
+            class="inspector-pane"
+            data-testid="region-source-map"
+            hidden={inspectorTab !== 'sourcemap'}
+          >
+            <div class="graph-intro">
+              <h3>
+                <i class="fa-solid fa-folder-tree" /> Source map
+              </h3>
+              {/* Deliberately does NOT repeat the counted scope — the pane's own
+                  header states it, and that is the tested copy (R-2.12). */}
+              <p>Where the retrieved documents came from.</p>
+            </div>
+            <SourceMap
+              sources={sources}
+              active={inspectorTab === 'sourcemap'}
+              onSelectSource={selectSource}
+            />
+          </div>
+
+          {/* Pane 5: top tags across the retrieved sources */}
           <div
             class="inspector-pane"
             data-testid="region-tags"
@@ -1348,7 +1415,7 @@ export function App() {
                   <i class="fa-solid fa-download" /> Install
                 </h4>
                 <p class="help-text">One command installs the CLI, the Claude skill, and this web UI:</p>
-                <pre class="help-code"><code>curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash</code></pre>
+                <pre class="help-code"><code>tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"</code></pre>
                 <p class="help-text">Then launch the UI (needs Node ≥ 18):</p>
                 <pre class="help-code"><code>local-search ui</code></pre>
                 <p class="help-text">

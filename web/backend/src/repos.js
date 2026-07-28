@@ -62,6 +62,26 @@ export function specCountsFromInit(stdout) {
 }
 
 /**
+ * configErrorFromInit(stdout) -> string | null.
+ * Since CLI v0.4.0 a malformed `.agent/local-search-config.yaml` makes
+ * `init --json` exit 1 while still emitting well-formed JSON carrying an
+ * `error` field (line-numbered, with a "did you mean" hint).
+ *
+ * Without this the failure is invisible here: runRepos swallows the non-zero
+ * exit, every spec count silently becomes 0, and the user has no way to tell
+ * "this repo has no specs" from "your config has a typo on line 4".
+ */
+export function configErrorFromInit(stdout) {
+  try {
+    const parsed = JSON.parse(String(stdout ?? ''));
+    const msg = parsed?.error;
+    return typeof msg === 'string' && msg.trim() !== '' ? msg : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * mergeRepoRows(listStdout, initStdout) -> RepoRow[].
  * The registered-repo set + graph flag comes from `repo list`; spec counts are
  * enriched by name from `init --json`. This replaces the slow `json repos` while

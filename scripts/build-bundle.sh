@@ -106,7 +106,12 @@ mkdir -p "$STAGE/web"
 # data/ holds the runtime graph.json cache (gitignored, machine-local). tar does
 # not honour .gitignore, so exclude it explicitly — otherwise the build machine's
 # own cached graph leaks into every published bundle.
-( cd "$ROOT/web" && tar --exclude=node_modules --exclude=logs --exclude=data --exclude=.devlocal -cf - . ) \
+#
+# .agent/ is excluded for the same class of reason: the web server runs
+# `local-search init --json` from its own cwd, which used to create a config
+# there. Shipping one would make it a walk-up ancestor for every project
+# created under the install directory, silently forcing an empty scope.
+( cd "$ROOT/web" && tar --exclude=node_modules --exclude=logs --exclude=data --exclude=.devlocal --exclude=.agent -cf - . ) \
   | ( tar -xf - -C "$STAGE/web" )
 
 cp "$ROOT/install.sh" "$STAGE/install.sh"

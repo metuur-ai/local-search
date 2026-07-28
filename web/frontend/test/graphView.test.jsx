@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/preact';
 import { describe, it, expect } from 'vitest';
-import { buildElements } from '../src/components/graphElements.js';
+import { buildElements, KIND_META } from '../src/components/graphElements.js';
 import { GraphView, GRAPH_STYLE } from '../src/components/GraphView.jsx';
 
 const fixtureGraph = {
@@ -65,10 +65,16 @@ describe('GraphView stylesheet honesty (R-4.3 / R-4.4)', () => {
     expect(String(nodeStyle.style.height)).toContain('relevance');
   });
 
-  it('colors nodes by tag', () => {
-    const tagStyles = GRAPH_STYLE.filter((s) => /node\[tag/.test(s.selector));
-    expect(tagStyles.length).toBeGreaterThan(0);
-    expect(tagStyles.every((s) => 'background-color' in s.style)).toBe(true);
+  it('colors nodes by kind', () => {
+    // Color is driven by document type (`kind`), one rule per KIND_META key.
+    // The `query` anchor is the exception — it is colored by node[?isAnchor].
+    const documentKinds = Object.keys(KIND_META).filter((k) => k !== 'query');
+    const kindStyles = GRAPH_STYLE.filter((s) => /^node\[kind/.test(s.selector));
+
+    expect(kindStyles.map((s) => s.selector)).toEqual(
+      documentKinds.map((k) => `node[kind = "${k}"]`),
+    );
+    expect(kindStyles.every((s) => 'background-color' in s.style)).toBe(true);
   });
 
   it('gives source nodes a distinct mark', () => {

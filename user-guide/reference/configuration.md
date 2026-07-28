@@ -36,53 +36,67 @@ Written by `local-search ui` when the web UI daemon starts: `ui.pid` holds the
 process ID and port, `ui.log` captures the daemon's stdout/stderr. `ui stop` and
 `ui status` read `ui.pid` to find and signal the running process.
 
-## Engine scope — `<cwd>/.local-search.toml`
+## Project config — `<project>/.agent/local-search-config.yaml`
 
-Controls which repos a bare `search`/`find`/`code` call considers, plus ranking
-weights and result limits, for whoever runs `local-search` from that directory
-(or a subdirectory of it — resolution walks upward). Written by `scope set`,
-removed by `scope clear`, inspected with `scope show`.
+**The** config file since v0.4.0: read by the CLI engine (`find`, `code`) *and*
+by the Claude Code skill, with one `repositories:` list serving both. Controls
+which repos a bare `find`/`code` call considers, plus ranking weights and result
+limits, for whoever runs `local-search` from that directory or any subdirectory
+of it (resolution walks upward). Written by `scope set` and `init`, emptied by
+`scope clear`, inspected with `scope show` or `config show`.
 
-```toml
-scope = ["repoA", "repoB"]
+Validated on every read against a published JSON Schema; problems are reported
+with line numbers. See `local-search config validate` and `config schema`.
 
-[weights]
-specs = 1.0
-graphify = 0.7
-codegraph = 0.8
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/metuur-ai/local-search/main/cli/config/schema/local-search-config.schema.json
+repositories:
+  - repoA
+  - repoB
 
-[limits]
-specs = 20
-graphify = 10
-codegraph = 10
-blast_depth = 2
-blast_cap = 50
+weights:   # optional
+  specs: 1.0
+  graphify: 0.7
+  codegraph: 0.8
+
+limits:    # optional
+  specs: 20
+  graphify: 10
+  codegraph: 10
+  blast_depth: 2
+  blast_cap: 50
 ```
 
-`scope set` only ever writes the `scope = [...]` line — `[weights]` and
-`[limits]` are optional and fall back to the defaults below if omitted or if
-the file doesn't have those sections at all.
+Every key is optional. An absent key takes its default; an explicit `0` is
+honoured (use it to disable a source entirely). Unknown keys are a hard error
+with a "did you mean" suggestion — except `x-` prefixed keys, which are reserved
+for third-party tooling.
+
+`scope set` and `init --set` rewrite only the `repositories:` list; a `weights:`
+or `limits:` block already in the file is preserved byte-for-byte, along with
+your comments and key order. (Before v0.4.0 the writer emitted only the repo
+list, silently wiping both.) Omitted keys fall back to the defaults below.
 
 | Key | Section | Default | Meaning |
 |---|---|---|---|
-| `specs` | `[weights]` | `1.0` | Ranking weight for spec/doc matches |
-| `graphify` | `[weights]` | `0.7` | Ranking weight for graphify-sourced matches |
-| `codegraph` | `[weights]` | `0.8` | Ranking weight for code-review-graph matches |
-| `specs` | `[limits]` | `20` | Max spec results returned |
-| `graphify` | `[limits]` | `10` | Max graphify results returned |
-| `codegraph` | `[limits]` | `10` | Max code-review-graph results returned |
-| `blast_depth` | `[limits]` | `2` | Default traversal depth for `code blast` |
-| `blast_cap` | `[limits]` | `50` | Default max nodes returned by `code blast` |
+| `specs` | `weights` | `1.0` | Ranking weight for spec/doc matches |
+| `graphify` | `weights` | `0.7` | Ranking weight for graphify-sourced matches |
+| `codegraph` | `weights` | `0.8` | Ranking weight for code-review-graph matches |
+| `specs` | `limits` | `20` | Max spec results returned |
+| `graphify` | `limits` | `10` | Max graphify results returned |
+| `codegraph` | `limits` | `10` | Max code-review-graph results returned |
+| `blast_depth` | `limits` | `2` | Default traversal depth for `code blast` |
+| `blast_cap` | `limits` | `50` | Default max nodes returned by `code blast` |
 
 A scope entry can also point at a standalone graph rather than a spec repo, by
-prefixing it with `graph:` (e.g. `scope = ["graph:my-graph"]`).
+prefixing it with `graph:` (e.g. a `- graph:my-graph` list entry).
 
 **Resolution order** (highest precedence first):
 1. An explicit `--scope` flag on the command itself.
-2. `<cwd>/.local-search.toml`, found by walking upward from the current
-   directory.
-3. `~/.local-search/config.toml` — an optional global default scope, same
-   schema as above.
+2. `<cwd>/.agent/local-search-config.yaml`, found by walking upward from the
+   current directory. The walk stops at a git repository root, and never reads
+   at `$HOME` itself.
+3. `~/.local-search-config.yaml` — an optional global default, same schema.
 4. Walking upward from the current directory to find the nearest folder that
    is itself a registered repo, and scoping to just that repo.
 5. If none of the above resolve, the command fails with a "no scope" error.

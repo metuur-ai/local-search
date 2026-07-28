@@ -6,6 +6,7 @@ import {
   parseRepoListTable,
   specCountsFromInit,
   mergeRepoRows,
+  configErrorFromInit,
 } from '../src/repos.js';
 
 function fakeRes() {
@@ -94,4 +95,33 @@ test('mergeRepoRows: enriches repo-list rows with init spec counts', () => {
     { name: 'team-os-example-repo', path: '/Users/x/team-os-example-repo', spec_count: 0, has_graph: false },
     { name: 'squirrel', path: '/Users/x/squirrel', spec_count: 361, has_graph: true },
   ]);
+});
+
+// CLI v0.4.0: a malformed .agent/local-search-config.yaml makes `init --json`
+// exit 1 while still printing valid JSON carrying the line-numbered error.
+// Without extracting it, the failure surfaces only as every spec count being 0.
+test('configErrorFromInit: extracts the error field', () => {
+  const init = JSON.stringify({
+    path: '/p/.agent/local-search-config.yaml',
+    repositories: [],
+    available: [],
+    unknown: [],
+    error: '/p/.agent/local-search-config.yaml:4:1: unknown key "repositorys"',
+  });
+  assert.match(configErrorFromInit(init), /unknown key "repositorys"/);
+});
+
+test('configErrorFromInit: healthy payload -> null', () => {
+  const init = JSON.stringify({ repositories: ['a'], available: [], unknown: [] });
+  assert.equal(configErrorFromInit(init), null);
+});
+
+test('configErrorFromInit: empty error string -> null', () => {
+  assert.equal(configErrorFromInit(JSON.stringify({ error: '   ' })), null);
+});
+
+test('configErrorFromInit: malformed JSON -> null (no throw)', () => {
+  assert.equal(configErrorFromInit('{not json'), null);
+  assert.equal(configErrorFromInit(''), null);
+  assert.equal(configErrorFromInit(undefined), null);
 });

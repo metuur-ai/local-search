@@ -62,5 +62,6 @@ You don't need to invoke any of this directly; it's what happens automatically o
 
 ## See also
 
+- [../reference/skill-reference.md](../reference/skill-reference.md) — every option the skill exposes, with a What/How/Why deep dive on `init` (project scope): all five flags, the `--json` contract, flag precedence, validation rules, and stale-entry handling
 - [scope-a-project.md](scope-a-project.md) — the `.agent/local-search-config.yaml` file the skill reads before every search
 - [../reference/cli-commands.md](../reference/cli-commands.md) — the full `install-skill` flag reference, and the `json` subcommands the skill relies on

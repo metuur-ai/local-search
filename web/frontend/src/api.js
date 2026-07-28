@@ -51,6 +51,22 @@ export async function refreshGraph(repos = []) {
   return res.json();
 }
 
+// POST /api/reveal { repo, path, fullpath } -> shows the file in the OS file
+// manager. The server resolves the absolute path from the registered repo roots
+// (the graph export carries no absolute path) and refuses targets outside them.
+// Throws carrying the server message so the caller can surface it.
+export async function revealSource({ repo, path, fullpath } = {}) {
+  const res = await fetch('/api/reveal', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ repo, path, fullpath }),
+  });
+  if (!res.ok) {
+    throw new Error(await readError(res));
+  }
+  return res.json();
+}
+
 // POST /api/query -> { sessionId }. Throws carrying the server message on 400/409/500.
 // `mode` is 'ai' (default, spawns claude) or 'graph' (no-AI, direct graph DB search).
 export async function postQuery({ q, repos, mode }) {

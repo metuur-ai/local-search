@@ -163,6 +163,32 @@ body {
   box-shadow: 0 4px 16px -6px rgba(15,118,110,0.6);
 }
 .btn-primary:hover { filter: brightness(1.06); box-shadow: 0 6px 20px -6px rgba(15,118,110,0.6); }
+.btn:disabled { opacity: 0.7; cursor: default; transform: none; }
+.btn:disabled:hover { filter: none; transform: none; }
+
+/* Busy indicator — same construction as the console's .repo-picker-spinner. */
+.repos-spinner {
+  flex: none;
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-ring, rgba(15,118,110,0.22));
+  border-top-color: var(--accent);
+  animation: repos-spin 0.7s linear infinite;
+}
+/* On the solid teal primary button the accent ring is invisible — go white. */
+.btn-primary .repos-spinner {
+  border-color: rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+}
+.repos-loading { display: flex; align-items: center; gap: 8px; color: var(--ink-faint); }
+.repos-error { color: #c0392b; }
+@keyframes repos-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .repos-spinner { animation-duration: 2.4s; }
+}
 
 /* ---------- FILTER BAR ---------- */
 .filters { display: flex; align-items: center; gap: 10px; flex-shrink: 0; position: relative; }
@@ -190,6 +216,27 @@ body {
 }
 .field::placeholder { color: var(--ink-faint); }
 .field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+
+/* link-family toggles — node filters pick nodes, these pick edges */
+.filters-sep { width: 1px; height: 22px; background: var(--border-2); flex-shrink: 0; margin: 0 2px; }
+.linkfams { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.linkfam {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; color: var(--ink-faint);
+  padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); box-shadow: 0 1px 2px rgba(23,27,38,0.04);
+  transition: all 0.18s; white-space: nowrap;
+}
+.linkfam:hover:not(:disabled) { border-color: var(--border-2); color: var(--ink); }
+.linkfam:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.linkfam.is-on {
+  color: var(--ink); border-color: var(--accent);
+  background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.linkfam:disabled { opacity: 0.45; cursor: default; }
+.linkfam-line { width: 22px; height: 6px; flex-shrink: 0; overflow: visible; }
+.linkfam-count { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+.linkfam.is-on .linkfam-count { color: var(--accent); }
 
 /* popover (JS injected) */
 .popover {
@@ -290,6 +337,7 @@ body {
 .legend-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 9px; }
 .legend-item { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-dim); font-weight: 500; }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 1px 3px rgba(23,27,38,0.25); }
+.legend-count { color: var(--ink-faint); font-family: var(--font-mono); font-size: 10px; margin-left: auto; }
 
 /* physics dock */
 .dock {
@@ -335,6 +383,9 @@ body {
 .prop { font-size: 13px; color: var(--ink); line-height: 1.45; }
 .prop-key { color: var(--ink-faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 6px; }
 .prop-path { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); overflow-wrap: anywhere; }
+/* The path wraps (overflow-wrap:anywhere), so keep the action on its own line
+   instead of trailing the last wrapped fragment. */
+.prop .reveal-btn { display: flex; width: fit-content; margin-top: 8px; }
 .prop-tags { display: inline-flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; vertical-align: top; }
 .tag-chip { font-family: var(--font-mono); font-size: 10.5px; line-height: 1; padding: 4px 8px; border-radius: 999px; background: rgba(124, 58, 237, 0.12); color: var(--c-tag); border: 1px solid rgba(124, 58, 237, 0.28); }
 /* namespaced tag groups: spec: (teal) and link: (blue), matching node palette */

@@ -36,15 +36,25 @@ cp local-search /usr/local/bin/local-search
 
 Requires Go 1.21+ to build. No runtime dependencies — SQLite is compiled in.
 
-## Project search scope (`.agent/local-search-config.yaml`)
+## Project config (`.agent/local-search-config.yaml`)
 
 Each project declares which registered repositories LocalSearch includes, via
-`<project>/.agent/local-search-config.yaml`. **Before searching from a project,
-read its scope from this file and pass it to every search** so results stay inside
-the project's boundary:
+`<project>/.agent/local-search-config.yaml`. Since v0.4.0 this is **the** config
+file: the same file and the same `repositories:` key are read by the search
+engine (`find`, `code`) and by this skill. A global fallback lives at
+`~/.local-search-config.yaml`. Both are validated against a published JSON
+Schema; `local-search config validate` reports problems with line numbers.
 
-1. Read scope: `local-search init --json` (creates the file if missing) → returns
-   `{ path, exists, empty, repositories, available, unknown }`.
+The file is found by **walking up** from the current directory, stopping at a git
+repository root.
+
+**Before searching from a project, read its scope and pass it to every search**
+so results stay inside the project's boundary:
+
+1. Read scope: `local-search init --json` → returns
+   `{ path, exists, empty, repositories, available, unknown, error? }`.
+   This is a **pure read** — it does not create the file. `exists: false` means
+   there is genuinely no config yet.
 2. If `repositories` is non-empty, pass them to every search — note the flag differs
    per command:
    - `local-search search "auth" --repos repoA,repoB`
@@ -52,16 +62,21 @@ the project's boundary:
    Both take a comma-separated list.
 3. If the file is missing or `empty`, offer to set it up (below), or fall back to a
    one-off unscoped `local-search search "..."`.
+4. If the JSON carries a non-empty `error`, the config is malformed. Show the
+   error to the user (it names the line and suggests a fix) and offer to run
+   `local-search config validate`. Do **not** try to repair the file by
+   overwriting it.
 
 ### Configuring scope interactively (`local-search init` / `setup`)
 
 `init` and `setup` are identical. **You (the skill) run the conversation** — the CLI
 only exposes non-interactive primitives. Drive it with `AskUserQuestion`:
 
-1. `local-search init --json` — read current state (creates the file if absent).
+1. `local-search init --json` — read current state (a pure read; writes nothing).
 2. Branch on the state:
-   - **Empty / just created** → show `available` repos, ask which to include, then
-     `local-search init --set repoA,repoB`.
+   - **Missing (`exists: false`) or empty** → show `available` repos, ask which to
+     include, then `local-search init --set repoA,repoB`. Only this step creates
+     the file.
    - **Has repositories** → show the current list and offer:
      - **Add** → `local-search init --add repoC`
      - **Remove** → `local-search init --remove repoA`
@@ -84,7 +99,7 @@ Before running any search, read the project's configured repositories from
 `.agent/local-search-config.yaml` and pass them to **every** `local-search search`
 via `--repos`:
 
-1. `local-search init --json` → read `repositories` (creates the file if missing).
+1. `local-search init --json` → read `repositories` (a pure read; writes nothing).
 2. Join the list comma-separated and append `--repos <repoA,repoB>` to every
    `local-search search` call in the steps below, so results stay inside the
    project's boundary.
@@ -194,10 +209,12 @@ local-search search "refund OR chargeback"        # boolean OR
 local-search search "billing NOT fraud"           # exclude
 local-search search refunding                     # stemming: matches "refund"
 local-search search "payment" --repo platform     # filter by repo
-local-search search "webhook" --directory billing/             # focus to directory
-local-search search "event" --repo backend --directory integrations/  # combine both
 local-search search "refund" --exclude-location deprecated/   # exclude path pattern
 ```
+
+There is **no `--directory` flag on `search`** — it exists only on `read`. To
+narrow by path, use `--exclude-location <pattern>` (which excludes) or scope with
+`--repos`.
 
 Results display the **full path** of each matching file.
 
@@ -235,6 +252,16 @@ local-search json search "payment" platform   # ranked results
 local-search json read refund-flow            # full content as JSON
 local-search json list platform               # listing
 local-search json repos                       # all repos + counts
+local-search json find "payment" --scope platform,docs    # specs + graphs + code
+local-search json context "payment" --scope platform,docs # find + blast radius of the top code hit
+```
+
+### Config
+```bash
+local-search config show                # resolved config + where it came from
+local-search config validate            # strict check, line-numbered errors
+local-search config migrate --dry-run   # preview a pre-0.4.0 .local-search.toml conversion
+local-search config schema              # JSON Schema, for editor validation
 ```
 
 ## References (load on demand)

@@ -10,9 +10,11 @@ import {
   colors, COLOR_NAMES,
   synthesizeGraphData, normalizeGraph, toGraph,
   applyFilters, collectFilterOptions,
+  EDGE_FAMILY_ORDER, countEdgeFamilies, defaultFamilies,
 } from './graphData.js';
 import { useForceGraph } from './useForceGraph.js';
 import { FilterDropdown } from './components/FilterDropdown.jsx';
+import { LinkTypeFilter } from './components/LinkTypeFilter.jsx';
 import { Inspector } from './components/Inspector.jsx';
 import { Legend } from './components/Legend.jsx';
 import { Dock } from './components/Dock.jsx';
@@ -37,6 +39,7 @@ export function GraphExplorer() {
   const [activeData, setActiveData] = useState({ nodes: [], links: [] });
   const [options, setOptions] = useState({ type: [], repo: [], project: [], tag: [] });
   const [multiSelect, setMultiSelect] = useState(EMPTY_MULTI);
+  const [families, setFamilies] = useState(() => new Set(EDGE_FAMILY_ORDER));
   const [search, setSearch] = useState('');
   const [nameFilter, setNameFilter] = useState('');
   const [titleFilter, setTitleFilter] = useState('');
@@ -51,7 +54,7 @@ export function GraphExplorer() {
 
   const {
     load: graphLoad, zoomIn, zoomOut, fit, togglePhysics,
-    setShowLabels: graphSetShowLabels, deselect, getConnections,
+    setShowLabels: graphSetShowLabels, deselect, selectById, getConnections,
   } = useForceGraph({
     containerRef,
     onSelectNode: setSelectedNode,
@@ -68,13 +71,20 @@ export function GraphExplorer() {
   const loadNewData = useCallback((g) => {
     skipFilterRef.current = true;
     setOriginalData(g);
-    setActiveData(g);
     setOptions(collectFilterOptions(g.nodes));
     setMultiSelect(EMPTY_MULTI());
     setSearch(''); setNameFilter(''); setTitleFilter('');
     setSelectedNode(null);
     setEmptyNotice(g.nodes.length === 0);
-    graphLoad(g, { refit: true });
+    // Open on declared structure when the graph has any — that is what the view
+    // is for, and similarity links outnumber declared ones by ~8:1.
+    const fams = defaultFamilies(g.links);
+    setFamilies(fams);
+    const shown = applyFilters(g, {
+      search: '', name: '', title: '', multiSelect: EMPTY_MULTI(), families: fams,
+    });
+    setActiveData(shown);
+    graphLoad(shown, { refit: true });
   }, [graphLoad]);
 
   // Initial load: flat array (hub graph) OR {nodes,links} (graph export).
@@ -91,13 +101,13 @@ export function GraphExplorer() {
     if (skipFilterRef.current) { skipFilterRef.current = false; return undefined; }
     const t = setTimeout(() => {
       const filtered = applyFilters(originalData, {
-        search, name: nameFilter, title: titleFilter, multiSelect,
+        search, name: nameFilter, title: titleFilter, multiSelect, families,
       });
       setActiveData(filtered);
       graphLoad(filtered, { reheat: true });
     }, 300);
     return () => clearTimeout(t);
-  }, [search, nameFilter, titleFilter, multiSelect, originalData, graphLoad]);
+  }, [search, nameFilter, titleFilter, multiSelect, families, originalData, graphLoad]);
 
   const toggleFilter = useCallback((dim, value, isChecked) => {
     setMultiSelect((prev) => {
@@ -169,6 +179,24 @@ export function GraphExplorer() {
       .sort((a, b) => b[1] - a[1])
       .map(([color, count]) => ({ color, name: COLOR_NAMES[color] || 'Nodes', count }));
   }, [activeData]);
+
+  // Edge-family counts over the WHOLE graph, so the toggles show what is
+  // available rather than what survived the current filter.
+  const familyCounts = useMemo(
+    () => countEdgeFamilies(originalData.links),
+    [originalData],
+  );
+
+  const toggleFamily = useCallback((fam) => {
+    setFamilies((prev) => {
+      const next = new Set(prev);
+      if (next.has(fam)) next.delete(fam);
+      else next.add(fam);
+      // Never allow an empty selection — that renders an empty canvas with no
+      // affordance explaining why.
+      return next.size === 0 ? new Set(EDGE_FAMILY_ORDER) : next;
+    });
+  }, []);
 
   // Active-filter chips across every dimension.
   const activeChips = useMemo(() => {
@@ -277,6 +305,12 @@ export function GraphExplorer() {
               value={titleFilter}
               onInput={(e) => setTitleFilter(e.currentTarget.value)}
             />
+            <span class="filters-sep" />
+            <LinkTypeFilter
+              families={families}
+              counts={familyCounts}
+              onToggle={toggleFamily}
+            />
           </div>
 
           <div class="stats">
@@ -327,7 +361,12 @@ export function GraphExplorer() {
         />
 
         {selectedNode && (
-          <Inspector node={selectedNode} getConnections={getConnections} onClose={deselect} />
+          <Inspector
+            node={selectedNode}
+            getConnections={getConnections}
+            onSelectId={selectById}
+            onClose={deselect}
+          />
         )}
 
         {emptyNotice && (

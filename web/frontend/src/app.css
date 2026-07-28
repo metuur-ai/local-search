@@ -855,8 +855,13 @@ body {
   background: var(--surface-mut);
 }
 
+/* Five tabs, and the app has no media queries — so the strip wraps rather than
+   scrolling. A tab that scrolls out of sight is a feature nobody finds, and the
+   fifth one is always the first to go (story 1.6). `overflow-x` stays as a
+   last-resort fallback for a single label too long to fit on its own line. */
 .inspector-tablist {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
   overflow-x: auto;
 }
@@ -864,7 +869,7 @@ body {
 .inspector-tab {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   white-space: nowrap;
   font-family: var(--font-sans);
   font-size: 0.82rem;
@@ -873,7 +878,12 @@ body {
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 0.85rem 0.6rem;
+  /* Horizontal padding tightened from 0.6rem when the fifth tab arrived. Measured
+     in a real browser: five tabs needed 674px against 643px available, so the
+     strip wrapped to two rows at EVERY width and cost ~47px of inspector height
+     permanently. Trimming the padding and icon gap recovers ~40px, which is
+     enough — and is less invasive than renaming an existing tab (story 1.6). */
+  padding: 0.85rem 0.4rem;
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
@@ -998,6 +1008,14 @@ body {
   margin: 0;
   font-size: 0.78rem;
   color: var(--ink-500);
+}
+/* Distinguishes the two "…Map" tabs from each other (story 1.5). Set apart from
+   the intro copy above it so it reads as a signpost, not more description. */
+.graph-intro-contrast {
+  margin-top: 0.35rem !important;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--line);
+  font-style: italic;
 }
 
 /* Top-tags ranking (inspector "Top Tags" tab) */

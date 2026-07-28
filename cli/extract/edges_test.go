@@ -25,6 +25,9 @@ func TestExtractEdges_R21_RecognizedFieldTable(t *testing.T) {
 		{"dependsOn", "depends_on", false},
 		{"components", "has_component", false},
 		{"from-discovery", "from_discovery", false},
+		{"downstream", "downstream", false},
+		{"boundedContext", "in_context", false},
+		{"fromDiscovery", "from_discovery", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.field, func(t *testing.T) {
@@ -40,6 +43,61 @@ func TestExtractEdges_R21_RecognizedFieldTable(t *testing.T) {
 				t.Fatalf("field %q: got %+v, want [%+v]", tc.field, edges, want)
 			}
 		})
+	}
+}
+
+// TestExtractEdges_UpstreamDownstreamDistinct pins that a context map
+// declaring both directions yields two edges pointing AWAY from the map, with
+// distinct types — the failure mode is modelling `downstream` as `upstream`
+// reversed, which makes both edges point the same way.
+func TestExtractEdges_UpstreamDownstreamDistinct(t *testing.T) {
+	const mapNode = "map://crm--communications"
+	edges, unrec := extractEdges(mapNode, map[string]any{
+		"upstream":   "context://crm",
+		"downstream": "context://communications",
+	})
+	if len(unrec) != 0 {
+		t.Fatalf("unexpected unrecognized fields: %v", unrec)
+	}
+	want := []Edge{
+		{Src: mapNode, Dst: "context://crm", Type: "upstream", Field: "upstream"},
+		{Src: mapNode, Dst: "context://communications", Type: "downstream", Field: "downstream"},
+	}
+	if !reflect.DeepEqual(edges, want) {
+		t.Fatalf("got %+v, want %+v", edges, want)
+	}
+}
+
+// TestExtractEdges_BothDiscoverySpellingsShareType: the kebab and camelCase
+// spellings are both accepted and produce the same edge type, so a corpus
+// using either gets traceability edges. Field provenance stays distinct.
+func TestExtractEdges_BothDiscoverySpellingsShareType(t *testing.T) {
+	for _, field := range []string{"from-discovery", "fromDiscovery"} {
+		edges, _ := extractEdges(self, map[string]any{field: "2026-faster-webhooks"})
+		if len(edges) != 1 {
+			t.Fatalf("%s: got %d edges, want 1", field, len(edges))
+		}
+		if edges[0].Type != "from_discovery" {
+			t.Errorf("%s: type = %q, want from_discovery", field, edges[0].Type)
+		}
+		if edges[0].Field != field {
+			t.Errorf("%s: field provenance = %q, want %q", field, edges[0].Field, field)
+		}
+	}
+}
+
+// TestExtractEdges_PlaceholderRefsSkipped: scaffolding templates ship literal
+// placeholder values; each would otherwise materialize as a phantom node.
+func TestExtractEdges_PlaceholderRefsSkipped(t *testing.T) {
+	edges, _ := extractEdges(self, map[string]any{
+		"components": []any{"<component-id>", "component://real", "component://<id>"},
+		"upstream":   "<discovery-id | none>",
+	})
+	if len(edges) != 1 {
+		t.Fatalf("got %d edges, want 1: %+v", len(edges), edges)
+	}
+	if edges[0].Dst != "component://real" {
+		t.Fatalf("Dst = %q, want component://real", edges[0].Dst)
 	}
 }
 

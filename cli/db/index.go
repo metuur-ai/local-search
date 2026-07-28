@@ -98,8 +98,8 @@ func FullScan(db *sql.DB, repoName, repoRoot string, skipDirectories []string) (
 
 	stmt, err := tx.Prepare(
 		"INSERT OR REPLACE INTO specs " +
-			"(repo,path,project,name,title,tags,summary,fullpath,modified,modified_unix,size,ext,content) " +
-			"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+			"(repo,path,project,name,title,tags,summary,fullpath,modified,modified_unix,size,ext,content,doc_type,status) " +
+			"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 	)
 	if err != nil {
 		return 0, err
@@ -120,6 +120,7 @@ func FullScan(db *sql.DB, repoName, repoRoot string, skipDirectories []string) (
 		if _, err := stmt.Exec(
 			sp.Repo, sp.Path, sp.Project, sp.Name, sp.Title,
 			sp.Tags, sp.Summary, sp.FullPath, sp.Modified, sp.ModifiedUnix, sp.Size, sp.Ext, sp.Content,
+			sp.DocType, sp.Status,
 		); err != nil {
 			return 0, err
 		}
@@ -412,8 +413,8 @@ func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDire
 
 	insertStmt, err := tx.Prepare(
 		"INSERT OR REPLACE INTO specs " +
-			"(repo,path,project,name,title,tags,summary,fullpath,modified,modified_unix,size,ext,content) " +
-			"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+			"(repo,path,project,name,title,tags,summary,fullpath,modified,modified_unix,size,ext,content,doc_type,status) " +
+			"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 	)
 	if err != nil {
 		return 0, lastCommit, err
@@ -425,6 +426,7 @@ func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDire
 		if _, err := insertStmt.Exec(
 			sp.Repo, sp.Path, sp.Project, sp.Name, sp.Title,
 			sp.Tags, sp.Summary, sp.FullPath, sp.Modified, sp.ModifiedUnix, sp.Size, sp.Ext, sp.Content,
+			sp.DocType, sp.Status,
 		); err != nil {
 			return 0, lastCommit, err
 		}

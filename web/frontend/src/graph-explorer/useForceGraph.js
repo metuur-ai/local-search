@@ -7,7 +7,9 @@
 
 import { useCallback, useEffect, useRef } from 'preact/hooks';
 import ForceGraph from 'force-graph';
-import { colors, COMMUNITY, buildPerformanceMaps } from './graphData.js';
+import {
+  colors, COMMUNITY, buildPerformanceMaps, EDGE_FAMILY_META, linkEndId,
+} from './graphData.js';
 
 export function useForceGraph({ containerRef, onSelectNode, onPhysicsChange }) {
   const graphRef = useRef(null);
@@ -61,8 +63,15 @@ export function useForceGraph({ containerRef, onSelectNode, onPhysicsChange }) {
       .nodeRelSize(4)
       .nodeVal((node) => node.val || 4)
       .nodeColor((node) => node.renderColor)
-      .linkColor((link) => (highlightLinksRef.current.has(link) ? 'rgba(15,118,110,0.9)' : 'rgba(23,27,38,0.22)'))
-      .linkWidth((link) => (highlightLinksRef.current.has(link) ? 2.4 : 1.2))
+      // Style by edge family, not just highlight state: a declared frontmatter
+      // edge and a lexical-similarity edge must not look identical.
+      .linkColor((link) => (highlightLinksRef.current.has(link)
+        ? 'rgba(15,118,110,0.95)'
+        : (EDGE_FAMILY_META[link.family] || EDGE_FAMILY_META.similarity).color))
+      .linkWidth((link) => (highlightLinksRef.current.has(link)
+        ? 2.4
+        : (EDGE_FAMILY_META[link.family] || EDGE_FAMILY_META.similarity).width))
+      .linkLineDash((link) => (EDGE_FAMILY_META[link.family] || EDGE_FAMILY_META.similarity).dash)
       // No directional particles — they force a continuous 60fps repaint of the
       // whole graph while hovering. Highlight is shown via link color/width instead.
       .linkDirectionalParticles(0)
@@ -253,16 +262,64 @@ export function useForceGraph({ containerRef, onSelectNode, onPhysicsChange }) {
     onSelectRef.current?.(null);
   }, [updateHighlight]);
 
+  // Select a node by id — the same transition onNodeClick performs, so the
+  // inspector's connection rows navigate the graph instead of being inert text.
+  // A node filtered off the canvas is simply not selectable.
+  const selectById = useCallback((id) => {
+    const graph = graphRef.current;
+    const node = mapsRef.current.nodeByIdMap.get(id);
+    if (!graph || !node) return;
+    selectedRef.current = node;
+    hoverRef.current = null;
+    onSelectRef.current?.(node);
+    if (node.x !== undefined && node.y !== undefined) {
+      graph.centerAt(node.x, node.y, 1000);
+      graph.zoom(6, 1500);
+    }
+    updateHighlight();
+  }, [updateHighlight]);
+
   // Connections for the inspector, resolved from the current lookup maps.
+  //
+  // Walks the node's LINKS rather than its neighbour set, so each row can carry
+  // the edge's own facts: which relation it asserts, which way it points, and
+  // whether the other end actually resolves. Declared edges sort first — with
+  // 385 declared among 3000 similarity links, relevance order matters more than
+  // insertion order.
   const getConnections = useCallback((node) => {
-    const { neighborNodesMap, nodeByIdMap } = mapsRef.current;
+    const { nodeLinksMap, nodeByIdMap } = mapsRef.current;
     const out = [];
-    (neighborNodesMap.get(node.id) || new Set()).forEach((nId) => {
-      const t = nodeByIdMap.get(nId);
-      if (t) out.push({ name: t.name || t.id, color: t.renderColor || colors[t.type] || colors.file });
+    const seen = new Set();
+    (nodeLinksMap.get(node.id) || []).forEach((l) => {
+      const s = linkEndId(l.source);
+      const t = linkEndId(l.target);
+      const outgoing = s === node.id;
+      const otherId = outgoing ? t : s;
+      const other = nodeByIdMap.get(otherId);
+      const key = `${l.relation || ''}|${outgoing ? '>' : '<'}|${otherId}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({
+        id: otherId,
+        name: (other && (other.name || other.id)) || otherId,
+        color: (other && (other.renderColor || colors[other.type])) || colors.file,
+        relation: l.relation || '',
+        outgoing,
+        family: l.family,
+        unresolved: !other || other.flags === 'unresolved',
+        location: l.source_location || '',
+      });
     });
+    // Declared before similarity; then by relation, then by name.
+    const rank = (c) => (c.relation ? 0 : 1);
+    out.sort((a, b) => rank(a) - rank(b)
+      || a.relation.localeCompare(b.relation)
+      || a.name.localeCompare(b.name));
     return out;
   }, []);
 
-  return { load, zoomIn, zoomOut, fit, togglePhysics, setShowLabels, deselect, getConnections };
+  return {
+    load, zoomIn, zoomOut, fit, togglePhysics, setShowLabels,
+    deselect, selectById, getConnections,
+  };
 }

@@ -2,7 +2,7 @@
  * buildPrompt({ query, repos }) -> a self-contained, scope-pinned prompt string.
  *
  * R-2.4: the scope must be explicit, never resolved from the server CWD or a
- * .local-search.toml. The real `local-search` CLI scopes by a single positional
+ * a config file. The real `local-search` CLI scopes by a single positional
  * repo argument (it has no `--scope` flag and no `context`/`graph` subcommands),
  * so the prompt instructs Claude to search EACH selected repo by name, read the
  * best specs, and optionally pull related specs — then reason and answer, or ask
@@ -22,7 +22,7 @@ export function buildPrompt({ query, repos } = {}) {
     `Scope: the ONLY repos in scope are: ${scope}`,
     'The CLI scopes by a single positional repo argument — there is NO `--scope` flag,',
     'and NO `context` or `graph` subcommands. Search each repo by name; do not invent flags,',
-    'and do not rely on the current working directory or any .local-search.toml.',
+    'and do not rely on the current working directory or any config file.',
     '',
     'Commands (all emit JSON for machine parsing):',
     '- Search one repo:   local-search json search "<terms>" <repo>',

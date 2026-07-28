@@ -7,7 +7,7 @@
 The tool doesn't know where your specs are. Register a folder:
 
 ```bash
-local-doc repo add /path/to/your/specs my-project
+local-search repo add /path/to/your/specs my-project
 ```
 
 This auto-scans immediately.
@@ -16,11 +16,11 @@ This auto-scans immediately.
 
 Check these in order:
 
-1. Are repos registered? `local-doc repo list`
+1. Are repos registered? `local-search repo list`
 2. Is the path still valid? The folder might have moved.
-3. Was the index built? `local-doc stats` — check "Total specs" count.
-4. Is your query too narrow? Try broader terms or OR: `local-doc search "refund OR payment"`
-5. Force a rebuild: `local-doc scan`
+3. Was the index built? `local-search stats` — check "Total specs" count.
+4. Is your query too narrow? Try broader terms or OR: `local-search search "refund OR payment"`
+5. Force a rebuild: `local-search scan`
 
 ### Index seems stale (missing recent changes)
 
@@ -28,7 +28,7 @@ The index auto-detects file changes on the next search. If it doesn't:
 
 1. Check the file was saved (not just open in editor)
 2. Check the file extension is `.md`, `.mdx`, or `.txt`
-3. Force rebuild: `local-doc scan`
+3. Force rebuild: `local-search scan`
 
 ### sqlite3 not found
 
@@ -48,8 +48,8 @@ FTS5 uses Porter stemming. Prefix search operates on stemmed tokens, not raw tex
 Delete and rebuild:
 
 ```bash
-rm ~/.local-doc/specs.db
-local-doc scan
+rm ~/.local-search/specs.db
+local-search scan
 ```
 
 The `.db` is a disposable cache. Your spec files are untouched.
@@ -59,17 +59,17 @@ The `.db` is a disposable cache. Your spec files are untouched.
 Removes everything — index AND repo registrations:
 
 ```bash
-local-doc reset
+local-search reset
 ```
 
-Then start fresh with `local-doc repo add`.
+Then start fresh with `local-search repo add`.
 
 ## File locations
 
 | File | Path | Purpose |
 |---|---|---|
-| Repo list | `~/.local-doc/repos` | Text file, one repo per line: `name\|/path` |
-| Database | `~/.local-doc/specs.db` | SQLite FTS5 index (disposable cache) |
+| Repo list | `~/.local-search/repos` | Text file, one repo per line: `name\|/path` |
+| Database | `~/.local-search/specs.db` | SQLite FTS5 index (disposable cache) |
 
 ## Auto-rebuild behavior
 

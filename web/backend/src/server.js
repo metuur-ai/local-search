@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { handleRepos } from './repos.js';
 import { handleQuery, handleStream, handleReply, handleCancel } from './query.js';
 import { handleGraphGet, handleGraphRefresh } from './graphExport.js';
+import { handleReveal } from './reveal.js';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -74,6 +75,11 @@ export function createServer({ staticDir, registry, deps, assetHandler } = {}) {
     // POST /api/graph/refresh — rebuild + persist the graph from repos.
     if (req.method === 'POST' && pathname === '/api/graph/refresh') {
       return handleGraphRefresh(req, res, deps);
+    }
+
+    // POST /api/reveal — show a source file in the OS file manager.
+    if (req.method === 'POST' && pathname === '/api/reveal') {
+      return handleReveal(req, res, deps);
     }
 
     // /api/session/:id/{stream,reply,cancel}

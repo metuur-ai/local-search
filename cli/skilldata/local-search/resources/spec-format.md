@@ -8,7 +8,7 @@
 
 ## Any repo structure works
 
-`local-doc` scans recursively from the root of the registered folder. It finds every `.md`, `.mdx`, and `.txt` file regardless of how your repo is organized. You don't need to restructure anything.
+`local-search` scans recursively from the root of the registered folder. It finds every `.md`, `.mdx`, and `.txt` file regardless of how your repo is organized. You don't need to restructure anything.
 
 All of these work:
 
@@ -106,6 +106,6 @@ For each file, the indexer extracts:
 These are optional — the tool works without any of them:
 
 - A clear `# Title` as the first heading gets the most search weight
-- Tags in frontmatter help with browsing via `local-doc tags`
+- Tags in frontmatter help with browsing via `local-search tags`
 - Domain-specific terms anywhere in the body are searchable (full-text index)
 - One concept per file tends to produce more focused search results than large omnibus docs

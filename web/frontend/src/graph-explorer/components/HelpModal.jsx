@@ -53,7 +53,7 @@ export function HelpModal({ onClose }) {
             Install
           </div>
           <p>One command installs the CLI, the Claude skill, and this web UI:</p>
-          <code class="block">curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash</code>
+          <code class="block">tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"</code>
           <p>Then launch the UI (needs Node ≥ 18) and open the graph explorer:</p>
           <code class="block">local-search ui</code>
           <p>More install options (release bundle, prebuilt binary, build from source) on <a href="https://github.com/metuur-ai/local-search/blob/main/README.md#install" target="_blank" rel="noopener noreferrer">the install guide ↗</a>.</p>
@@ -65,10 +65,23 @@ export function HelpModal({ onClose }) {
             Handy CLI commands
           </div>
           <ul class="modal-cmds">
-            <li><code>local-search doctor</code><span>Diagnose install, DB health, and stale-index drift.</span></li>
+            <li><code>local-search doctor</code><span>Diagnose install, config, DB health, and stale-index drift.</span></li>
             <li><code>local-search size</code><span>DB file size and a per-repo index breakdown.</span></li>
             <li><code>local-search scan</code><span>Rebuild the graph after <code>doctor</code> reports drift.</span></li>
+            <li><code>local-search config validate</code><span>Strict-check the config; reports problems with line numbers.</span></li>
           </ul>
+
+          <div class="modal-section">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Which repos get searched
+          </div>
+          <p>One config file decides it, and both this UI and the CLI read the same one:</p>
+          <code class="block">&lt;project&gt;/.agent/local-search-config.yaml</code>
+          <p>It is found by walking up from your working directory, stopping at a git repository root. A global fallback lives at <code>~/.local-search-config.yaml</code>. Edit it with <code>local-search scope set a,b</code> or <code>local-search init --set a,b</code> — both write the same <code>repositories:</code> list, and neither disturbs any <code>weights:</code> or <code>limits:</code> you have set.</p>
+          <p>Upgrading from v0.3.x? A <code>.local-search.toml</code> is converted automatically on first run. Preview it with <code>local-search config migrate --dry-run</code>, or set <code>LOCAL_SEARCH_NO_AUTO_MIGRATE=1</code> to opt out. See the <a href="https://github.com/metuur-ai/local-search/blob/main/user-guide/reference/upgrading-to-0.4.md" target="_blank" rel="noopener noreferrer">upgrade notes ↗</a>.</p>
 
           <div class="modal-section">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -2,42 +2,44 @@
 //
 // Resolution order (highest precedence first):
 //  1. --scope CLI flag (comma-separated)
-//  2. <cwd>/.local-search.toml, walking up to root
-//  3. ~/.local-search/config.toml
+//  2. <cwd>/.agent/local-search-config.yaml, walking up (stops at a git root
+//     and below $HOME)
+//  3. ~/.local-search-config.yaml
 //  4. CWD walk-up: nearest registered repo whose path is a prefix of cwd
 //  5. Hard error — refuse to fan out across all repos by accident
 //
 // The error in case 5 is deliberate. Silently searching every registered repo
 // turns local-search into a noisy global tool; users explicitly asked for the
 // search to focus on the project they are working in.
+//
+// This package owns PRECEDENCE and the filtering of entries against the
+// registered repo/graph sets. The file format, parsing, validation, writing,
+// and migration all live in local-search/config, which the bundled Claude skill
+// (`local-search init`) also uses — one file, one schema, both readers.
 package scope
 
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/BurntSushi/toml"
+	"local-search/config"
 )
 
-// ConfigFileName is the filename of the per-project config.
-const ConfigFileName = ".local-search.toml"
+// ConfigFileName is the config's basename, at both locations.
+const ConfigFileName = config.FileName
 
-// GlobalConfigRel is the path of the optional global config under $HOME.
-const GlobalConfigRel = ".local-search/config.toml"
-
-// GraphPrefix tags an external-graph entry inside the scope list. A scope
+// GraphPrefix tags an external-graph entry inside the repositories list. An
 // entry "graph:foyer-app-api" resolves to the external_graphs row named
 // "foyer-app-api"; an unprefixed entry resolves to a registered repo.
 //
 // Two reasons for the prefix instead of overloading the name space:
 //   - Avoids collisions when a user has both a registered repo and an
 //     external graph with the same name.
-//   - Makes the .local-search.toml self-documenting — the user reading the
-//     file can see at a glance which entries are repos vs. graphs.
+//   - Makes the config self-documenting — the user reading the file can see at
+//     a glance which entries are repos vs. graphs.
 const GraphPrefix = "graph:"
 
 // HasGraphPrefix reports whether s is a scope entry referring to an external
@@ -49,49 +51,35 @@ func HasGraphPrefix(s string) (string, bool) {
 	return s, false
 }
 
-// Defaults exposed for callers (e.g. main.go --limit) and reused by Resolve
-// when fields are unset.
+// Defaults, re-exported from local-search/config so callers keep a single
+// import. config owns the values.
 const (
-	DefaultLimitSpecs    = 20
-	DefaultLimitGraphify = 10
-	DefaultLimitCodeGraph = 10
-	DefaultBlastDepth    = 2
-	DefaultBlastCap      = 50
+	DefaultLimitSpecs     = config.DefaultLimitSpecs
+	DefaultLimitGraphify  = config.DefaultLimitGraphify
+	DefaultLimitCodeGraph = config.DefaultLimitCodeGraph
+	DefaultBlastDepth     = config.DefaultBlastDepth
+	DefaultBlastCap       = config.DefaultBlastCap
 
-	DefaultWeightSpecs    = 1.0
-	DefaultWeightGraphify = 0.7
-	DefaultWeightCodeGraph = 0.8
+	DefaultWeightSpecs     = config.DefaultWeightSpecs
+	DefaultWeightGraphify  = config.DefaultWeightGraphify
+	DefaultWeightCodeGraph = config.DefaultWeightCodeGraph
 )
 
-// Weights controls how each source contributes to the final 0–1 score.
-// Higher weight = source contributes more.
-type Weights struct {
-	Specs     float64 `toml:"specs"`
-	Graphify  float64 `toml:"graphify"`
-	CodeGraph float64 `toml:"codegraph"`
-}
-
-// Limits controls per-source result caps and BFS bounds.
-type Limits struct {
-	Specs      int `toml:"specs"`
-	Graphify   int `toml:"graphify"`
-	CodeGraph  int `toml:"codegraph"`
-	BlastDepth int `toml:"blast_depth"`
-	BlastCap   int `toml:"blast_cap"`
-}
-
-// File mirrors the on-disk TOML structure.
-type File struct {
-	Scope   []string `toml:"scope"`
-	Weights Weights  `toml:"weights"`
-	Limits  Limits   `toml:"limits"`
-}
+// Weights and Limits are ALIASES (not new types) for the resolved views in
+// local-search/config, so every existing consumer — find.go's seven call sites
+// and main.go's composite literals — keeps compiling unchanged.
+type (
+	// Weights controls how much each source contributes to the final 0–1 score.
+	Weights = config.EffectiveWeights
+	// Limits controls per-source result caps and BFS bounds.
+	Limits = config.EffectiveLimits
+)
 
 // Scope is the resolved set of repos a query should hit, plus the source of
 // truth so the user can see where the scope came from.
 type Scope struct {
 	Repos   []string // repo names to search
-	Source  string   // "--scope flag" | "<path>/.local-search.toml" | "~/.local-search/config.toml" | "cwd-walk" | ""
+	Source  string   // "--scope flag" | "<path>/.agent/local-search-config.yaml" | "~/.local-search-config.yaml" | "cwd-walk (<name>)" | ""
 	Weights Weights
 	Limits  Limits
 }
@@ -122,12 +110,31 @@ type Resolver struct {
 // should turn this into a user-facing error suggesting how to fix it.
 var ErrNoScope = errors.New("no scope configured")
 
+// ErrEmptyScope reports a config that parsed fine but lists no entries that
+// resolve to a registered repo or graph.
+//
+// A sentinel rather than a message substring: callers (main.go's resolveScope)
+// turn this into a friendly "here's your empty scope, here's how to fix it"
+// banner instead of a hard exit, and the previous strings.Contains check broke
+// the moment the wording changed.
+var ErrEmptyScope = errors.New("config lists no registered repositories")
+
+// emptyScopeError builds an ErrEmptyScope-wrapping error naming the file.
+func emptyScopeError(path string, listed []string) error {
+	return fmt.Errorf("%w: %s lists %v", ErrEmptyScope, path, listed)
+}
+
 // Resolve walks the precedence chain and returns the resolved Scope.
 // Returns ErrNoScope when nothing can be resolved (cases 1–4 all fail).
 //
 // Each entry in the resolved Scope.Repos is validated against either the
 // registered-repos list or the registered-external-graphs list (entries
 // prefixed with "graph:" go to the latter). Unrecognized entries are dropped.
+//
+// A config that EXISTS but does not parse or validate is a hard error that
+// stops the chain — it is never treated as "absent". Before v0.4.0 such a file
+// silently fell through to the next rule, which also let the auto-init path
+// overwrite a config the user was midway through editing.
 func (r Resolver) Resolve() (Scope, error) {
 	repoNames := repoNameSet(r.Repos)
 	graphNames := stringSet(r.ExternalGraphs)
@@ -137,8 +144,8 @@ func (r Resolver) Resolve() (Scope, error) {
 		s := Scope{
 			Source:  "--scope flag",
 			Repos:   parseScopeList(r.FlagValue),
-			Weights: defaultWeights(),
-			Limits:  defaultLimits(),
+			Weights: config.Defaults().Weights,
+			Limits:  config.Defaults().Limits,
 		}
 		s.Repos = filterToRegistered(s.Repos, repoNames, graphNames)
 		if len(s.Repos) == 0 {
@@ -147,30 +154,25 @@ func (r Resolver) Resolve() (Scope, error) {
 		return s, nil
 	}
 
-	// 2. Walk up from CWD looking for .local-search.toml.
+	// 2. Walk up from CWD looking for .agent/local-search-config.yaml.
 	if r.CWD != "" {
-		if path, file, ok := findProjectConfig(r.CWD); ok {
-			s := scopeFromFile(file)
-			s.Source = path
-			s.Repos = filterToRegistered(s.Repos, repoNames, graphNames)
-			if len(s.Repos) == 0 {
-				return Scope{}, fmt.Errorf("config %s lists scope %v but none are registered repos or graphs", path, file.Scope)
-			}
-			return s, nil
+		settings, err := config.FindProject(r.CWD, r.HomeDir)
+		switch {
+		case err == nil:
+			return r.fromSettings(settings, repoNames, graphNames)
+		case !config.IsNotExist(err):
+			return Scope{}, err // broken config — stop, do not fall through
 		}
 	}
 
-	// 3. Global config under $HOME.
+	// 3. Global config at ~/.local-search-config.yaml.
 	if r.HomeDir != "" {
-		path := filepath.Join(r.HomeDir, GlobalConfigRel)
-		if file, ok := readConfig(path); ok {
-			s := scopeFromFile(file)
-			s.Source = path
-			s.Repos = filterToRegistered(s.Repos, repoNames, graphNames)
-			if len(s.Repos) == 0 {
-				return Scope{}, fmt.Errorf("global config %s lists scope %v but none are registered repos or graphs", path, file.Scope)
-			}
-			return s, nil
+		settings, err := config.LoadGlobal(r.HomeDir)
+		switch {
+		case err == nil:
+			return r.fromSettings(settings, repoNames, graphNames)
+		case !config.IsNotExist(err):
+			return Scope{}, err
 		}
 	}
 
@@ -180,8 +182,8 @@ func (r Resolver) Resolve() (Scope, error) {
 			return Scope{
 				Repos:   []string{name},
 				Source:  "cwd-walk (" + name + ")",
-				Weights: defaultWeights(),
-				Limits:  defaultLimits(),
+				Weights: config.Defaults().Weights,
+				Limits:  config.Defaults().Limits,
 			}, nil
 		}
 	}
@@ -189,103 +191,32 @@ func (r Resolver) Resolve() (Scope, error) {
 	return Scope{}, ErrNoScope
 }
 
-// FindProjectConfig walks up from start looking for .local-search.toml.
-// Returns the absolute path, parsed file, and ok=true when found.
+// fromSettings converts a loaded config into a filtered Scope.
+func (r Resolver) fromSettings(s config.Settings, repoNames, graphNames map[string]bool) (Scope, error) {
+	out := Scope{
+		Repos:   filterToRegistered(append([]string(nil), s.Repositories...), repoNames, graphNames),
+		Source:  s.Path,
+		Weights: s.Weights,
+		Limits:  s.Limits,
+	}
+	if len(out.Repos) == 0 {
+		return Scope{}, emptyScopeError(s.Path, s.Repositories)
+	}
+	return out, nil
+}
+
+// FindProjectConfig reports the path of the project config that would be used
+// from start, walking up. ok=false means no config exists anywhere on the path.
 //
-// Exported so callers (e.g. the auto-init flow in main.go) can check whether
-// a config already exists without going through Resolve(), which has its own
-// fallback chain that would mask "no config" with walk-up matches.
-func FindProjectConfig(start string) (string, File, bool) {
-	return findProjectConfig(start)
-}
-
-// findProjectConfig is the internal implementation. Kept lowercase so the
-// other call site (Resolve) reads identically to before.
-func findProjectConfig(start string) (string, File, bool) {
-	dir := start
-	for {
-		path := filepath.Join(dir, ConfigFileName)
-		if file, ok := readConfig(path); ok {
-			return path, file, true
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", File{}, false
-		}
-		dir = parent
-	}
-}
-
-// readConfig reads and parses a TOML config file. Returns ok=false on any
-// error (file missing, parse failure) so callers can fall through to the
-// next precedence rule without distinguishing.
-func readConfig(path string) (File, bool) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return File{}, false
-	}
-	var f File
-	if err := toml.Unmarshal(data, &f); err != nil {
-		return File{}, false
-	}
-	return f, true
-}
-
-// scopeFromFile builds a Scope from a parsed File, applying defaults for any
-// zero-valued fields. The Repos list is the file's scope verbatim — the
-// caller filters it against the registered repo set.
-func scopeFromFile(f File) Scope {
-	w := f.Weights
-	if w.Specs == 0 {
-		w.Specs = DefaultWeightSpecs
-	}
-	if w.Graphify == 0 {
-		w.Graphify = DefaultWeightGraphify
-	}
-	if w.CodeGraph == 0 {
-		w.CodeGraph = DefaultWeightCodeGraph
-	}
-
-	l := f.Limits
-	if l.Specs == 0 {
-		l.Specs = DefaultLimitSpecs
-	}
-	if l.Graphify == 0 {
-		l.Graphify = DefaultLimitGraphify
-	}
-	if l.CodeGraph == 0 {
-		l.CodeGraph = DefaultLimitCodeGraph
-	}
-	if l.BlastDepth == 0 {
-		l.BlastDepth = DefaultBlastDepth
-	}
-	if l.BlastCap == 0 {
-		l.BlastCap = DefaultBlastCap
-	}
-
-	return Scope{
-		Repos:   append([]string(nil), f.Scope...),
-		Weights: w,
-		Limits:  l,
-	}
-}
-
-func defaultWeights() Weights {
-	return Weights{
-		Specs:     DefaultWeightSpecs,
-		Graphify:  DefaultWeightGraphify,
-		CodeGraph: DefaultWeightCodeGraph,
-	}
-}
-
-func defaultLimits() Limits {
-	return Limits{
-		Specs:      DefaultLimitSpecs,
-		Graphify:   DefaultLimitGraphify,
-		CodeGraph:  DefaultLimitCodeGraph,
-		BlastDepth: DefaultBlastDepth,
-		BlastCap:   DefaultBlastCap,
-	}
+// Exported so callers (the auto-init flow in main.go) can check for an existing
+// config without going through Resolve(), whose fallback chain would mask
+// "no config" with a cwd-walk match.
+//
+// Note this only STATS — it does not parse. Callers deciding whether to create
+// a config must not treat an unparseable file as absent, which is exactly the
+// bug that let auto-init overwrite a user's broken config.
+func FindProjectConfig(start, home string) (string, bool) {
+	return config.FindProjectConfigPath(start, home)
 }
 
 // parseScopeList splits a comma-separated --scope value, trimming whitespace
@@ -399,36 +330,31 @@ func cleanForPrefix(p string) string {
 	return filepath.Clean(abs)
 }
 
-// WriteProjectConfig writes a .local-search.toml at dir with the given scope
-// list. Other fields stay unset so consumers see defaults. Existing files are
-// overwritten.
-func WriteProjectConfig(dir string, scopeList []string) (string, error) {
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return "", err
-	}
-	path := filepath.Join(dir, ConfigFileName)
-	var b strings.Builder
-	b.WriteString("# Repos this project searches. Names must match `local-search repo add <path> <NAME>`.\n")
-	b.WriteString("scope = [")
-	for i, s := range scopeList {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		fmt.Fprintf(&b, "%q", s)
-	}
-	b.WriteString("]\n")
-	if err := os.WriteFile(path, []byte(b.String()), 0644); err != nil {
+// WriteProjectConfig sets the repository list in dir's project config,
+// creating it if absent, and returns the path written.
+//
+// Unlike its pre-0.4.0 namesake this is NON-DESTRUCTIVE: any weights, limits,
+// and comments already in the file survive. The old version emitted only the
+// scope list, so every `scope set` silently wiped the user's tuning.
+func WriteProjectConfig(dir string, repos []string) (string, error) {
+	path := config.ProjectPath(dir)
+	if err := config.SetRepositories(path, repos); err != nil {
 		return "", err
 	}
 	return path, nil
 }
 
-// RemoveProjectConfig deletes .local-search.toml at dir. Returns nil when the
-// file is already absent.
+// ClearProjectConfig empties the repository list in dir's project config,
+// keeping the file (and its weights/limits) in place. Returns the path.
+//
+// Deleting the file would also discard the user's tuning now that there is one
+// unified config, so `scope clear` empties rather than removes.
+func ClearProjectConfig(dir string) (string, error) {
+	return WriteProjectConfig(dir, nil)
+}
+
+// RemoveProjectConfig deletes dir's project config outright. Returns nil when
+// the file is already absent. This is the `scope clear --delete` path.
 func RemoveProjectConfig(dir string) error {
-	path := filepath.Join(dir, ConfigFileName)
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	return nil
+	return config.Remove(config.ProjectPath(dir))
 }

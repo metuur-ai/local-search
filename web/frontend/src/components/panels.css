@@ -35,10 +35,19 @@
 }
 
 .source-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
   margin-top: 0.15rem;
   font-family: var(--font-mono);
   font-size: 0.74rem;
   color: var(--text-mut);
+}
+
+/* Push the reveal action to the row's trailing edge. */
+.source-meta .reveal-btn {
+  margin-left: auto;
 }
 
 .source-repo {

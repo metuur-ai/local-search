@@ -6,22 +6,29 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"local-search/config"
 )
 
-// helper: write a .local-search.toml in dir with the given scope list and any
-// extra TOML body. Returns the absolute path to the file.
-func writeConfig(t *testing.T, dir string, scope []string, extra string) string {
+// helper: write a project config in dir with the given repositories list and
+// any extra YAML body (e.g. a weights/limits block). Returns the absolute path.
+func writeConfig(t *testing.T, dir string, repos []string, extra string) string {
 	t.Helper()
-	body := "scope = ["
-	for i, s := range scope {
-		if i > 0 {
-			body += ", "
+	body := "repositories:"
+	if len(repos) == 0 {
+		body += " []\n"
+	} else {
+		body += "\n"
+		for _, r := range repos {
+			body += "  - " + r + "\n"
 		}
-		body += `"` + s + `"`
 	}
-	body += "]\n" + extra
-	path := filepath.Join(dir, ConfigFileName)
-	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+	body += extra
+	path := config.ProjectPath(dir)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 	return path
@@ -114,11 +121,8 @@ func TestResolve_ConfigWithNoRegisteredReposFails(t *testing.T) {
 
 func TestResolve_GlobalConfig(t *testing.T) {
 	homeDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(homeDir, ".local-search"), 0755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	gpath := filepath.Join(homeDir, GlobalConfigRel)
-	if err := os.WriteFile(gpath, []byte(`scope = ["alpha"]`), 0644); err != nil {
+	gpath := config.GlobalPath(homeDir)
+	if err := os.WriteFile(gpath, []byte("repositories:\n  - alpha\n"), 0o644); err != nil {
 		t.Fatalf("write global: %v", err)
 	}
 	// CWD has no project config.
@@ -135,7 +139,7 @@ func TestResolve_GlobalConfig(t *testing.T) {
 		t.Fatalf("Repos = %v, want [alpha]", sc.Repos)
 	}
 	if sc.Source != gpath {
-		t.Fatalf("Source = %q, want %q", sc.Source, gpath)
+		t.Errorf("Source = %q, want %q", sc.Source, gpath)
 	}
 }
 
@@ -214,13 +218,12 @@ func TestResolve_DefaultsApplied(t *testing.T) {
 
 func TestResolve_ConfigOverridesDefaults(t *testing.T) {
 	dir := t.TempDir()
-	writeConfig(t, dir, []string{"alpha"}, `
-[weights]
-specs = 2.5
-codegraph = 1.5
+	writeConfig(t, dir, []string{"alpha"}, `weights:
+  specs: 2.5
+  codegraph: 1.5
 
-[limits]
-blast_depth = 7
+limits:
+  blast_depth: 7
 `)
 	r := Resolver{
 		CWD:   dir,
@@ -245,7 +248,7 @@ blast_depth = 7
 	}
 }
 
-func TestWriteAndRemoveProjectConfig(t *testing.T) {
+func TestWriteProjectConfig_RoundTrips(t *testing.T) {
 	dir := t.TempDir()
 	path, err := WriteProjectConfig(dir, []string{"alpha", "beta"})
 	if err != nil {
@@ -254,14 +257,13 @@ func TestWriteAndRemoveProjectConfig(t *testing.T) {
 	if filepath.Base(path) != ConfigFileName {
 		t.Fatalf("written path = %q, want basename %q", path, ConfigFileName)
 	}
-	// Read back and verify scope round-trips.
 	r := Resolver{CWD: dir, Repos: []Repo{{Name: "alpha", Path: "/a"}, {Name: "beta", Path: "/b"}}}
 	sc, err := r.Resolve()
 	if err != nil {
 		t.Fatalf("Resolve after write: %v", err)
 	}
 	if !reflect.DeepEqual(sc.Repos, []string{"alpha", "beta"}) {
-		t.Fatalf("round-tripped scope = %v", sc.Repos)
+		t.Fatalf("round-tripped repositories = %v", sc.Repos)
 	}
 	// RemoveProjectConfig is idempotent.
 	if err := RemoveProjectConfig(dir); err != nil {
@@ -272,18 +274,35 @@ func TestWriteAndRemoveProjectConfig(t *testing.T) {
 	}
 }
 
+// scope clear empties the list but keeps the file, so a user's weights and
+// limits are not collateral damage.
+func TestClearProjectConfig_KeepsTuning(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, []string{"alpha"}, "weights:\n  specs: 2.5\n")
+	if _, err := ClearProjectConfig(dir); err != nil {
+		t.Fatalf("ClearProjectConfig: %v", err)
+	}
+	settings, err := config.Load(config.ProjectPath(dir))
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if len(settings.Repositories) != 0 {
+		t.Errorf("repositories = %v, want empty", settings.Repositories)
+	}
+	if settings.Weights.Specs != 2.5 {
+		t.Errorf("weights.specs = %v, want 2.5 kept", settings.Weights.Specs)
+	}
+}
+
 func TestFindProjectConfig_FoundAtCWD(t *testing.T) {
 	dir := t.TempDir()
 	cfg := writeConfig(t, dir, []string{"alpha"}, "")
-	path, file, ok := FindProjectConfig(dir)
+	path, ok := FindProjectConfig(dir, "")
 	if !ok {
 		t.Fatal("expected ok=true when config exists in CWD")
 	}
 	if path != cfg {
 		t.Fatalf("path = %q, want %q", path, cfg)
-	}
-	if !reflect.DeepEqual(file.Scope, []string{"alpha"}) {
-		t.Fatalf("file.Scope = %v, want [alpha]", file.Scope)
 	}
 }
 
@@ -294,7 +313,7 @@ func TestFindProjectConfig_FoundViaWalkUp(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	cfg := writeConfig(t, root, []string{"alpha"}, "")
-	path, _, ok := FindProjectConfig(deep)
+	path, ok := FindProjectConfig(deep, "")
 	if !ok || path != cfg {
 		t.Fatalf("walk-up should find %q from %q, got path=%q ok=%v", cfg, deep, path, ok)
 	}
@@ -302,9 +321,38 @@ func TestFindProjectConfig_FoundViaWalkUp(t *testing.T) {
 
 func TestFindProjectConfig_NotFound(t *testing.T) {
 	dir := t.TempDir()
-	_, _, ok := FindProjectConfig(dir)
-	if ok {
+	if _, ok := FindProjectConfig(dir, ""); ok {
 		t.Fatal("expected ok=false when no config exists anywhere")
+	}
+}
+
+// A broken config must be a hard error, never a silent fall-through to the
+// global config or the cwd-walk. The fall-through is what let auto-init
+// overwrite a config the user was mid-edit.
+func TestResolve_BrokenConfigIsFatal(t *testing.T) {
+	dir := t.TempDir()
+	path := config.ProjectPath(dir)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("repositorys: []\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := Resolver{CWD: dir, Repos: []Repo{{Name: "alpha", Path: dir}}}
+	if _, err := r.Resolve(); err == nil {
+		t.Fatal("a broken config must not fall through to the cwd-walk")
+	}
+}
+
+// An empty repositories list gets a sentinel so callers can render the
+// friendly banner instead of dying.
+func TestResolve_EmptyListReturnsErrEmptyScope(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, nil, "")
+	r := Resolver{CWD: dir, Repos: []Repo{{Name: "alpha", Path: "/a"}}}
+	_, err := r.Resolve()
+	if !errors.Is(err, ErrEmptyScope) {
+		t.Fatalf("want ErrEmptyScope, got %v", err)
 	}
 }
 

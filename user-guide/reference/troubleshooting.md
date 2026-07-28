@@ -62,6 +62,90 @@ where you run the command from, and setting `LOCAL_SEARCH_WEB_DIR` does
 `local-search ui stop` and `local-search ui status` are unaffected by this bug
 — they only read the pidfile and don't need to locate `web/`.
 
+## `unknown key "…"` — the config won't load
+
+**Symptom:** `find`, `code`, or `scope show` refuses to run and prints something
+like:
+
+```
+Error: /Users/you/proj/.agent/local-search-config.yaml:4:1: unknown key "repositorys"
+   4 | repositorys:
+     | ^
+   did you mean "repositories"?
+```
+
+**Cause:** as of v0.4.0 the config is strictly validated. Before that a
+malformed file was silently ignored — which also meant the auto-create path
+could overwrite a file you were mid-edit. Erroring is the fix, not the bug.
+
+**Fix:** the message names the file, the line, the column, and usually the
+correct key. `local-search config validate` reports every problem at once
+without running a search, and `local-search doctor` includes a config check.
+
+Forms that used to be tolerated and now fail:
+
+| Input | Why it fails |
+|---|---|
+| Tab indentation | YAML forbids tabs for indentation |
+| `repositories: [a, b` | Unterminated flow list |
+| A duplicated `repositories:` key | Ambiguous |
+| A misspelled or unknown key | Rejected, with a suggestion |
+
+Keys prefixed `x-` are always accepted — that's the escape hatch for
+third-party tooling.
+
+## `"scope" was renamed to "repositories"`
+
+**Symptom:** validation rejects a `scope:` key.
+
+**Cause:** you hand-converted a pre-0.4.0 `.local-search.toml` (whose key was
+`scope`) instead of letting migration do it.
+
+**Fix:** rename the key to `repositories:`, or delete the file and re-run
+`local-search config migrate`.
+
+## Migration left my `.local-search.toml` in place
+
+**Symptom:** after upgrading, the legacy file is still there and a warning
+explains why.
+
+**Cause:** migration deliberately refuses to delete in two cases:
+
+- **It couldn't parse the TOML.** Deleting would destroy a scope nothing had
+  read. Fix the file by hand, or delete it yourself if it no longer matters.
+- **The TOML held settings this version doesn't understand.** They were dropped
+  on read, so deleting would make that loss permanent and silent. The warning
+  names the keys — review them, then remove the file.
+
+Also expected when you passed `--keep-toml`, or when the directory is read-only
+(the YAML is written, or held in memory for that run, and the TOML stays).
+
+**Fix:** `local-search config migrate --dry-run` shows exactly what would
+happen without touching anything.
+
+## Scope changed after upgrading, or a subdirectory picks up the wrong repos
+
+**Cause:** v0.4.0 made `.agent/local-search-config.yaml` resolve by **walking
+up** from your working directory (it used to be exact-path only). A
+subdirectory with no config of its own now inherits the nearest ancestor's.
+
+**Fix:** `local-search scope show` prints the `Source` path actually used —
+start there. If a sub-project needs its own scope, give it its own
+`.agent/local-search-config.yaml`; nearest ancestor wins.
+
+The walk stops at a **git repository root** and never reads at `$HOME`, so a
+stray config in your home directory can't capture every project on the machine.
+
+## Every repo shows 0 specs in the web UI
+
+**Cause:** the console gets spec counts from `local-search init --json`. If the
+config is malformed that command exits 1, so counts fall back to 0 while the
+repo list still renders from `repo list`.
+
+**Fix:** check the server log (`web/logs/server-*.log` or the terminal running
+`local-search ui`) — it prints the config error. Then
+`local-search config validate`.
+
 ## Search returns no results
 
 Work through these in order:
@@ -70,7 +154,7 @@ Work through these in order:
    `local-search repo add <folder> <name>` first.
 2. **Is your scope excluding it?** `local-search scope show` tells you the
    resolved scope and where it came from. If the repo you expect isn't in
-   scope, either pass `--repos <name>` explicitly or adjust `.local-search.toml`
+   scope, either pass `--repos <name>` explicitly or adjust `.agent/local-search-config.yaml`
    (see **[configuration.md](configuration.md)**, "Engine scope" section).
 3. **Is the index stale?** Local Search usually rescans automatically on git
    changes, but if you edited files without committing, or the auto-rescan

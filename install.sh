@@ -2,7 +2,7 @@
 # install.sh — install the local-search bundle: CLI + Claude skill + local web UI
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/metuur-ai/local-search/main/install.sh | bash
+#   tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"
 #   or from a checkout / unpacked bundle:  bash install.sh
 #
 # What it installs:
