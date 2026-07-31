@@ -65,7 +65,7 @@ repositories:
 ### repo add
 
 ```bash
-local-search repo add <folder> [name] [--skip-directory <folder-name>]...
+local-search repo add <folder> [name] [--skip-directory <folder-name>]... [--include-extension <ext>]...
 ```
 
 Register a spec folder. Surgically indexes only the newly added repo (other repos are untouched, the DB is never wiped) and stamps its date-added.
@@ -75,14 +75,18 @@ Register a spec folder. Surgically indexes only the newly added repo (other repo
 - `--skip-directory` — exclude a folder by name during indexing (repeatable, persisted)
   - Matches by exact folder **name** only, not full path. `.skills` won't match `.skills-old`.
   - Applies to all future full and incremental scans
+- `--include-extension` — index extra plain-text extensions (comma-separated or repeatable, persisted)
+  - Takes an extension, not a path or glob. Leading dot optional, case-insensitive.
+  - Applies to all future full and incremental scans
 - Scans recursively through all subdirectories
-- Indexes `.md`, `.mdx`, and `.txt` files
+- Indexes `.md`, `.mdx`, and `.txt` files by default
 
 ```bash
 local-search repo add ./product-specs product
 local-search repo add /home/team/docs
 local-search repo add ./docs docs --skip-directory .skills
 local-search repo add ~/code backend --skip-directory vendor --skip-directory .git
+local-search repo add ./specs db --include-extension sql,mermaid
 ```
 
 ### repo remove

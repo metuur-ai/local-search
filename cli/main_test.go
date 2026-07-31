@@ -3,7 +3,7 @@ package main
 import "testing"
 
 func TestParseRepoAddArgs_Basic(t *testing.T) {
-	dir, name, skips, err := parseRepoAddArgs([]string{"./specs", "prod", "--skip-directory", ".skills", "--skip-directory=vendor"})
+	dir, name, skips, _, err := parseRepoAddArgs([]string{"./specs", "prod", "--skip-directory", ".skills", "--skip-directory=vendor"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -19,7 +19,7 @@ func TestParseRepoAddArgs_Basic(t *testing.T) {
 }
 
 func TestParseRepoAddArgs_FlagsBeforePositionals(t *testing.T) {
-	dir, name, skips, err := parseRepoAddArgs([]string{"--skip-directory", ".skills", "./specs"})
+	dir, name, skips, _, err := parseRepoAddArgs([]string{"--skip-directory", ".skills", "./specs"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestParseRepoAddArgs_FlagsBeforePositionals(t *testing.T) {
 
 func TestParseRepoAddArgs_NoPositionalInfers(t *testing.T) {
 	// No folder → empty dir/name, which signals repoAdd to infer the cwd.
-	dir, name, skips, err := parseRepoAddArgs([]string{})
+	dir, name, skips, _, err := parseRepoAddArgs([]string{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestParseRepoAddArgs_NoPositionalInfers(t *testing.T) {
 
 func TestParseRepoAddArgs_FlagsOnlyStillInfers(t *testing.T) {
 	// Flags but no folder → still infer cwd, with the skip dir applied.
-	dir, name, skips, err := parseRepoAddArgs([]string{"--skip-directory", "vendor"})
+	dir, name, skips, _, err := parseRepoAddArgs([]string{"--skip-directory", "vendor"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,9 +60,29 @@ func TestParseRepoAddArgs_FlagsOnlyStillInfers(t *testing.T) {
 }
 
 func TestParseRepoAddArgs_RejectsPathForSkipDirectory(t *testing.T) {
-	_, _, _, err := parseRepoAddArgs([]string{"./specs", "--skip-directory", "dir/subdir"})
+	_, _, _, _, err := parseRepoAddArgs([]string{"./specs", "--skip-directory", "dir/subdir"})
 	if err == nil {
 		t.Fatalf("expected error for path-like skip-directory")
+	}
+}
+
+func TestParseRepoAddArgs_IncludeExtensions(t *testing.T) {
+	dir, _, _, exts, err := parseRepoAddArgs([]string{"./specs", "--include-extension", "sql,.Mermaid", "--include-extension=mmd"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if dir != "./specs" {
+		t.Fatalf("expected dir ./specs, got %q", dir)
+	}
+	// normalized: lower-cased, dot-prefixed, deduped, sorted
+	if len(exts) != 3 || exts[0] != ".mermaid" || exts[1] != ".mmd" || exts[2] != ".sql" {
+		t.Fatalf("unexpected extensions: %v", exts)
+	}
+}
+
+func TestParseRepoAddArgs_RejectsBadExtension(t *testing.T) {
+	if _, _, _, _, err := parseRepoAddArgs([]string{"./specs", "--include-extension", "a/b"}); err == nil {
+		t.Fatalf("expected error for path-like extension")
 	}
 }
 
@@ -90,6 +110,21 @@ func TestParseAndFormatRepoEntryLine_WithSkipDirectories(t *testing.T) {
 		t.Fatalf("unexpected repo values: %+v", r)
 	}
 	if len(r.SkipDirectories) != 2 || r.SkipDirectories[0] != ".skills" || r.SkipDirectories[1] != "vendor" {
+		t.Fatalf("unexpected skip directories: %v", r.SkipDirectories)
+	}
+}
+
+func TestParseAndFormatRepoEntryLine_WithIncludeExtensions(t *testing.T) {
+	orig := repoEntry{Name: "docs", Path: "/tmp/docs", SkipDirectories: []string{"vendor"}, IncludeExtensions: []string{".sql", ".mermaid"}}
+	line := formatRepoEntryLine(orig)
+	r, ok := parseRepoEntryLine(line)
+	if !ok {
+		t.Fatalf("expected formatted line to parse")
+	}
+	if len(r.IncludeExtensions) != 2 || r.IncludeExtensions[0] != ".mermaid" || r.IncludeExtensions[1] != ".sql" {
+		t.Fatalf("unexpected include extensions: %v", r.IncludeExtensions)
+	}
+	if len(r.SkipDirectories) != 1 || r.SkipDirectories[0] != "vendor" {
 		t.Fatalf("unexpected skip directories: %v", r.SkipDirectories)
 	}
 }

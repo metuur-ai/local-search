@@ -31,7 +31,10 @@ type workItem struct {
 // them, so workers start reading files immediately rather than waiting for the
 // full walk to complete. Memory is bounded by (workerCount × maxContentBytes)
 // because the channel buffers apply backpressure.
-func FullScan(db *sql.DB, repoName, repoRoot string, skipDirectories []string) (int, error) {
+//
+// includeExtensions are extra text extensions (".sql", ".mermaid") indexed on
+// top of extract.TextExts; nil = built-in text extensions only.
+func FullScan(db *sql.DB, repoName, repoRoot string, skipDirectories, includeExtensions []string) (int, error) {
 	// Cap workers between 2 and 16 to avoid overwhelming the kernel's dir cache.
 	workerCount := runtime.NumCPU()
 	if workerCount < 2 {
@@ -78,7 +81,7 @@ func FullScan(db *sql.DB, repoName, repoRoot string, skipDirectories []string) (
 	// Walk and feed workers directly — streaming, no intermediate slice.
 	walkErr := make(chan error, 1)
 	go func() {
-		err := walkItems(repoRoot, workCh, skipDirectories)
+		err := walkItems(repoRoot, workCh, skipDirectories, includeExtensions)
 		close(workCh)
 		walkErr <- err
 	}()
@@ -228,8 +231,8 @@ func FullScan(db *sql.DB, repoName, repoRoot string, skipDirectories []string) (
 // pairing was the original defect — DeleteRepo commits its own transaction first,
 // exposing exactly the empty intermediate state R-2.8 forbids. FullScan's single
 // transaction is the atomic boundary; a separate pre-delete breaks it.
-func ReplaceRepo(db *sql.DB, repoName, repoRoot string, skipDirectories []string) (int, error) {
-	return FullScan(db, repoName, repoRoot, skipDirectories)
+func ReplaceRepo(db *sql.DB, repoName, repoRoot string, skipDirectories, includeExtensions []string) (int, error) {
+	return FullScan(db, repoName, repoRoot, skipDirectories, includeExtensions)
 }
 
 // IncrementalScan updates only changed files for a git repo.
@@ -238,7 +241,8 @@ func ReplaceRepo(db *sql.DB, repoName, repoRoot string, skipDirectories []string
 //
 // Design: file reads happen outside the transaction via a worker pool (no DB
 // lock held during I/O). All DB writes are batched into a single transaction.
-func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDirectories []string) (int, string, error) {
+func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDirectories, includeExtensions []string) (int, string, error) {
+	extraExts := toExtSet(includeExtensions)
 	changed, err := git.ChangedFiles(repoRoot, lastCommit)
 	if err != nil {
 		return 0, lastCommit, err
@@ -336,6 +340,15 @@ func IncrementalScan(db *sql.DB, repoName, repoRoot, lastCommit string, skipDire
 							if e == nil {
 								res.toInsert = []pendingSpec{{rel, sp}}
 							}
+						}
+					}
+				case extraExts[ext]:
+					// Opt-in extensions are plain text, never media sidecars.
+					res.toDelete = []string{rel}
+					if git.FileExists(repoRoot, rel) {
+						sp, e := extract.FromFile(repoName, repoRoot, absPath)
+						if e == nil {
+							res.toInsert = []pendingSpec{{rel, sp}}
 						}
 					}
 				}
@@ -521,8 +534,9 @@ func DeleteRepo(db *sql.DB, repoName string) error {
 // different parent directory, keeping memory O(current depth) regardless of
 // whether directories contain indexable files.
 // Permission-denied errors are skipped; other errors abort the walk.
-func walkItems(repoRoot string, workCh chan<- workItem, skipDirectories []string) error {
+func walkItems(repoRoot string, workCh chan<- workItem, skipDirectories, includeExtensions []string) error {
 	skipSet := toSkipDirSet(skipDirectories)
+	extraExts := toExtSet(includeExtensions)
 	mediaStems := map[string]map[string]bool{} // dir → stem → true
 	lastDir := ""
 
@@ -573,12 +587,34 @@ func walkItems(repoRoot string, workCh chan<- workItem, skipDirectories []string
 			}
 			workCh <- workItem{path, d, false}
 
+		case extraExts[ext]:
+			// Opt-in extensions (--include-extension) are read as plain text.
+			// They are never media sidecars, so the stem check above is skipped.
+			workCh <- workItem{path, d, false}
+
 		case extract.MediaExts[ext]:
 			workCh <- workItem{path, d, true}
 		}
 
 		return nil
 	})
+}
+
+// toExtSet normalizes opt-in extensions to the lowercase, dot-prefixed form
+// filepath.Ext produces, so lookups match regardless of how they were written.
+func toExtSet(extensions []string) map[string]bool {
+	set := make(map[string]bool, len(extensions))
+	for _, e := range extensions {
+		e = strings.ToLower(strings.TrimSpace(e))
+		if e == "" || e == "." {
+			continue
+		}
+		if !strings.HasPrefix(e, ".") {
+			e = "." + e
+		}
+		set[e] = true
+	}
+	return set
 }
 
 func toSkipDirSet(skipDirectories []string) map[string]bool {

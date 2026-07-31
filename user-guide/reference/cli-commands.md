@@ -24,7 +24,7 @@ are accepted identically.
 
 ## Repos
 
-### `repo add [folder] [name] [--skip-directory <name>]`
+### `repo add [folder] [name] [--skip-directory <name>] [--include-extension <ext>]`
 
 Registers a folder as a searchable repo and scans it immediately — there is no
 separate index step.
@@ -58,6 +58,12 @@ and `.graphifyignore` (e.g. `node_modules/`, `dist/`, `graphify-out/`), so those
 are excluded without any flags. `--skip-directory <name>` (repeatable) excludes
 an additional subfolder by name (e.g. `node_modules`) for anything not covered
 by those ignore files.
+
+Scans read `.md`, `.mdx`, and `.txt` files. `--include-extension <ext>`
+(comma-separated or repeatable) indexes additional plain-text extensions, e.g.
+`--include-extension sql,mermaid`. The leading dot is optional and values are
+case-insensitive. Both flags are persisted with the repo and reapplied on every
+later scan.
 
 ### `repo remove <name>`
 

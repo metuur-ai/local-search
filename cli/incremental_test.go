@@ -58,7 +58,7 @@ func TestApplyIncrementalUpdate_StampsLastIndexUpdateOnlyWhenChanged(t *testing.
 	repo := repoEntry{Name: "docs", Path: repoDir}
 
 	// Baseline: full scan + record HEAD, mirroring the bootstrap path.
-	if _, err := localdb.FullScan(db, repo.Name, repo.Path, nil); err != nil {
+	if _, err := localdb.FullScan(db, repo.Name, repo.Path, nil, nil); err != nil {
 		t.Fatalf("full scan: %v", err)
 	}
 	localdb.SetMeta(db, "git_commit_"+repo.Name, git.CurrentCommit(repo.Path)) //nolint:errcheck
@@ -130,7 +130,7 @@ func TestApplyIncrementalUpdate_ConvergesOnUntrackedFiles(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	repo := repoEntry{Name: "docs", Path: repoDir}
-	if _, err := localdb.FullScan(db, repo.Name, repo.Path, nil); err != nil {
+	if _, err := localdb.FullScan(db, repo.Name, repo.Path, nil, nil); err != nil {
 		t.Fatalf("full scan: %v", err)
 	}
 	localdb.SetMeta(db, "git_commit_"+repo.Name, git.CurrentCommit(repo.Path)) //nolint:errcheck

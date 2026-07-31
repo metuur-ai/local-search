@@ -44,7 +44,19 @@ local-search repo add /path/to/monorepo \
 
 > **Tip:** `--skip-directory` takes a folder **name**, not a path — `node_modules`, never `src/node_modules` or a trailing slash. Any value containing `/`, `\`, `|`, or `,` is rejected outright, and `.`/`..` aren't allowed either. Local Search matches the name at any depth, so one `--skip-directory node_modules` skips every `node_modules` folder in the tree, however deeply nested.
 
-Changed your mind about what to skip after the fact? There's no `repo edit` — remove the repo and re-add it with the flags you want.
+## Index extra file types
+
+By default a scan only reads plain-text specs: `.md`, `.mdx`, and `.txt`. If your repo keeps content in other text files — SQL migrations, standalone Mermaid diagrams — opt them in at registration time with `--include-extension`:
+
+```bash
+local-search repo add ./specs \
+  --include-extension sql,mermaid \
+  --include-extension mmd
+```
+
+> **Tip:** `--include-extension` takes a file **extension**, not a path or a glob. The leading dot is optional (`sql` and `.sql` are the same), values are case-insensitive, and one flag can carry a comma-separated list or you can repeat the flag. Anything containing `/` or `\` is rejected. The setting is persisted with the repo, so later rescans keep indexing those files. Binary formats aren't supported here — images and other media are already indexed through their companion `.md` sidecars.
+
+Changed your mind about what to skip or include after the fact? There's no `repo edit` — remove the repo and re-add it with the flags you want.
 
 ## List what's registered
 

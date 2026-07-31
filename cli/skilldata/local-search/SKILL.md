@@ -195,6 +195,7 @@ Related specs to review: payments/chargeback, billing/invoices.
 ```bash
 local-search repo add /path/to/specs my-project   # auto-scans immediately
 local-search repo add /path/to/docs docs --skip-directory .skills   # skip folder by name
+local-search repo add /path/to/specs db --include-extension sql,mermaid   # index extra text types
 local-search search "payment refund"              # ready to use
 ```
 
@@ -240,11 +241,14 @@ local-search recent 20                        # recently modified
 local-search repo add ./specs product                              # register + auto-scan
 local-search repo add ./docs docs --skip-directory .skills         # skip folder by name
 local-search repo add ./code backend --skip-directory vendor --skip-directory .git
+local-search repo add ./specs db --include-extension sql,mermaid   # index extra text types
 local-search repo remove product                                   # unregister + rebuild
 local-search repo list                                             # show all repos
 ```
 
 `--skip-directory` takes a folder **name** (not a path). It's repeatable and persisted — future scans will also skip it. Matching is exact: `.skills` won't skip `.skills-old`.
+
+`--include-extension` adds plain-text extensions beyond the default `.md`, `.mdx`, and `.txt`. Values are comma-separated or the flag can be repeated, the leading dot is optional, and the list is persisted with the repo.
 
 ### JSON (agent pipelines)
 ```bash

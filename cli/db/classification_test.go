@@ -16,7 +16,7 @@ func TestClassification_RoundTripsThroughFullScan(t *testing.T) {
 	kgdWrite(t, filepath.Join(dir, "prd.md"), "---\ntype: prd\nstatus: validated\n---\n# PRD\n")
 	kgdWrite(t, filepath.Join(dir, "loud.md"), "---\ntype: dashboard\nstatus: WIP\n---\n# Loud\n")
 	kgdWrite(t, filepath.Join(dir, "plain.md"), "# Plain, no frontmatter\n")
-	if _, err := FullScan(d, "r", dir, nil); err != nil {
+	if _, err := FullScan(d, "r", dir, nil, nil); err != nil {
 		t.Fatalf("FullScan: %v", err)
 	}
 
@@ -51,7 +51,7 @@ func TestClassification_SurfacesOnGraphExport(t *testing.T) {
 	dir := t.TempDir()
 	kgdWrite(t, filepath.Join(dir, "prd.md"), "---\ntype: prd\nstatus: validated\n---\n# PRD\n")
 	kgdWrite(t, filepath.Join(dir, "plain.md"), "# Plain\n")
-	if _, err := FullScan(d, "r", dir, nil); err != nil {
+	if _, err := FullScan(d, "r", dir, nil, nil); err != nil {
 		t.Fatalf("FullScan: %v", err)
 	}
 

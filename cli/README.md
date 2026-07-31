@@ -68,10 +68,11 @@ Adding or removing a repo re-indexes only that repo (surgical — other repos ar
 ### Repo management
 
 ```bash
-local-search repo add <folder> [name] [--skip-directory <folder-name>]   # Register a spec repo (auto-scans)
+local-search repo add <folder> [name] [--skip-directory <folder-name>] [--include-extension <ext>]   # Register a spec repo (auto-scans)
   # Example: local-search repo add /path/to/specs product
   # Example: local-search repo add ./docs docs --skip-directory .skills
   # Example: local-search repo add ~/code backend --skip-directory vendor --skip-directory .git
+  # Example: local-search repo add ./specs db --include-extension sql,mermaid   # index beyond .md/.mdx/.txt
 local-search repo remove <name>                                          # Unregister a repo (surgical: drops only its rows + flat-file entry)
   # Example: local-search repo remove product
 local-search repo list                                                   # Show all repos with per-repo status columns

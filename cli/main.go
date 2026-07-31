@@ -27,7 +27,7 @@ import (
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const Version = "0.4.1"
+const Version = "0.4.2"
 
 var (
 	appDir    = filepath.Join(homeDir(), ".local-search")
@@ -150,7 +150,7 @@ func cmdRepo(args []string) {
 }
 
 func repoAdd(args []string) {
-	dirArg, nameArg, skipDirs, err := parseRepoAddArgs(args)
+	dirArg, nameArg, skipDirs, includeExts, err := parseRepoAddArgs(args)
 	if err != nil {
 		die(err.Error())
 	}
@@ -199,10 +199,11 @@ func repoAdd(args []string) {
 	// R-3.1: stamp the registration time; it flows through formatRepoEntryLine's
 	// 4th positional field when saveRepos persists the repos file below.
 	newEntry := repoEntry{
-		Name:            name,
-		Path:            dir,
-		SkipDirectories: skipDirs,
-		AddedAt:         time.Now().UTC().Format(time.RFC3339),
+		Name:              name,
+		Path:              dir,
+		SkipDirectories:   skipDirs,
+		IncludeExtensions: includeExts,
+		AddedAt:           time.Now().UTC().Format(time.RFC3339),
 	}
 	repos := loadRepos()
 	repos = append(repos, newEntry)
@@ -211,6 +212,9 @@ func repoAdd(args []string) {
 	fmt.Printf("Added repo %q (%s)\n", name, dir)
 	if len(skipDirs) > 0 {
 		fmt.Printf("Skipping directories by name: %s\n", strings.Join(skipDirs, ", "))
+	}
+	if len(includeExts) > 0 {
+		fmt.Printf("Also indexing extensions: %s\n", strings.Join(includeExts, " "))
 	}
 	// Surface the folders the scan will skip by default because .gitignore /
 	// .graphifyignore already exclude them (applied at scan time, not persisted).
@@ -244,7 +248,7 @@ func confirmRepoAdd(name, dir string) bool {
 	return strings.ToLower(strings.TrimSpace(answer)) == "y"
 }
 
-func parseRepoAddArgs(args []string) (dir, name string, skipDirs []string, err error) {
+func parseRepoAddArgs(args []string) (dir, name string, skipDirs, includeExts []string, err error) {
 	// No positional folder is allowed: repoAdd then infers the current directory
 	// (with a confirmation prompt). Flag parsing still runs so
 	// `repo add --skip-directory x` works against the inferred cwd.
@@ -254,26 +258,39 @@ func parseRepoAddArgs(args []string) (dir, name string, skipDirs []string, err e
 		switch {
 		case a == "--skip-directory":
 			if i+1 >= len(args) {
-				return "", "", nil, fmt.Errorf("--skip-directory requires a folder name")
+				return "", "", nil, nil, fmt.Errorf("--skip-directory requires a folder name")
 			}
 			i++
 			skipDirs = append(skipDirs, args[i])
 		case strings.HasPrefix(a, "--skip-directory="):
 			skipDirs = append(skipDirs, strings.TrimPrefix(a, "--skip-directory="))
+		case a == "--include-extension":
+			if i+1 >= len(args) {
+				return "", "", nil, nil, fmt.Errorf("--include-extension requires a file extension")
+			}
+			i++
+			includeExts = append(includeExts, splitCommaList(args[i])...)
+		case strings.HasPrefix(a, "--include-extension="):
+			includeExts = append(includeExts, splitCommaList(strings.TrimPrefix(a, "--include-extension="))...)
 		case strings.HasPrefix(a, "-"):
-			return "", "", nil, fmt.Errorf("unknown flag: %s", a)
+			return "", "", nil, nil, fmt.Errorf("unknown flag: %s", a)
 		default:
 			positional = append(positional, a)
 		}
 	}
 
 	if len(positional) > 2 {
-		return "", "", nil, fmt.Errorf("Usage: local-search repo add [folder] [name] [--skip-directory <folder-name>]...")
+		return "", "", nil, nil, fmt.Errorf("Usage: local-search repo add [folder] [name] [--skip-directory <folder-name>] [--include-extension <ext>]...")
 	}
 
 	normalized, err := normalizeSkipDirectoryNames(skipDirs)
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, nil, err
+	}
+
+	normalizedExts, err := normalizeIncludeExtensions(includeExts)
+	if err != nil {
+		return "", "", nil, nil, err
 	}
 
 	if len(positional) >= 1 {
@@ -282,7 +299,44 @@ func parseRepoAddArgs(args []string) (dir, name string, skipDirs []string, err e
 	if len(positional) == 2 {
 		name = positional[1]
 	}
-	return dir, name, normalized, nil
+	return dir, name, normalized, normalizedExts, nil
+}
+
+// splitCommaList lets one flag carry several values (`--include-extension sql,mermaid`)
+// without giving up the repeatable-flag form.
+func splitCommaList(raw string) []string { return strings.Split(raw, ",") }
+
+// normalizeIncludeExtensions canonicalizes extra text extensions to lowercase,
+// dot-prefixed form (".sql"). Media extensions are rejected because those are
+// indexed through a companion .md sidecar, not read as text.
+func normalizeIncludeExtensions(values []string) ([]string, error) {
+	seen := make(map[string]bool)
+	out := make([]string, 0, len(values))
+	for _, raw := range values {
+		v := strings.ToLower(strings.TrimSpace(raw))
+		v = strings.TrimPrefix(v, "*") // tolerate "*.sql"
+		if v == "" || v == "." {
+			return nil, fmt.Errorf("--include-extension requires a non-empty file extension")
+		}
+		if !strings.HasPrefix(v, ".") {
+			v = "." + v
+		}
+		if strings.ContainsAny(v[1:], "./\\|, ") {
+			return nil, fmt.Errorf("invalid --include-extension value %q: expected a file extension like sql", raw)
+		}
+		if extract.MediaExts[v] {
+			return nil, fmt.Errorf("invalid --include-extension value %q: %s is already indexed via a companion .md sidecar", raw, v)
+		}
+		if extract.TextExts[v] {
+			continue // already indexed by default
+		}
+		if !seen[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
 }
 
 func normalizeSkipDirectoryNames(values []string) ([]string, error) {
@@ -866,7 +920,7 @@ func scanFullRebuild(repos []repoEntry) {
 	total := 0
 	for _, r := range repos {
 		fmt.Printf("  %s: indexing %s…\n", r.Name, r.Path)
-		n, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r))
+		n, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r), r.IncludeExtensions)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "  %s: error — %v\n", r.Name, err)
 			continue
@@ -915,7 +969,7 @@ func scanSurgical(targets []repoEntry) {
 		// automation makes frequent) sees either the pre- or post-scan index for
 		// this repo, never the empty window. A prior DeleteRepo here would commit
 		// an empty state first and reintroduce that window — hence it is gone.
-		n, err := localdb.ReplaceRepo(db, r.Name, r.Path, effectiveSkipDirs(r))
+		n, err := localdb.ReplaceRepo(db, r.Name, r.Path, effectiveSkipDirs(r), r.IncludeExtensions)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "  %s: error — %v\n", r.Name, err)
 			continue
@@ -977,7 +1031,7 @@ func ensureDB() *sql.DB {
 		// no-op when there's nothing to do, so the order is harmless.
 		if !knownNames[r.Name] {
 			fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
-			if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r)); err != nil {
+			if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r), r.IncludeExtensions); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: scan of %s failed: %v\n", r.Name, err)
 				continue
 			}
@@ -2122,7 +2176,7 @@ func runIncrementalUpdates(db *sql.DB, repos []localdb.RepoRow) {
 		// so their row appears with code_graph_* metadata.
 		if !knownNames[r.Name] {
 			fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
-			if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r)); err != nil {
+			if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r), r.IncludeExtensions); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: scan of %s failed: %v\n", r.Name, err)
 				continue
 			}
@@ -2160,7 +2214,7 @@ func applyIncrementalUpdate(db *sql.DB, repo repoEntry) (changed bool, err error
 		return false, nil
 	}
 	fmt.Fprintf(os.Stderr, "(%s: git changes detected — incremental update…)\n\n", repo.Name)
-	n, newCommit, err := localdb.IncrementalScan(db, repo.Name, repo.Path, lastCommit, effectiveSkipDirs(repo))
+	n, newCommit, err := localdb.IncrementalScan(db, repo.Name, repo.Path, lastCommit, effectiveSkipDirs(repo), repo.IncludeExtensions)
 	if err != nil {
 		return false, err
 	}
@@ -2650,7 +2704,10 @@ func cmdHelp() {
 	fmt.Print(`local-search — search your project specs across multiple repos
 
 Usage:
-	local-search repo add [folder] [name] [--skip-directory <folder-name>]   Register a spec repo (folder defaults to the current directory, with a confirmation prompt)
+	local-search repo add [folder] [name] [--skip-directory <folder-name>] [--include-extension <ext>]   Register a spec repo (folder defaults to the current directory, with a confirmation prompt)
+                                          --skip-directory    exclude a folder by name (repeatable, persisted)
+                                          --include-extension index extra plain-text extensions beyond .md/.mdx/.txt
+                                                              (comma-separated or repeatable, persisted), e.g. sql,mermaid
   local-search repo remove <name>         Remove a repo
   local-search repo list                  Show all repos
 
@@ -2760,10 +2817,13 @@ type repoEntry struct {
 	Path            string
 	SkipDirectories []string
 	AddedAt         string // RFC3339; empty = unknown (legacy lines)
+	// IncludeExtensions are extra text extensions (".sql", ".mermaid") indexed
+	// on top of the built-in extract.TextExts set. Empty = defaults only.
+	IncludeExtensions []string
 }
 
 func parseRepoEntryLine(line string) (repoEntry, bool) {
-	parts := strings.SplitN(line, "|", 4)
+	parts := strings.SplitN(line, "|", 5)
 	if len(parts) < 2 {
 		return repoEntry{}, false
 	}
@@ -2771,12 +2831,19 @@ func parseRepoEntryLine(line string) (repoEntry, bool) {
 	if len(parts) >= 3 && strings.TrimSpace(parts[2]) != "" {
 		r.SkipDirectories = strings.Split(parts[2], ",")
 	}
-	if len(parts) == 4 {
+	if len(parts) >= 4 {
 		if ts := strings.TrimSpace(parts[3]); ts != "" {
 			if _, err := time.Parse(time.RFC3339, ts); err == nil {
 				r.AddedAt = ts
 			}
 		}
+	}
+	if len(parts) == 5 && strings.TrimSpace(parts[4]) != "" {
+		exts, err := normalizeIncludeExtensions(strings.Split(parts[4], ","))
+		if err != nil {
+			return repoEntry{}, false
+		}
+		r.IncludeExtensions = exts
 	}
 	norm, err := normalizeSkipDirectoryNames(r.SkipDirectories)
 	if err != nil {
@@ -2794,13 +2861,23 @@ func formatRepoEntryLine(r repoEntry) string {
 			skip = strings.Join(norm, ",")
 		}
 	}
+	var exts string
+	if len(r.IncludeExtensions) > 0 {
+		if norm, err := normalizeIncludeExtensions(r.IncludeExtensions); err == nil {
+			exts = strings.Join(norm, ",")
+		}
+	}
 	// added_at is positional (4th field). When it is present we MUST emit the
 	// (possibly empty) 3rd skip-dirs field as a placeholder so the timestamp
 	// stays in the 4th position — otherwise it lands in the skip-dirs field and
-	// the line is dropped on the next load (R-6.6).
-	if r.AddedAt != "" {
+	// the line is dropped on the next load (R-6.6). The same rule applies to the
+	// 5th include-extensions field, which needs both earlier fields present.
+	switch {
+	case exts != "":
+		line += "|" + skip + "|" + r.AddedAt + "|" + exts
+	case r.AddedAt != "":
 		line += "|" + skip + "|" + r.AddedAt
-	} else if skip != "" {
+	case skip != "":
 		line += "|" + skip
 	}
 	return line

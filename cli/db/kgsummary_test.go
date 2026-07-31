@@ -36,10 +36,10 @@ func kgsFixture(t *testing.T) (dbh *sql.DB, dirA string) {
 	kgdWrite(t, filepath.Join(dirB, "bconflict.md"),
 		"---\nid: component://b\n---\n# B conflict\n")
 
-	if _, err := FullScan(d, "repoA", dirA, nil); err != nil {
+	if _, err := FullScan(d, "repoA", dirA, nil, nil); err != nil {
 		t.Fatalf("FullScan repoA: %v", err)
 	}
-	if _, err := FullScan(d, "repoB", dirB, nil); err != nil {
+	if _, err := FullScan(d, "repoB", dirB, nil, nil); err != nil {
 		t.Fatalf("FullScan repoB: %v", err)
 	}
 	return d, dirA
@@ -94,7 +94,7 @@ func TestScanSummary_R51_DeterministicAcrossRescan(t *testing.T) {
 		t.Fatalf("KGExport: %v", err)
 	}
 
-	if _, err := FullScan(d, "repoA", dirA, nil); err != nil {
+	if _, err := FullScan(d, "repoA", dirA, nil, nil); err != nil {
 		t.Fatalf("rescan repoA: %v", err)
 	}
 
@@ -217,7 +217,7 @@ func TestExportTypedLinks_R53_RegeneratedAfterRescan(t *testing.T) {
 	// Drop the req://missing reference from a.md and rescan.
 	kgdWrite(t, filepath.Join(dirA, "a.md"),
 		"---\nid: component://a\ntags:\n  - alpha\ndependsOn:\n  - component://b\n---\n# A\n")
-	if _, err := FullScan(d, "repoA", dirA, nil); err != nil {
+	if _, err := FullScan(d, "repoA", dirA, nil, nil); err != nil {
 		t.Fatalf("rescan repoA: %v", err)
 	}
 

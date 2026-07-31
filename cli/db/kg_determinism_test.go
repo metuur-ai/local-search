@@ -188,7 +188,7 @@ func TestRebuildEquivalence_R32_FullRebuildByteIdentical(t *testing.T) {
 	scanAll := func(order [][2]string) string {
 		dbh := kgdOpen(t)
 		for _, r := range order {
-			if _, err := FullScan(dbh, r[0], r[1], nil); err != nil {
+			if _, err := FullScan(dbh, r[0], r[1], nil, nil); err != nil {
 				t.Fatalf("FullScan %s: %v", r[0], err)
 			}
 		}
@@ -236,7 +236,7 @@ func TestIncrementalEquivalence_R33_IncrementalMatchesFullScan(t *testing.T) {
 	incDB := kgdOpen(t)
 	last := map[string]string{}
 	for _, r := range live {
-		if _, err := FullScan(incDB, r[0], r[1], nil); err != nil {
+		if _, err := FullScan(incDB, r[0], r[1], nil, nil); err != nil {
 			t.Fatalf("baseline FullScan %s: %v", r[0], err)
 		}
 		last[r[0]] = git.CurrentCommit(r[1])
@@ -247,7 +247,7 @@ func TestIncrementalEquivalence_R33_IncrementalMatchesFullScan(t *testing.T) {
 	checkStep := func(step string) {
 		t.Helper()
 		for _, r := range live {
-			_, newCommit, err := IncrementalScan(incDB, r[0], r[1], last[r[0]], nil)
+			_, newCommit, err := IncrementalScan(incDB, r[0], r[1], last[r[0]], nil, nil)
 			if err != nil {
 				t.Fatalf("step %q: IncrementalScan %s: %v", step, r[0], err)
 			}
@@ -255,7 +255,7 @@ func TestIncrementalEquivalence_R33_IncrementalMatchesFullScan(t *testing.T) {
 		}
 		freshDB := kgdOpen(t)
 		for _, r := range live {
-			if _, err := FullScan(freshDB, r[0], r[1], nil); err != nil {
+			if _, err := FullScan(freshDB, r[0], r[1], nil, nil); err != nil {
 				t.Fatalf("step %q: fresh FullScan %s: %v", step, r[0], err)
 			}
 		}

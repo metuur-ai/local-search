@@ -37,7 +37,7 @@ func TestReplaceRepo_ConcurrentReaderNeverSeesEmpty(t *testing.T) {
 		t.Fatalf("create schema: %v", err)
 	}
 
-	seed, err := ReplaceRepo(writer, "A", srcDir, nil)
+	seed, err := ReplaceRepo(writer, "A", srcDir, nil, nil)
 	if err != nil {
 		t.Fatalf("seed ReplaceRepo: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestReplaceRepo_ConcurrentReaderNeverSeesEmpty(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 40; i++ {
-			if _, err := ReplaceRepo(writer, "A", srcDir, nil); err != nil {
+			if _, err := ReplaceRepo(writer, "A", srcDir, nil, nil); err != nil {
 				failErr.Store(err)
 				break
 			}

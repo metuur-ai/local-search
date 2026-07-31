@@ -78,7 +78,7 @@ Full details in [configuration.md](configuration.md) and
 
 ## Getting set up
 
-### `repo add [folder] [name] [--skip-directory <name>]`
+### `repo add [folder] [name] [--skip-directory <name>] [--include-extension <ext>]`
 
 **What.** Registers a folder as a searchable repo and indexes it immediately.
 There is no separate "now index it" step — registration and the first scan are
@@ -114,6 +114,11 @@ tells you to pass the folder explicitly.
 don't need it: every scan already honours the repo's `.gitignore` and
 `.graphifyignore`, so `node_modules/`, `dist/`, and `graphify-out/` are excluded
 for free. `repo add` prints which directories it's ignoring for that reason.
+
+`--include-extension <ext>` widens what counts as a spec file. Scans read `.md`,
+`.mdx`, and `.txt`; pass `--include-extension sql,mermaid` (comma-separated, or
+repeat the flag) to index other plain-text formats too. The leading dot is
+optional, values are case-insensitive, and the list is persisted with the repo.
 
 **Why.** This is the one command that has to exist — nothing else works until
 Local Search knows where your specs are. Making the scan implicit removes the

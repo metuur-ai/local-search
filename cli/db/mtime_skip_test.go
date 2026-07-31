@@ -85,7 +85,7 @@ func TestIncrementalScan_MtimeSizeFastPath(t *testing.T) {
 	if err := CreateSchema(dbh); err != nil {
 		t.Fatalf("CreateSchema: %v", err)
 	}
-	if _, err := FullScan(dbh, "r", repoRoot, nil); err != nil {
+	if _, err := FullScan(dbh, "r", repoRoot, nil, nil); err != nil {
 		t.Fatalf("FullScan: %v", err)
 	}
 	head := git.CurrentCommit(repoRoot)
@@ -94,7 +94,7 @@ func TestIncrementalScan_MtimeSizeFastPath(t *testing.T) {
 	}
 
 	// 1. Unchanged (same mtime, same size) → skipped, zero updates.
-	n, _, err := IncrementalScan(dbh, "r", repoRoot, head, nil)
+	n, _, err := IncrementalScan(dbh, "r", repoRoot, head, nil, nil)
 	if err != nil {
 		t.Fatalf("IncrementalScan (unchanged): %v", err)
 	}
@@ -110,7 +110,7 @@ func TestIncrementalScan_MtimeSizeFastPath(t *testing.T) {
 	// silently dropped.
 	const v2 = "# Note\n\nversion two body, deliberately longer\n"
 	mtsWrite(t, note, v2, t1) // pin mtime back to the indexed value
-	n, _, err = IncrementalScan(dbh, "r", repoRoot, head, nil)
+	n, _, err = IncrementalScan(dbh, "r", repoRoot, head, nil, nil)
 	if err != nil {
 		t.Fatalf("IncrementalScan (size change): %v", err)
 	}
@@ -127,7 +127,7 @@ func TestIncrementalScan_MtimeSizeFastPath(t *testing.T) {
 		t.Fatalf("fixture bug: len(v3)=%d must equal len(v2)=%d", len(v3), len(v2))
 	}
 	mtsWrite(t, note, v3, t1.Add(5*time.Second))
-	n, _, err = IncrementalScan(dbh, "r", repoRoot, head, nil)
+	n, _, err = IncrementalScan(dbh, "r", repoRoot, head, nil, nil)
 	if err != nil {
 		t.Fatalf("IncrementalScan (mtime change): %v", err)
 	}

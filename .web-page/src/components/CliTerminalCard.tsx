@@ -176,10 +176,10 @@ relationships: product-specs:chargeback
   const commandDirectory = [
     {
       cmd: 'local-search repo add <path> <name>',
-      flags: ['--skip-directory <name>', '--list', '--remove <name>'],
+      flags: ['--skip-directory <name>', '--include-extension <ext>', '--list', '--remove <name>'],
       category: '01 Repository Registration',
       what: 'Registers a local directory as a searchable workspace repository and immediately indexes all markdown files.',
-      how: 'Traverses markdown files in the target directory (honoring .gitignore & .graphifyignore), extracts YAML frontmatter, @spec tags, and term frequencies, writing them directly into ~/.local-search/specs.db.',
+      how: 'Traverses markdown files in the target directory (honoring .gitignore & .graphifyignore), extracts YAML frontmatter, @spec tags, and term frequencies, writing them directly into ~/.local-search/specs.db. Pass --include-extension sql,mermaid to index plain-text formats beyond .md/.mdx/.txt.',
       why: 'Establishes precise workspace boundaries for local-search while ensuring 100% Zero-Cloud privacy—no file content or embeddings ever leave your machine.',
     },
     {

@@ -413,6 +413,7 @@ similarity — the connections your team actually maintained.
 ```bash
 local-search repo add ./specs product                       # register + auto-scan
 local-search repo add ./docs docs --skip-directory .skills  # skip a folder by name
+local-search repo add ./specs db --include-extension sql,mermaid  # index extra text types
 local-search repo remove product
 local-search repo list
 ```
@@ -420,6 +421,10 @@ local-search repo list
 `--skip-directory` takes a folder **name**, not a path. It's repeatable and
 persisted, so future scans skip it too. Matching is exact — `.skills` will not
 skip `.skills-old`.
+
+`--include-extension` adds file extensions beyond the default `.md`, `.mdx`, and
+`.txt`. Values are comma-separated or the flag can be repeated, the leading dot
+is optional, and the list is persisted with the repo.
 
 **Why.** Setup questions are the ones people hit first and abandon over. Letting
 the skill drive registration means "index my docs folder" is a sentence rather

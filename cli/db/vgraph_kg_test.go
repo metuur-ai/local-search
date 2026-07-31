@@ -52,10 +52,10 @@ id: component://delta
 `)
 
 	dbh := openKGTestDB(t)
-	if _, err := FullScan(dbh, "repoX", repoX, nil); err != nil {
+	if _, err := FullScan(dbh, "repoX", repoX, nil, nil); err != nil {
 		t.Fatalf("FullScan repoX: %v", err)
 	}
-	if _, err := FullScan(dbh, "repoY", repoY, nil); err != nil {
+	if _, err := FullScan(dbh, "repoY", repoY, nil, nil); err != nil {
 		t.Fatalf("FullScan repoY: %v", err)
 	}
 
