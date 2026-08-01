@@ -85,6 +85,17 @@ export function HelpModal({ onClose }) {
             <li><code>similarity</code><span>No <code>relation</code> at all — a lexical resemblance rather than a claim anyone wrote down. Drawn faint grey.</span></li>
           </ul>
           <p>A freshly loaded graph opens on <strong>Declared</strong> and <strong>Unresolved</strong> whenever it has any of either, since declared structure is the point of the view. A graph with neither — every link a similarity link — opens on all three families instead of opening empty.</p>
+          <p>A plain <strong>array of file records</strong> is also accepted, and is the easier shape to hand-write. It has no links of its own: the viewer synthesizes a hub node per distinct <code>repo</code>, <code>project</code>, and tag, and links each file to the hubs it belongs to.</p>
+          <code class="block">{`[
+  { "id": "billing-readme", "name": "README.md",
+    "title": "Billing platform", "type": "file",
+    "repo": "company-os", "project": "billing",
+    "tags": ["platform", "payments"] }
+]`}</code>
+          <p>Only <code>id</code> is read as an identity — a record without one is numbered <code>file_0</code>, <code>file_1</code>, … by position. <code>name</code> is the canvas label (<code>Unknown Node</code> if absent), <code>title</code> is searchable alongside it, <code>type</code> colors the node and defaults to <code>file</code>, and <code>val</code> sets its radius. <code>tags</code> takes an array or a <code>"a,b"</code> / <code>"[a, b]"</code> string.</p>
+          <p>The hub nodes are given the ids <code>repo_&lt;repo&gt;</code>, <code>proj_&lt;project&gt;</code>, and <code>tag_&lt;tag&gt;</code>. Because tags become hubs on this shape rather than staying node properties, the Tag filter has nothing to list — you narrow by tag by clicking its hub instead.</p>
+          <p>What this shape cannot do is state a typed relation. There is nowhere to put a <code>relation</code>, so every link in the resulting graph is one the viewer invented from shared membership, and all of them are <strong>similarity</strong> links. A flat-array graph therefore has no declared structure at all and opens on all three families. If you want <code>depends_on</code> to mean something, use the node-link shape.</p>
+          <p>Ids matter twice over if the file is to be blended with the local-search graph rather than replace it. Blending concatenates the two, so an id used by both puts two nodes on the canvas under one id, and every link naming it resolves to only one of them — not necessarily yours. Prefix your ids, and remember that a repo or tag sharing a name with one already on the canvas produces a colliding <code>repo_</code> or <code>tag_</code> hub too.</p>
 
           <div class="modal-section">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">

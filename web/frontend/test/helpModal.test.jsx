@@ -36,4 +36,16 @@ describe('HelpModal graph-format section', () => {
     expect(text).toContain('unresolved');
     expect(text).toMatch(/opens on all three families/);
   });
+
+  it('documents the flat-array shape, its hub ids, and its limits', () => {
+    render(<HelpModal onClose={() => {}} />);
+    const text = body();
+    expect(text).toContain('array of file records');
+    // The hub id prefixes synthesizeGraphData actually mints.
+    ['repo_', 'proj_', 'tag_'].forEach((p) => expect(text).toContain(p));
+    // The limitation that is invisible until the graph comes out wrong.
+    expect(text).toContain('cannot do is state a typed relation');
+    expect(text).toMatch(/all of them are/);
+    expect(text).toContain('blended');
+  });
 });
