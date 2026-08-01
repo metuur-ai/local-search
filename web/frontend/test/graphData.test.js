@@ -10,6 +10,7 @@ import {
   countEdgeFamilies,
   tagOrigin,
   detectIdCollisions,
+  mergeGraphs,
   EDGE_FAMILY,
   colors,
 } from '../src/graph-explorer/graphData.js';
@@ -202,5 +203,37 @@ describe('collectFilterOptions', () => {
     expect(opts.repo).toEqual(['r1', 'r2']);
     expect(opts.project).toEqual(['p1']);
     expect(opts.tag).toEqual(['a', 'b']);
+  });
+});
+
+describe('mergeGraphs', () => {
+  it('concatenates nodes and links without aliasing the inputs', () => {
+    const a = { nodes: [{ id: 'a' }], links: [{ source: 'a', target: 'a' }] };
+    const b = { nodes: [{ id: 'x' }], links: [{ source: 'x', target: 'x' }] };
+    const merged = mergeGraphs(a, b);
+    expect(merged.nodes).toHaveLength(2);
+    expect(merged.links).toHaveLength(2);
+    expect(merged.nodes[0]).not.toBe(a.nodes[0]);
+    expect(merged.links[0]).not.toBe(a.links[0]);
+  });
+
+  // The force layout rewrites `link.source` from an id into a live node object
+  // in place. Merging after a render therefore sees object endpoints, and the
+  // objects it sees belong to the *previous* copy of the graph.
+  it('normalizes endpoints the force layout has rewritten back to ids', () => {
+    const base = { nodes: [{ id: 'a' }, { id: 'b' }], links: [{ source: 'a', target: 'b' }] };
+    const up = { nodes: [{ id: 'x' }, { id: 'y' }], links: [{ source: 'x', target: 'y' }] };
+    base.links[0].source = base.nodes[0];
+    base.links[0].target = base.nodes[1];
+
+    const merged = mergeGraphs(base, up);
+
+    expect(merged.links[0].source).toBe('a');
+    expect(merged.links[0].target).toBe('b');
+    const ids = new Set(merged.nodes.map((n) => n.id));
+    merged.links.forEach((l) => {
+      expect(ids.has(l.source)).toBe(true);
+      expect(ids.has(l.target)).toBe(true);
+    });
   });
 });

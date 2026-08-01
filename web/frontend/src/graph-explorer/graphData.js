@@ -197,9 +197,19 @@ export function tagOrigin(graph, origin) {
 // and `link.target` in place, and `applyFilters` aliases rather than copies, so
 // concatenating references would hand the layout the very objects the sources are
 // re-derived from — and leave them circular.
+//
+// Endpoints are normalized back to ids for the same reason. Once the layout has
+// run, `link.source` holds a node *object*; copying it verbatim while the nodes
+// beside it are fresh copies yields links bound to nodes that are not in this
+// graph's own `nodes` array, which draws them against orphans.
 export function mergeGraphs(a, b) {
+  const endpointId = (e) => (e && typeof e === 'object' ? e.id : e);
   const nodesOf = (g) => (g.nodes || []).map((n) => ({ ...n }));
-  const linksOf = (g) => (g.links || []).map((l) => ({ ...l }));
+  const linksOf = (g) => (g.links || []).map((l) => ({
+    ...l,
+    source: endpointId(l.source),
+    target: endpointId(l.target),
+  }));
   return {
     nodes: [...nodesOf(a), ...nodesOf(b)],
     links: [...linksOf(a), ...linksOf(b)],
