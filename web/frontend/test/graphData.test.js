@@ -170,7 +170,9 @@ describe('applyFilters', () => {
       { source: 'b', target: 'r2' },
     ],
   };
-  const noSel = () => ({ type: new Set(), repo: new Set(), project: new Set(), tag: new Set() });
+  const noSel = () => ({
+    type: new Set(), repo: new Set(), project: new Set(), tag: new Set(), origin: new Set(),
+  });
 
   it('search matches name or title (case-insensitive)', () => {
     const g = applyFilters(original, { search: 'alph', multiSelect: noSel() });
@@ -191,6 +193,43 @@ describe('applyFilters', () => {
     ms.tag.add('x');
     const g = applyFilters(original, { multiSelect: ms });
     expect(g.nodes.map((n) => n.id).sort()).toEqual(['a', 'r1']);
+  });
+
+  // R-2.5 / R-2.6. `repo` and `project` exempt nodes that lack the property,
+  // because those are real node properties some node types simply do not carry.
+  // `__origin` is different: the viewer stamps it at every load site, so a node
+  // without one is unknown provenance — which is not the same answer as
+  // "matches your filter" and must not survive a Source selection.
+  const mixed = {
+    nodes: [
+      { id: 'a', name: 'a', type: 'file', __origin: 'local-search' },
+      { id: 'x', name: 'x', type: 'file', __origin: 'upload.json' },
+      { id: 'u', name: 'u', type: 'file' },
+    ],
+    links: [],
+  };
+
+  it('origin multi-select retains only nodes tagged with a selected origin', () => {
+    const ms = noSel();
+    ms.origin.add('upload.json');
+    const g = applyFilters(mixed, { multiSelect: ms });
+    expect(g.nodes.map((n) => n.id)).toEqual(['x']);
+  });
+
+  it('never exempts an untagged node, under any non-empty origin selection', () => {
+    ['local-search', 'upload.json'].forEach((sel) => {
+      const ms = noSel();
+      ms.origin.add(sel);
+      const g = applyFilters(mixed, { multiSelect: ms });
+      expect(g.nodes.map((n) => n.id)).not.toContain('u');
+    });
+
+    // Even selecting every origin that exists leaves the untagged node out.
+    const all = noSel();
+    all.origin.add('local-search');
+    all.origin.add('upload.json');
+    expect(applyFilters(mixed, { multiSelect: all }).nodes.map((n) => n.id))
+      .toEqual(['a', 'x']);
   });
 });
 

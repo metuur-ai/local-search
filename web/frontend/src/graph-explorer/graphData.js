@@ -318,6 +318,12 @@ export function applyFilters(originalData, {
     // property; nodes without it are left unaffected.
     if (multiSelect.repo.size > 0 && node.repo && !multiSelect.repo.has(node.repo)) return false;
     if (multiSelect.project.size > 0 && node.project && !multiSelect.project.has(node.project)) return false;
+    // Strict, unlike repo/project above: `__origin` is viewer-assigned at every
+    // load site, so an untagged node is unknown provenance rather than a node
+    // that legitimately lacks the property. Exempting it would let it answer a
+    // Source question it has no answer to.
+    if (multiSelect.origin && multiSelect.origin.size > 0
+      && !multiSelect.origin.has(node.__origin)) return false;
     return true;
   });
 

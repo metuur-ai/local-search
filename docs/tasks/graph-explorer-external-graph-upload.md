@@ -102,7 +102,7 @@ run first even though they sit last in the EARS document.
     `options.origin.length` read throws before the first load resolves.
   - landed:
 
-- [ ] 2.2 Apply the origin filter strictly (deps: 2.1, est: ~20m)
+- [x] 2.2 Apply the origin filter strictly (deps: 2.1, est: ~20m)
   - why: an untagged node must not leak through a Source selection — "unknown provenance"
     is a distinct answer from "matches your filter".
   - acceptance: R-2.5, R-2.6 — a non-empty `multiSelect.origin` retains only nodes whose
