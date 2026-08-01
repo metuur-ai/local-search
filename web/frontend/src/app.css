@@ -517,14 +517,18 @@ body {
 .segmented-btn.is-active i { color: #fff; }
 
 /* Tag ribbon */
+/* Wraps instead of scrolling sideways: a spec-heavy repo yields dozens of
+   tags, and a single horizontal row hid all but the first few. */
 .tag-ribbon {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.45rem;
-  overflow-x: auto;
+  max-height: 7.5rem;
+  overflow-y: auto;
   padding-bottom: 0.3rem;
   scrollbar-width: thin;
 }
-.tag-ribbon::-webkit-scrollbar { height: 6px; }
+.tag-ribbon::-webkit-scrollbar { width: 6px; }
 .tag-ribbon::-webkit-scrollbar-thumb {
   background: var(--line);
   border-radius: var(--radius-pill);
@@ -556,6 +560,11 @@ body {
   color: #b45309;
   background: var(--amber-50);
   border-color: #fde68a;
+}
+.tag-pill-more {
+  color: var(--brand-600);
+  background: transparent;
+  border-style: dashed;
 }
 .tag-pill.is-active {
   color: #fff;

@@ -483,6 +483,9 @@ body {
 /* Paste Prompt control. The fallback textarea only mounts when the clipboard
    write failed, so it is styled to read as the prompt itself, not as an input. */
 .prompt-actions { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; flex-wrap: wrap; }
+/* Smaller than a page .btn: this is a per-shape helper next to a heading, not a
+   primary action of the modal. */
+.prompt-actions .btn { padding: 5px 10px; font-size: 12px; }
 .prompt-status { font-size: 12px; color: var(--ink-dim); }
 .prompt-fallback {
   display: block; width: 100%; box-sizing: border-box; margin: 0 0 8px; padding: 10px 12px;

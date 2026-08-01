@@ -3,11 +3,11 @@
 
 import { useEffect, useState } from 'preact/hooks';
 
-import { GRAPH_PROMPT, NODE_LINK_PROMPT, FLAT_ARRAY_PROMPT } from '../graphPrompt.js';
+import { NODE_LINK_PROMPT, FLAT_ARRAY_PROMPT } from '../graphPrompt.js';
 
-// One control per prompt. The state is per-instance on purpose: with three
-// buttons on the page a shared state would flash "Copied" under a button the
-// user did not press, and would reveal the wrong prompt in the fallback.
+// One control per shape. The state is per-instance on purpose: with a button
+// per shape a shared state would flash "Copied" under a button the user did
+// not press, and would reveal the wrong prompt in the fallback.
 function CopyPrompt({ label, prompt, testid, fallbackTestid }) {
   // 'idle' | 'copied' | 'revealed'. `revealed` is the fallback for a clipboard
   // that is absent (non-secure context) or whose write rejects: the prompt is
@@ -100,15 +100,6 @@ export function HelpModal({ onClose, focusSection = null }) {
             </svg>
             Graph file format
           </div>
-          {/* Sibling of the section header, not a child: inside it the control
-              inherits the header's 10px uppercase letterspacing. */}
-          <CopyPrompt
-            label="Copy Prompt"
-            prompt={GRAPH_PROMPT}
-            testid="copy-prompt"
-            fallbackTestid="prompt-fallback"
-          />
-
           <p><strong>Upload JSON</strong> accepts two shapes, and the file's first character decides which one it is read as. An object (<code>{'{'}</code>) is a <strong>node-link graph</strong>: you author the links, so it is the only shape that can state a typed relation. An array (<code>[</code>) is a <strong>flat list of file records</strong>: it carries no links of its own, so the viewer synthesizes them and every one of them is a similarity link. Each shape has its own prompt below.</p>
 
           <h4 class="modal-subhead">Shape A — node-link</h4>

@@ -32,14 +32,14 @@ func TestExtractRefTags_SpecProseMentionIgnored(t *testing.T) {
 }
 
 func TestExtractRefTags_SpecDropsVersionAndClause(t *testing.T) {
-	got := extractRefTags("@spec req://identity/token-verification@2.1#R1")
+	got := extractRefTags("@spec req://identity/token-verification@2.1#R1", "")
 	if len(got) != 1 || got[0] != "spec:identity/token-verification" {
 		t.Fatalf("got %v, want [spec:identity/token-verification]", got)
 	}
 }
 
 func TestExtractRefTags_Wikilink(t *testing.T) {
-	got := extractRefTags("See [[Refund Policy]] and [[payments/settlement]].")
+	got := extractRefTags("See [[Refund Policy]] and [[payments/settlement]].", "")
 	if !contains(got, "link:refund-policy") || !contains(got, "link:payments-settlement") {
 		t.Fatalf("got %v, want refund-policy + payments-settlement", got)
 	}
@@ -47,14 +47,14 @@ func TestExtractRefTags_Wikilink(t *testing.T) {
 
 func TestExtractRefTags_WikilinkAliasAndHeading(t *testing.T) {
 	// target#heading|alias → tag from target only.
-	got := extractRefTags("[[Onboarding#step-2|the second step]]")
+	got := extractRefTags("[[Onboarding#step-2|the second step]]", "")
 	if len(got) != 1 || got[0] != "link:onboarding" {
 		t.Fatalf("got %v, want [link:onboarding]", got)
 	}
 }
 
 func TestExtractRefTags_SpecBareID(t *testing.T) {
-	got := extractRefTags("Implements @spec R-1.3 for the bind address.")
+	got := extractRefTags("Implements @spec R-1.3 for the bind address.", "")
 	if len(got) != 1 || got[0] != "spec:r-1.3" {
 		t.Fatalf("got %v, want [spec:r-1.3]", got)
 	}
@@ -62,14 +62,14 @@ func TestExtractRefTags_SpecBareID(t *testing.T) {
 
 func TestExtractRefTags_SpecBareIDList(t *testing.T) {
 	// The `@spec ID, ID` reference form used in code and EARS tables.
-	got := extractRefTags("// @spec TASKS-012, HEALTH-007")
+	got := extractRefTags("// @spec TASKS-012, HEALTH-007", "")
 	if !contains(got, "spec:tasks-012") || !contains(got, "spec:health-007") {
 		t.Fatalf("got %v, want tasks-012 + health-007", got)
 	}
 }
 
 func TestExtractRefTags_SpecBareIDInTableRow(t *testing.T) {
-	got := extractRefTags("| @spec R-1.3 | WHEN X THE SYSTEM SHALL Y |")
+	got := extractRefTags("| @spec R-1.3 | WHEN X THE SYSTEM SHALL Y |", "")
 	if len(got) != 1 || got[0] != "spec:r-1.3" {
 		t.Fatalf("got %v, want [spec:r-1.3]", got)
 	}
@@ -77,7 +77,7 @@ func TestExtractRefTags_SpecBareIDInTableRow(t *testing.T) {
 
 func TestExtractRefTags_SpecBareIDCoexistsWithURIForm(t *testing.T) {
 	// The bare-ID form must not disturb the existing req:// form.
-	got := extractRefTags("@spec req://payments/refund@1.0#R1 and @spec R-2.2")
+	got := extractRefTags("@spec req://payments/refund@1.0#R1 and @spec R-2.2", "")
 	if !contains(got, "spec:payments/refund") || !contains(got, "spec:r-2.2") {
 		t.Fatalf("got %v, want both forms, got %v", got, got)
 	}

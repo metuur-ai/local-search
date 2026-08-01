@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { HelpModal } from '../src/graph-explorer/components/HelpModal.jsx';
-import { GRAPH_PROMPT, NODE_LINK_PROMPT, FLAT_ARRAY_PROMPT } from '../src/graph-explorer/graphPrompt.js';
+import { NODE_LINK_PROMPT, FLAT_ARRAY_PROMPT } from '../src/graph-explorer/graphPrompt.js';
 
 // The format guide is the only place the accepted upload shapes are written
 // down for a human, so these assertions guard the fields a file must carry.
@@ -54,9 +54,9 @@ describe('HelpModal graph-format section', () => {
 // The copy path is the only part of the guide with a failure mode: a clipboard
 // that is absent (non-secure context) or that rejects. Both paths must leave the
 // user with the prompt and the modal open.
-describe('HelpModal Paste Prompt', () => {
+describe('HelpModal shape prompt copy', () => {
   // R-7.4. Two things about the control are load-bearing and neither is implied
-  // by the copy behaviour: it is labelled "Paste Prompt", and it lives in the
+  // by the copy behaviour: it is labelled for the shape it writes, and it lives in the
   // graph-format section — the section a parse failure scrolls the user to. Put
   // it anywhere else and the user who just had a file rejected never sees it.
   //
@@ -65,11 +65,11 @@ describe('HelpModal Paste Prompt', () => {
   // that section — prose, code blocks, this control — is a sibling of it, not a
   // child. So "in the section" means "after this header and before the next
   // section header", which is what the reader sees.
-  it('renders a control labelled "Paste Prompt" inside the graph-format section', () => {
+  it('renders a control labelled for its shape inside the graph-format section', () => {
     const { container } = render(<HelpModal onClose={() => {}} />);
 
-    const button = screen.getByTestId('copy-prompt');
-    expect(button.textContent.trim()).toBe('Paste Prompt');
+    const button = screen.getByTestId('copy-prompt-node-link');
+    expect(button.textContent.trim()).toBe('Copy Shape A Prompt');
 
     const sections = [...container.querySelectorAll('.modal-section')];
     const header = screen.getByTestId('help-graph-format');
@@ -100,12 +100,12 @@ describe('HelpModal Paste Prompt', () => {
     const onClose = vi.fn();
     render(<HelpModal onClose={onClose} />);
 
-    fireEvent.click(screen.getByTestId('copy-prompt'));
+    fireEvent.click(screen.getByTestId('copy-prompt-node-link'));
 
-    await waitFor(() => expect(screen.getByTestId('copy-prompt-status').textContent).toContain('Copied'));
-    expect(writeText).toHaveBeenCalledWith(GRAPH_PROMPT);
+    await waitFor(() => expect(screen.getByTestId('copy-prompt-node-link-status').textContent).toContain('Copied'));
+    expect(writeText).toHaveBeenCalledWith(NODE_LINK_PROMPT);
     // Nothing to select by hand when the copy worked.
-    expect(screen.queryByTestId('prompt-fallback')).toBeNull();
+    expect(screen.queryByTestId('prompt-fallback-node-link')).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
@@ -115,10 +115,10 @@ describe('HelpModal Paste Prompt', () => {
     const onClose = vi.fn();
     render(<HelpModal onClose={onClose} />);
 
-    fireEvent.click(screen.getByTestId('copy-prompt'));
+    fireEvent.click(screen.getByTestId('copy-prompt-node-link'));
 
-    const field = await screen.findByTestId('prompt-fallback');
-    expect(field.value).toBe(GRAPH_PROMPT);
+    const field = await screen.findByTestId('prompt-fallback-node-link');
+    expect(field.value).toBe(NODE_LINK_PROMPT);
     expect(field.readOnly).toBe(true);
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog')).toBeTruthy();
@@ -129,10 +129,10 @@ describe('HelpModal Paste Prompt', () => {
     const onClose = vi.fn();
     render(<HelpModal onClose={onClose} />);
 
-    fireEvent.click(screen.getByTestId('copy-prompt'));
+    fireEvent.click(screen.getByTestId('copy-prompt-node-link'));
 
-    const field = await screen.findByTestId('prompt-fallback');
-    expect(field.value).toBe(GRAPH_PROMPT);
+    const field = await screen.findByTestId('prompt-fallback-node-link');
+    expect(field.value).toBe(NODE_LINK_PROMPT);
     // R-7.6 says "selectable", which is what separates a read-only field from a
     // disabled one: a disabled textarea cannot be selected, so revealing the
     // text into one would still leave the user with no way to take it.
@@ -144,9 +144,9 @@ describe('HelpModal Paste Prompt', () => {
   });
 });
 
-// Three copy buttons share one component, so the state that makes a button say
+// Both copy buttons share one component, so the state that makes a button say
 // "Copied" (or spill a fallback textarea) has to live per instance. If it were
-// hoisted to the modal, pressing one button would answer for all three and the
+// hoisted to the modal, pressing one button would answer for both and the
 // fallback would show the wrong prompt.
 describe('HelpModal per-shape prompt buttons', () => {
   const stubClipboard = (writeText) => {
@@ -160,7 +160,6 @@ describe('HelpModal per-shape prompt buttons', () => {
   });
 
   const BUTTONS = [
-    ['copy-prompt', GRAPH_PROMPT],
     ['copy-prompt-node-link', NODE_LINK_PROMPT],
     ['copy-prompt-flat-array', FLAT_ARRAY_PROMPT],
   ];
@@ -187,7 +186,6 @@ describe('HelpModal per-shape prompt buttons', () => {
     fireEvent.click(screen.getByTestId('copy-prompt-node-link'));
 
     await screen.findByTestId('copy-prompt-node-link-status');
-    expect(screen.queryByTestId('copy-prompt-status')).toBeNull();
     expect(screen.queryByTestId('copy-prompt-flat-array-status')).toBeNull();
   });
 
@@ -200,7 +198,6 @@ describe('HelpModal per-shape prompt buttons', () => {
     const field = await screen.findByTestId('prompt-fallback-flat-array');
     expect(field.value).toBe(FLAT_ARRAY_PROMPT);
     expect(field.readOnly).toBe(true);
-    expect(screen.queryByTestId('prompt-fallback')).toBeNull();
     expect(screen.queryByTestId('prompt-fallback-node-link')).toBeNull();
   });
 });

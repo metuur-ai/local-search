@@ -19,6 +19,9 @@ import { loadCachedRepos, saveCachedRepos } from './repoCache.js';
 // Shown in the site footer. Bump alongside the project version.
 const APP_VERSION = '0.1.0';
 
+// How many tag chips the ribbon shows before collapsing behind "+N more".
+const TAG_FACET_LIMIT = 24;
+
 // Compact relative timestamp ("2m ago") for the recent-searches list.
 function relTime(ts) {
   const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
@@ -155,6 +158,10 @@ export function App() {
   const [inspectorTab, setInspectorTab] = useState('ai');
   const [fileFilter, setFileFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
+  // The facet list wraps over several rows now, and an EARS spec can carry 50+
+  // `spec:` tags, so the ribbon is collapsed to the top TAG_FACET_LIMIT until
+  // the user asks for the rest.
+  const [tagsExpanded, setTagsExpanded] = useState(false);
   // The selected source, held as its `sourceKey` rather than as a position. See
   // the `activeSource` resolution below for why position was wrong.
   const [activeSourceKey, setActiveSourceKey] = useState(null);
@@ -523,6 +530,19 @@ export function App() {
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
   }, [sources]);
 
+  // Collapsed view keeps the ribbon to a couple of rows. The active filter is
+  // always kept in the list — collapsing must never hide the tag currently
+  // narrowing the results, or the UI would look unfiltered while it is not.
+  const visibleTagFacets = useMemo(() => {
+    if (tagsExpanded || tagFacets.length <= TAG_FACET_LIMIT) return tagFacets;
+    const head = tagFacets.slice(0, TAG_FACET_LIMIT);
+    if (tagFilter !== 'all' && !head.some(([t]) => t === tagFilter)) {
+      const active = tagFacets.find(([t]) => t === tagFilter);
+      if (active) return [...head.slice(0, TAG_FACET_LIMIT - 1), active];
+    }
+    return head;
+  }, [tagFacets, tagsExpanded, tagFilter]);
+
   const filteredSources = useMemo(() => {
     return sources.filter((s) => {
       if (fileFilter !== 'all' && extOf(s.path) !== fileFilter) return false;
@@ -819,7 +839,7 @@ export function App() {
                   >
                     All Tags
                   </button>
-                  {tagFacets.map(([tag, count]) => (
+                  {visibleTagFacets.map(([tag, count]) => (
                     <button
                       type="button"
                       key={tag}
@@ -831,6 +851,17 @@ export function App() {
                       #{tag} <span class="tag-count">{count}</span>
                     </button>
                   ))}
+                  {tagFacets.length > TAG_FACET_LIMIT && (
+                    <button
+                      type="button"
+                      class="tag-pill tag-pill-more"
+                      onClick={() => setTagsExpanded(!tagsExpanded)}
+                    >
+                      {tagsExpanded
+                        ? 'show less'
+                        : `+${tagFacets.length - TAG_FACET_LIMIT} more`}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
