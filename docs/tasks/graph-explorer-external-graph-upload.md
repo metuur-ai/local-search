@@ -85,7 +85,7 @@ run first even though they sit last in the EARS document.
     graph still loads standalone rather than being discarded.
   - verify: component test uploads a colliding fixture with blend on — asserts the message
     names the count, `blend` stays false, and the uploaded graph is on screen alone.
-  - landed: 44ef9bd
+  - landed: 96f78ad
 
 ---
 
