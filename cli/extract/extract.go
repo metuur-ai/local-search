@@ -122,6 +122,26 @@ var specIDRefRe = regexp.MustCompile(`@spec\s+([A-Za-z]+-[0-9]+(?:\.[0-9]+)*(?:\
 // hyphen, then a dotted numeric part — e.g. `r-1.3`, `tasks-012`, `health-007`.
 var specIDRe = regexp.MustCompile(`^[a-z]+-[0-9]+(?:\.[0-9]+)*$`)
 
+// earsTableIDRe matches the ID column of an EARS requirement table — a line that
+// begins a markdown table row whose first cell is nothing but a requirement id:
+//
+//	| R-1.1 | THE SYSTEM SHALL … |
+//
+// This is the convention used by frontmatter-less `docs/ears/*.md` specs, where the
+// table IS the annotation and no `@spec` marker is ever written. Anchoring to `^|`
+// and requiring the cell to hold only the id is what keeps it safe: a bare `R-1.3`
+// in prose, or a table whose first column is prose, never matches. The separator
+// row (`|-------|`) fails the id shape, so it is skipped for free.
+var earsTableIDRe = regexp.MustCompile(`(?m)^\s*\|\s*([A-Za-z]+-[0-9]+(?:\.[0-9]+)*)\s*\|`)
+
+// docKindDirs is the closed set of directory names that classify a document by
+// kind. Only these produce `kind:`/`feature:` tags — an open rule would emit
+// `kind:src`, `kind:internal` and similar noise for every indexed file.
+var docKindDirs = map[string]bool{
+	"ears": true, "hld": true, "lld": true, "tasks": true,
+	"prd": true, "adr": true, "rfc": true, "research": true, "design": true,
+}
+
 // wikilinkRe matches Obsidian-style `[[target]]` / `[[target#heading|alias]]` and
 // captures the target. The first-char and inner classes forbid whitespace and
 // `"`/`$`, so shell test expressions in code (`[[ -d "$x" ]]`) never match.
@@ -288,7 +308,7 @@ func fromFileInfo(repoName, repoRoot, absPath string, info os.FileInfo) (*Spec, 
 		Project:      project,
 		Name:         stem,
 		Title:        extractTitle(content, stem),
-		Tags:         combinedTags(fm, content),
+		Tags:         combinedTags(fm, content, rel),
 		Summary:      summaryFromBody(content[fm.bodyEnd:]),
 		FullPath:     absPath,
 		Modified:     formatMtime(info),
@@ -355,7 +375,7 @@ func fromCompanionInfo(repoName, repoRoot, mediaAbsPath string, mediaInfo os.Fil
 		Project:      project,
 		Name:         stem,
 		Title:        extractTitle(companionContent, stem),
-		Tags:         combinedTags(fm, companionContent),
+		Tags:         combinedTags(fm, companionContent, rel),
 		Summary:      summaryFromBody(companionContent[fm.bodyEnd:]),
 		FullPath:     mediaAbsPath,
 		Modified:     formatMtime(mediaInfo),
@@ -501,22 +521,50 @@ func legacyTagsFromRaw(raw string) string {
 // the derived tags are appended, comma-separated, so the existing splitTags path
 // at index time populates spec_tags without any schema or query change.
 // It consumes the shared frontmatter parse (R-2.2) instead of re-locating the block.
-func combinedTags(fm frontmatter, content string) string {
-	base := legacyTagsFromRaw(fm.raw)
-	refs := extractRefTags(content)
-	switch {
-	case len(refs) == 0:
-		return base
-	case base == "":
-		return strings.Join(refs, ", ")
-	default:
-		return base + ", " + strings.Join(refs, ", ")
+// Documents with no frontmatter at all (the `docs/ears|hld|lld|tasks/*.md`
+// convention) additionally derive `kind:`/`feature:` from their path, so they are
+// not tagless (R-5.5).
+func combinedTags(fm frontmatter, content, rel string) string {
+	feature := featureSlug(rel)
+	groups := [][]string{
+		{legacyTagsFromRaw(fm.raw)},
+		extractRefTags(content, feature),
+		docTags(rel, feature),
 	}
+	var out []string
+	for _, g := range groups {
+		for _, t := range g {
+			if t != "" {
+				out = append(out, t)
+			}
+		}
+	}
+	return strings.Join(out, ", ")
+}
+
+// featureSlug is the document's own identity — its filename stem, slugified. It
+// namespaces EARS ids so `R-1.1` from two different specs stay distinct tags
+// instead of collapsing into one meaningless facet shared by every spec in every
+// repo.
+func featureSlug(rel string) string {
+	base := filepath.Base(filepath.ToSlash(rel))
+	return slugify(strings.TrimSuffix(base, filepath.Ext(base)))
+}
+
+// docTags derives `kind:` and `feature:` from the path for files sitting in a
+// recognized doc-kind directory. This is the only tag source for specs that carry
+// no frontmatter and no inline references.
+func docTags(rel, feature string) []string {
+	dir := filepath.Base(filepath.Dir(filepath.ToSlash(rel)))
+	if !docKindDirs[strings.ToLower(dir)] || feature == "" {
+		return nil
+	}
+	return []string{"kind:" + strings.ToLower(dir), "feature:" + feature}
 }
 
 // extractRefTags collects deduped `spec:` and `link:` tags from the content body,
 // after stripping fenced code so bash examples don't leak shell `[[ … ]]`.
-func extractRefTags(content string) []string {
+func extractRefTags(content, feature string) []string {
 	prose := fencedCodeRe.ReplaceAllString(content, "")
 	var out []string
 	seen := map[string]bool{}
@@ -539,6 +587,16 @@ func extractRefTags(content string) []string {
 			id := strings.ToLower(strings.TrimSpace(part))
 			if specIDRe.MatchString(id) {
 				add("spec:" + id)
+			}
+		}
+	}
+	// EARS requirement tables: the id lives in the first table cell with no `@spec`
+	// marker, so it is qualified by the document to stay unique across specs.
+	if feature != "" {
+		for _, m := range earsTableIDRe.FindAllStringSubmatch(prose, -1) {
+			id := strings.ToLower(strings.TrimSpace(m[1]))
+			if specIDRe.MatchString(id) {
+				add("spec:" + feature + "/" + id)
 			}
 		}
 	}

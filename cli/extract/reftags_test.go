@@ -16,7 +16,7 @@ func hasTag(tags, want string) bool {
 
 func TestExtractRefTags_SpecRef(t *testing.T) {
 	content := "Delivery must be reliable.\n\n@spec req://payments/settlement-finality@1.0#R2\n"
-	got := extractRefTags(content)
+	got := extractRefTags(content, "")
 	if len(got) != 1 || got[0] != "spec:payments/settlement-finality" {
 		t.Fatalf("got %v, want [spec:payments/settlement-finality]", got)
 	}
@@ -25,7 +25,7 @@ func TestExtractRefTags_SpecRef(t *testing.T) {
 func TestExtractRefTags_SpecProseMentionIgnored(t *testing.T) {
 	// No req:// URI — must not be captured.
 	for _, c := range []string{"see @spec annotations", "use @spec markers here"} {
-		if got := extractRefTags(c); len(got) != 0 {
+		if got := extractRefTags(c, ""); len(got) != 0 {
 			t.Errorf("%q: expected no tags, got %v", c, got)
 		}
 	}
@@ -87,7 +87,7 @@ func TestExtractRefTags_BareIDProseMentionIgnored(t *testing.T) {
 	// An EARS id without the explicit `@spec` marker must not be tagged — this is
 	// what keeps prose mentions and unrelated table rows out of the facets.
 	for _, c := range []string{"see R-1.3 for details", "the TASKS-012 requirement", "banner (R-1.3)"} {
-		if got := extractRefTags(c); len(got) != 0 {
+		if got := extractRefTags(c, ""); len(got) != 0 {
 			t.Errorf("%q: expected no tags, got %v", c, got)
 		}
 	}
@@ -101,7 +101,7 @@ func TestExtractRefTags_GraphifyNavLinksSkipped(t *testing.T) {
 		"- [[_COMMUNITY_Community 0|Community 0]]\n" +
 		"- [[_COMMUNITY_Community 12|Community 12]]\n\n" +
 		"See also [[Refund Policy]].\n"
-	got := extractRefTags(content)
+	got := extractRefTags(content, "")
 	for _, bad := range got {
 		if strings.HasPrefix(bad, "link:community-community") {
 			t.Fatalf("graphify nav link leaked as tag: %v", got)
@@ -115,7 +115,7 @@ func TestExtractRefTags_GraphifyNavLinksSkipped(t *testing.T) {
 func TestExtractRefTags_ShellTestNotAWikilink(t *testing.T) {
 	// A bash code fence with shell [[ … ]] must not yield link: tags.
 	content := "Install:\n\n```bash\nif [[ -d \"$dir\" ]]; then echo hi; fi\n[[ -f \"$p\" ]] && run\n```\n"
-	if got := extractRefTags(content); len(got) != 0 {
+	if got := extractRefTags(content, ""); len(got) != 0 {
 		t.Fatalf("shell tests leaked as tags: %v", got)
 	}
 }
@@ -123,7 +123,7 @@ func TestExtractRefTags_ShellTestNotAWikilink(t *testing.T) {
 func TestExtractRefTags_FencedSpecExampleStripped(t *testing.T) {
 	// A format example inside a code fence should not be indexed as a real ref.
 	content := "Format:\n\n```\n@spec req://example/only@1.0#R1\n```\n\nReal: @spec req://real/one@1.0#R1\n"
-	got := extractRefTags(content)
+	got := extractRefTags(content, "")
 	if contains(got, "spec:example/only") {
 		t.Errorf("fenced example should be stripped: %v", got)
 	}
@@ -138,7 +138,7 @@ func TestExtractRefTags_PlaceholderRejected(t *testing.T) {
 		"marker `@spec req://.../<id>@<version>#<clause>`",
 		"@spec req://<path>/<id>@1.0#R1",
 	} {
-		if got := extractRefTags(c); len(got) != 0 {
+		if got := extractRefTags(c, ""); len(got) != 0 {
 			t.Errorf("%q: expected no tags, got %v", c, got)
 		}
 	}
@@ -146,7 +146,7 @@ func TestExtractRefTags_PlaceholderRejected(t *testing.T) {
 
 func TestExtractRefTags_Dedup(t *testing.T) {
 	content := "[[Refund Policy]] again [[refund policy]] and @spec req://a/b@1#R1 @spec req://a/b@2#R2"
-	got := extractRefTags(content)
+	got := extractRefTags(content, "")
 	if count(got, "link:refund-policy") != 1 || count(got, "spec:a/b") != 1 {
 		t.Fatalf("expected dedup, got %v", got)
 	}
@@ -154,7 +154,7 @@ func TestExtractRefTags_Dedup(t *testing.T) {
 
 func TestCombinedTags_MergesFrontmatterAndRefs(t *testing.T) {
 	content := "---\ntags: go, http\n---\n# Title\n\n@spec req://payments/refund@1.0#R1 and [[Chargeback]]\n"
-	tags := combinedTags(parseFrontmatter(content), content)
+	tags := combinedTags(parseFrontmatter(content), content, "notes/x.md")
 	for _, want := range []string{"go", "http", "spec:payments/refund", "link:chargeback"} {
 		if !hasTag(tags, want) {
 			t.Errorf("combined tags %q missing %q", tags, want)
@@ -165,7 +165,7 @@ func TestCombinedTags_MergesFrontmatterAndRefs(t *testing.T) {
 func TestCombinedTags_NoRefsUnchanged(t *testing.T) {
 	// Preserves existing behaviour byte-for-byte when there are no body refs.
 	content := "---\ntags: alpha, beta\n---\n# T\n\nplain body\n"
-	if got, want := combinedTags(parseFrontmatter(content), content), "alpha, beta"; got != want {
+	if got, want := combinedTags(parseFrontmatter(content), content, "notes/x.md"), "alpha, beta"; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }

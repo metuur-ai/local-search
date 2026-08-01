@@ -47,7 +47,7 @@ func TestSimReindex(t *testing.T) {
 		fm := parseFrontmatter(content)
 
 		// CURRENT
-		cur := combinedTags(fm, content)
+		cur := combinedTags(fm, content, path)
 
 		// FIXED: same pipeline, but base tags line unwrapped first
 		base := simFixTagsLine(legacyTagsFromRaw(fm.raw))

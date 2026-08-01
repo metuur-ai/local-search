@@ -103,7 +103,7 @@ export function HelpModal({ onClose, focusSection = null }) {
           {/* Sibling of the section header, not a child: inside it the control
               inherits the header's 10px uppercase letterspacing. */}
           <CopyPrompt
-            label="Paste Prompt"
+            label="Copy Prompt"
             prompt={GRAPH_PROMPT}
             testid="copy-prompt"
             fallbackTestid="prompt-fallback"
@@ -113,7 +113,7 @@ export function HelpModal({ onClose, focusSection = null }) {
 
           <h4 class="modal-subhead">Shape A — node-link</h4>
           <CopyPrompt
-            label="Paste Shape A Prompt"
+            label="Copy Shape A Prompt"
             prompt={NODE_LINK_PROMPT}
             testid="copy-prompt-node-link"
             fallbackTestid="prompt-fallback-node-link"
@@ -134,6 +134,8 @@ export function HelpModal({ onClose, focusSection = null }) {
       "relation": "depends_on" }
   ]
 }`}</code>
+          <section class="modal-defs">
+          <h5 class="modal-defs-head">Attribute definitions</h5>
           <p>On a node, only <code>id</code> is required, and it must be unique — link endpoints are matched by id, and a repeated id makes the duplicates indistinguishable to every endpoint that points at it. Everything else is optional:</p>
           <ul class="modal-cmds">
             <li><code>name</code> / <code>label</code> / <code>title</code><span>The canvas label, taken from the first one present, falling back to the <code>id</code>. <code>name</code> and <code>title</code> are also what Search and the Name/Title filters match on.</span></li>
@@ -150,10 +152,11 @@ export function HelpModal({ onClose, focusSection = null }) {
             <li><code>dangling</code><span>Has a <code>relation</code>, but an endpoint is missing from <code>nodes</code> or is flagged <code>unresolved</code>. Drawn dashed amber.</span></li>
             <li><code>similarity</code><span>No <code>relation</code> at all — a lexical resemblance rather than a claim anyone wrote down. Drawn faint grey.</span></li>
           </ul>
+          </section>
           <p>A freshly loaded graph opens on <strong>Declared</strong> and <strong>Unresolved</strong> whenever it has any of either, since declared structure is the point of the view. A graph with neither — every link a similarity link — opens on all three families instead of opening empty.</p>
           <h4 class="modal-subhead">Shape B — flat array of file records</h4>
           <CopyPrompt
-            label="Paste Shape B Prompt"
+            label="Copy Shape B Prompt"
             prompt={FLAT_ARRAY_PROMPT}
             testid="copy-prompt-flat-array"
             fallbackTestid="prompt-fallback-flat-array"
@@ -170,7 +173,7 @@ export function HelpModal({ onClose, focusSection = null }) {
           <p>What this shape cannot do is state a typed relation. There is nowhere to put a <code>relation</code>, so every link in the resulting graph is one the viewer invented from shared membership, and all of them are <strong>similarity</strong> links. A flat-array graph therefore has no declared structure at all and opens on all three families. If you want <code>depends_on</code> to mean something, use the node-link shape.</p>
           <p>Ids matter twice over if the file is to be blended with the local-search graph rather than replace it. Blending concatenates the two, so an id used by both puts two nodes on the canvas under one id, and every link naming it resolves to only one of them — not necessarily yours. Prefix your ids, and remember that a repo or tag sharing a name with one already on the canvas produces a colliding <code>repo_</code> or <code>tag_</code> hub too.</p>
 
-          <p>If you would rather not hand-write one, use a Paste Prompt button and hand the prompt to a model along with whatever you want graphed. <strong>Paste Prompt</strong> at the top of this section describes both shapes and lets the model pick; the per-shape buttons describe only that shape and every field this page reads on it.</p>
+          <p>If you would rather not hand-write one, use a Copy Prompt button and hand the prompt to a model along with whatever you want graphed. <strong>Copy Prompt</strong> at the top of this section describes both shapes and lets the model pick; the per-shape buttons describe only that shape and every field this page reads on it.</p>
 
           <div class="modal-section">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
