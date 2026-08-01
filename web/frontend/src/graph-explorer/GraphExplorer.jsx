@@ -90,7 +90,8 @@ export function GraphExplorer() {
   } = {}) => {
     skipFilterRef.current = true;
     setOriginalData(g);
-    setOptions(collectFilterOptions(g.nodes));
+    const opts = collectFilterOptions(g.nodes);
+    setOptions(opts);
     setEmptyNotice(g.nodes.length === 0);
 
     // Open on declared structure when the graph has any — that is what the view
@@ -98,11 +99,22 @@ export function GraphExplorer() {
     const fams = familiesOpt || (resetFilters ? defaultFamilies(g.links) : families);
     setFamilies(fams);
 
+    // A preserved selection is intersected against the rebuilt option lists.
+    // Blending off drops a whole dataset, and a value from the half that left is
+    // no longer selectable — kept, it would silently filter the remaining graph
+    // by something the dropdowns no longer offer and the user cannot undo.
+    const carried = resetFilters ? EMPTY_MULTI() : Object.fromEntries(
+      Object.entries(multiSelect).map(([dim, sel]) => {
+        const offered = new Set(opts[dim] || []);
+        return [dim, new Set([...sel].filter((v) => offered.has(v)))];
+      }),
+    );
+
     const next = resetFilters
-      ? { search: '', name: '', title: '', multiSelect: EMPTY_MULTI() }
-      : { search, name: nameFilter, title: titleFilter, multiSelect };
+      ? { search: '', name: '', title: '', multiSelect: carried }
+      : { search, name: nameFilter, title: titleFilter, multiSelect: carried };
+    setMultiSelect(carried);
     if (resetFilters) {
-      setMultiSelect(next.multiSelect);
       setSearch(''); setNameFilter(''); setTitleFilter('');
       setSelectedNode(null);
     }

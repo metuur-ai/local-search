@@ -148,7 +148,7 @@ run first even though they sit last in the EARS document.
     and the viewport did not refit; a second test asserts a fresh upload still resets.
   - landed: c114e5a
 
-- [ ] 3.3 Blend toggle control and its default families (deps: 3.2, 4.2, est: ~45m)
+- [x] 3.3 Blend toggle control and its default families (deps: 3.2, 4.2, est: ~45m)
   - why: opening a blend on all families would open on the base graph's similarity links,
     which outnumber declared ones roughly 8:1 — trading an invisible upload for a 3000-edge
     noise floor.

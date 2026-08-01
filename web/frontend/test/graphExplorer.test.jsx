@@ -297,6 +297,41 @@ describe('loadNewData options bag', () => {
   });
 });
 
+describe('blend toggle control', () => {
+  it('is absent until something has been uploaded', async () => {
+    const { container } = await renderExplorer();
+    // R-3.11: nothing to blend with, so no toggle.
+    expect(screen.queryByLabelText('Blend local-search')).toBeNull();
+
+    await uploadFile(container);
+    // R-3.10: an upload exists, so the toggle names what blends in.
+    await waitFor(() => expect(screen.getByLabelText('Blend local-search')).toBeTruthy());
+  });
+
+  it('drops a preserved selection whose value left the new option list', async () => {
+    const { container, graphLoad } = await renderExplorer();
+    await uploadFile(container);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+
+    const toggle = screen.getByLabelText('Blend local-search');
+    fireEvent.click(toggle);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(3));
+
+    // Blended, both repos are on offer. Select one from each half.
+    fireEvent.click(screen.getByText('All Repos'));
+    fireEvent.click(screen.getByLabelText('alpha'));
+    fireEvent.click(screen.getByLabelText('ext'));
+    await waitFor(() => expect(screen.getByTitle('repo: alpha')).toBeTruthy());
+    expect(screen.getByTitle('repo: ext')).toBeTruthy();
+
+    // Blend off: only the upload remains, so `alpha` is no longer an option.
+    fireEvent.click(toggle);
+    // R-3.8: the vanished value is dropped, the surviving one is preserved.
+    await waitFor(() => expect(screen.queryByTitle('repo: alpha')).toBeNull());
+    expect(screen.getByTitle('repo: ext')).toBeTruthy();
+  });
+});
+
 describe('replace, rebuild and no-op paths', () => {
   it('replaces the upload with a second one rather than stacking them', async () => {
     const { container, graphLoad } = await renderExplorer();
