@@ -202,17 +202,63 @@ export function tagOrigin(graph, origin) {
 // run, `link.source` holds a node *object*; copying it verbatim while the nodes
 // beside it are fresh copies yields links bound to nodes that are not in this
 // graph's own `nodes` array, which draws them against orphans.
-export function mergeGraphs(a, b) {
+// A structural copy of one graph with link endpoints back as ids — the same
+// boundary `mergeGraphs` needs, for the single-source case. Handing the layout
+// the stored graph itself would leave the stored graph holding node objects in
+// `link.source`, i.e. circular and no longer JSON.
+export function copyGraph(g) {
   const endpointId = (e) => (e && typeof e === 'object' ? e.id : e);
-  const nodesOf = (g) => (g.nodes || []).map((n) => ({ ...n }));
-  const linksOf = (g) => (g.links || []).map((l) => ({
-    ...l,
-    source: endpointId(l.source),
-    target: endpointId(l.target),
-  }));
   return {
-    nodes: [...nodesOf(a), ...nodesOf(b)],
-    links: [...linksOf(a), ...linksOf(b)],
+    ...g,
+    nodes: (g.nodes || []).map((n) => ({ ...n })),
+    links: (g.links || []).map((l) => ({
+      ...l,
+      source: endpointId(l.source),
+      target: endpointId(l.target),
+    })),
+  };
+}
+
+export function mergeGraphs(a, b) {
+  const ca = copyGraph(a), cb = copyGraph(b);
+  return { nodes: [...ca.nodes, ...cb.nodes], links: [...ca.links, ...cb.links] };
+}
+
+// The val range every origin is mapped onto. It is local-search's own spread
+// (file 4 → repo 12), so normalizing a single-origin local-search graph is the
+// identity and the blend looks like the canvas the user already knows.
+const VAL_RANGE = [4, 12];
+
+// Put every origin's node radii on one scale. `val` is the renderer's radius
+// input and each dataset picks its own units — local-search assigns 4/6/8/12 by
+// node type, an uploaded file may use 1..1000 or omit `val` entirely. Blended
+// unscaled, one dataset is uniformly the bigger one and the size carries a
+// meaning it does not have.
+//
+// Per origin the mapping is linear, so ranking *within* a dataset survives; only
+// the units change. An origin with no spread at all (one distinct val, or none)
+// cannot be ranked, so it lands mid-range rather than at the bottom, which would
+// just re-state the same bias in the other direction.
+export function normalizeValsByOrigin(graph) {
+  const [lo, hi] = VAL_RANGE;
+  const mid = (lo + hi) / 2;
+  const valOf = (n) => (typeof n.val === 'number' ? n.val : 4);
+
+  const spread = new Map();
+  (graph.nodes || []).forEach((n) => {
+    const v = valOf(n);
+    const seen = spread.get(n.__origin);
+    if (!seen) spread.set(n.__origin, { min: v, max: v });
+    else { seen.min = Math.min(seen.min, v); seen.max = Math.max(seen.max, v); }
+  });
+
+  return {
+    ...graph,
+    nodes: (graph.nodes || []).map((n) => {
+      const { min, max } = spread.get(n.__origin);
+      const v = valOf(n);
+      return { ...n, val: max === min ? mid : lo + ((v - min) / (max - min)) * (hi - lo) };
+    }),
   };
 }
 

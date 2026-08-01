@@ -170,7 +170,7 @@ run first even though they sit last in the EARS document.
     asserts the upload survives; assert no empty-canvas frame during initial load.
   - landed:
 
-- [ ] 3.5 Keep the derived graph serializable and dimensionally consistent (deps: 3.1, est: ~30m)
+- [x] 3.5 Keep the derived graph serializable and dimensionally consistent (deps: 3.1, est: ~30m)
   - why: `applyFilters` aliases rather than copies, so anything the force layout mutates is
     mutated in state — the boundary has to be enforced by copying at derive time. And two
     datasets with different `val` scales render at incomparable node sizes.
@@ -179,7 +179,7 @@ run first even though they sit last in the EARS document.
     origins at blend time.
   - verify: component test renders a blend, lets the layout run, then asserts
     `JSON.stringify` on the persisted payload succeeds; assert `val` ranges align.
-  - landed:
+  - landed: copyGraph at every derive branch, normalizeValsByOrigin, per-origin family union
 
 ---
 

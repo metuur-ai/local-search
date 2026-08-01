@@ -11,7 +11,7 @@ import {
   synthesizeGraphData, normalizeGraph, toGraph,
   applyFilters, collectFilterOptions,
   EDGE_FAMILY_ORDER, countEdgeFamilies, defaultFamilies,
-  tagOrigin, mergeGraphs,
+  tagOrigin, mergeGraphs, copyGraph, normalizeValsByOrigin,
 } from './graphData.js';
 import { useForceGraph } from './useForceGraph.js';
 import { FilterDropdown } from './components/FilterDropdown.jsx';
@@ -123,11 +123,23 @@ export function GraphExplorer() {
   }, []);
 
   // What is on screen, derived from the two sources plus the toggle.
+  // Always a copy: the force layout replaces `link.source` with the node object
+  // in whatever it is handed, so handing over a source graph itself would make
+  // the state that has to persist as JSON circular.
+  // Each copy is memoized on its own source, so a change to the half that is not
+  // on screen does not hand the canvas a new identity and force a reload.
+  // The empty sentinel is passed through by identity, not copied: the derive
+  // effect recognises "nothing loaded yet" by comparing against it.
+  const baseCopy = useMemo(
+    () => (baseGraph === EMPTY_GRAPH ? EMPTY_GRAPH : copyGraph(baseGraph)), [baseGraph],
+  );
+  const uploadCopy = useMemo(() => (upload ? copyGraph(upload.graph) : null), [upload]);
   const displayGraph = useMemo(() => {
-    if (!upload) return baseGraph;
-    if (!blend) return upload.graph;
-    return mergeGraphs(baseGraph, upload.graph);
-  }, [baseGraph, upload, blend]);
+    if (!upload) return baseCopy;
+    if (!blend) return uploadCopy;
+    // Sizes only comparable once both halves are on one scale.
+    return normalizeValsByOrigin(mergeGraphs(baseGraph, upload.graph));
+  }, [baseGraph, upload, blend, baseCopy, uploadCopy]);
 
   // Push the derived graph to the canvas whenever it is a different graph than
   // the one already loaded. Identity, not the inputs: a source can change
@@ -143,8 +155,19 @@ export function GraphExplorer() {
     blendRef.current = blend;
     if (displayGraph === loadedRef.current) return;
     loadedRef.current = displayGraph;
-    loadNewData(displayGraph, blendToggled ? { resetFilters: false, refit: false } : undefined);
-  }, [displayGraph, blend, loadNewData]);
+    if (blendToggled) { loadNewData(displayGraph, { resetFilters: false, refit: false }); return; }
+    // A blend opens on the union of what each half would have opened on. Derived
+    // from the merged links instead, an origin whose links are all similarity is
+    // filtered off the canvas entirely by the other origin's declared ones.
+    // An origin with no links at all is skipped: `defaultFamilies([])` opens on
+    // everything, which would drag the whole union open on its behalf.
+    const halves = [baseGraph, upload && upload.graph]
+      .filter((g) => g && (g.links || []).length);
+    const families = upload && blend && halves.length
+      ? new Set(halves.flatMap((g) => [...defaultFamilies(g.links)]))
+      : null;
+    loadNewData(displayGraph, { families });
+  }, [displayGraph, blend, baseGraph, upload, loadNewData]);
 
   // Re-filter (debounced, matching the original 300ms) whenever a filter changes.
   useEffect(() => {

@@ -354,3 +354,108 @@ describe('replace, rebuild and no-op paths', () => {
     expect(document.querySelector('#graph-empty-notice')).toBe(null);
   });
 });
+
+describe('serializable and dimensionally consistent derived graph', () => {
+  // What the force layout does to whatever it is handed: `link.source` stops
+  // being an id and becomes the node object itself. If the derive step handed
+  // over the upload's own graph, that mutation lands in the payload that has to
+  // survive a reload as JSON.
+  function runLayout(graph) {
+    const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+    graph.links.forEach((l) => {
+      l.source = byId.get(l.source) || l.source;
+      l.target = byId.get(l.target) || l.target;
+      l.__controlPoints = null;
+    });
+    graph.nodes.forEach((n) => { n.x = 1; n.y = 2; });
+  }
+
+  const linkedUpload = {
+    nodes: [
+      { id: 'x.ts', name: 'x.ts', type: 'file', repo: 'ext', project: 'lib', tags: [] },
+      { id: 'z.ts', name: 'z.ts', type: 'file', repo: 'ext', project: 'lib', tags: [] },
+    ],
+    links: [{ source: 'x.ts', target: 'z.ts', family: 'declared' }],
+  };
+
+  it('keeps the stored upload payload out of the layout reach', async () => {
+    const { container, graphLoad } = await renderExplorer();
+    await uploadFile(container, { graph: linkedUpload });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+
+    // What the canvas got is what the layout owns. Mark it and mutate it the way
+    // the layout does.
+    const rendered = graphLoad.mock.calls[1][0];
+    rendered.nodes[0].__layoutOnly = true;
+    runLayout(rendered);
+
+    // Blending re-derives from the stored upload, so the stored upload is what
+    // shows here: no layout marker, endpoints still ids, still JSON.
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(3));
+
+    const [merged] = graphLoad.mock.calls[2];
+    expect(merged.nodes.some((n) => n.__layoutOnly)).toBe(false);
+    expect(merged.links.every((l) => typeof l.source === 'string')).toBe(true);
+    expect(() => JSON.stringify(merged)).not.toThrow();
+  });
+
+  it('normalizes node val across origins in a blend', async () => {
+    // The fixture assigns no `val` at all; the upload counts in the thousands.
+    const bigVals = {
+      nodes: [
+        { id: 'x.ts', name: 'x.ts', type: 'file', repo: 'ext', project: 'lib', tags: [], val: 1000 },
+        { id: 'z.ts', name: 'z.ts', type: 'file', repo: 'ext', project: 'lib', tags: [], val: 200 },
+      ],
+      links: [],
+    };
+    const { container, graphLoad } = await renderExplorer();
+    await uploadFile(container, { graph: bigVals });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(3));
+
+    const [shown] = graphLoad.mock.calls[2];
+    const vals = shown.nodes.map((n) => n.val);
+    expect(Math.max(...vals)).toBeLessThanOrEqual(12);
+    expect(Math.min(...vals)).toBeGreaterThanOrEqual(4);
+    // Neither origin is systematically the bigger one. The upload has a spread
+    // and keeps its ranking, rescaled; the fixture assigns no `val` at all, so
+    // it cannot be ranked and sits mid-range rather than uniformly at the floor.
+    const byOrigin = (o) => shown.nodes.filter((n) => n.__origin === o).map((n) => n.val);
+    expect(byOrigin('external.json').sort((a, b) => a - b)).toEqual([4, 12]);
+    expect(byOrigin('local-search')).toEqual([8, 8]);
+  });
+
+  it('opens a blend on the union of each origin default families', async () => {
+    // Base has declared links, the upload has only similarity ones. Deriving the
+    // default from the merged links picks declared+dangling and filters the
+    // whole upload off the canvas.
+    const similarityOnly = {
+      nodes: [
+        { id: 'x.ts', name: 'x.ts', type: 'file', repo: 'ext', project: 'lib', tags: [] },
+        { id: 'z.ts', name: 'z.ts', type: 'file', repo: 'ext', project: 'lib', tags: [] },
+      ],
+      links: [{ source: 'x.ts', target: 'z.ts', family: 'similarity' }],
+    };
+    // `family` on an input link is ignored — `normalizeGraph` re-derives it, and
+    // only a link carrying `relation` classifies as declared.
+    const declaredBase = {
+      nodes: fixtureGraph.nodes,
+      links: [{ source: 'a.py', target: 'b.md', relation: 'imports' }],
+    };
+    const { container, graphLoad } = await renderExplorer({ graph: declaredBase });
+    await uploadFile(container);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(3));
+
+    // A fresh upload while blended: this load resets the families.
+    await uploadFile(container, { name: 'sim.json', graph: similarityOnly });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(4));
+
+    const [shown] = graphLoad.mock.calls[3];
+    const fams = shown.links.map((l) => l.family).sort();
+    expect(fams).toEqual(['declared', 'similarity']);
+  });
+});

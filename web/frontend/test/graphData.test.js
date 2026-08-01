@@ -11,6 +11,7 @@ import {
   tagOrigin,
   detectIdCollisions,
   mergeGraphs,
+  normalizeValsByOrigin,
   EDGE_FAMILY,
   colors,
 } from '../src/graph-explorer/graphData.js';
@@ -235,5 +236,81 @@ describe('mergeGraphs', () => {
       expect(ids.has(l.source)).toBe(true);
       expect(ids.has(l.target)).toBe(true);
     });
+  });
+});
+
+// `val` is the node radius input (the renderer draws sqrt(val) * nodeRelSize).
+// local-search assigns 4/6/8/12 by node type; an uploaded file is free to use
+// any scale it likes, or none. Blending the two unscaled would render one
+// dataset systematically larger than the other for no reason the user can see.
+describe('normalizeValsByOrigin', () => {
+  const TARGET = [4, 12];
+
+  it('rescales each origin onto the same val range', () => {
+    const graph = {
+      nodes: [
+        { id: 'a', __origin: 'local-search', val: 4 },
+        { id: 'b', __origin: 'local-search', val: 12 },
+        { id: 'x', __origin: 'ext.json', val: 100 },
+        { id: 'y', __origin: 'ext.json', val: 1000 },
+      ],
+      links: [],
+    };
+
+    const out = normalizeValsByOrigin(graph);
+    const vals = (origin) => out.nodes.filter((n) => n.__origin === origin).map((n) => n.val);
+
+    expect(vals('local-search')).toEqual(TARGET);
+    expect(vals('ext.json')).toEqual(TARGET);
+  });
+
+  it('keeps the relative sizes within an origin', () => {
+    const graph = {
+      nodes: [
+        { id: 'a', __origin: 'o', val: 0 },
+        { id: 'b', __origin: 'o', val: 5 },
+        { id: 'c', __origin: 'o', val: 10 },
+      ],
+      links: [],
+    };
+
+    // Midpoint in stays midpoint out: the mapping is linear, not a re-rank.
+    expect(normalizeValsByOrigin(graph).nodes.map((n) => n.val)).toEqual([4, 8, 12]);
+  });
+
+  // The case R-3.18 names outright: one dataset assigns `val`, the other does
+  // not. Sending the silent one to the low end of the range would still leave
+  // it uniformly the smaller dataset, so it lands mid-range instead.
+  it('puts an origin with no val spread at the middle of the range', () => {
+    const graph = {
+      nodes: [
+        { id: 'a', __origin: 'local-search', val: 4 },
+        { id: 'b', __origin: 'local-search', val: 12 },
+        { id: 'x', __origin: 'ext.json' },
+        { id: 'y', __origin: 'ext.json' },
+      ],
+      links: [],
+    };
+
+    const out = normalizeValsByOrigin(graph);
+    expect(out.nodes.filter((n) => n.__origin === 'ext.json').map((n) => n.val)).toEqual([8, 8]);
+  });
+
+  it('does not mutate the nodes it was handed', () => {
+    const node = { id: 'x', __origin: 'ext.json', val: 900 };
+    const graph = { nodes: [node, { id: 'y', __origin: 'ext.json', val: 100 }], links: [] };
+
+    const out = normalizeValsByOrigin(graph);
+
+    expect(node.val).toBe(900);
+    expect(out.nodes[0]).not.toBe(node);
+    expect(out.links).toBe(graph.links);
+  });
+
+  // Untagged nodes only occur for graphs that never went through a load site;
+  // they are one group rather than a crash.
+  it('treats missing __origin as a single group', () => {
+    const graph = { nodes: [{ id: 'a', val: 1 }, { id: 'b', val: 3 }], links: [] };
+    expect(normalizeValsByOrigin(graph).nodes.map((n) => n.val)).toEqual([4, 12]);
   });
 });
