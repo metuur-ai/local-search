@@ -25,6 +25,8 @@ vi.mock('../src/graph-explorer/useForceGraph.js', () => ({
 
 // eslint-disable-next-line import/first
 import { GraphExplorer } from '../src/graph-explorer/GraphExplorer.jsx';
+// eslint-disable-next-line import/first
+import { UPLOAD_STORAGE_KEY, writeStoredUpload } from '../src/graph-explorer/uploadStorage.js';
 
 // The hoisted mock cannot be exported directly (vitest forbids it); re-export
 // under a plain binding so later suites can reach the canvas spies.
@@ -608,5 +610,94 @@ describe('serializable and dimensionally consistent derived graph', () => {
     const [shown] = graphLoad.mock.calls[3];
     const fams = shown.links.map((l) => l.family).sort();
     expect(fams).toEqual(['declared', 'similarity']);
+  });
+});
+
+// ── Unit 5: session persistence ────────────────────────────────────────────
+// The stored value is the raw uploaded text, never a re-serialization of live
+// state: the force layout replaces `link.source` with the node object in the
+// graph it is handed, so a re-stringify would persist layout mutations (and go
+// circular). These assertions compare against the exact bytes uploaded.
+describe('persisting the upload to sessionStorage', () => {
+  const stored = () => JSON.parse(sessionStorage.getItem(UPLOAD_STORAGE_KEY));
+
+  it('writes { filename, text, blend } under one namespaced key on upload', async () => {
+    const { container, graphLoad } = await renderExplorer();
+    expect(sessionStorage.getItem(UPLOAD_STORAGE_KEY)).toBeNull();
+
+    await uploadFile(container);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+
+    await waitFor(() => expect(sessionStorage.getItem(UPLOAD_STORAGE_KEY)).toBeTruthy());
+    const entry = stored();
+    expect(Object.keys(entry).sort()).toEqual(['blend', 'filename', 'text']);
+    expect(entry.filename).toBe('external.json');
+    expect(entry.blend).toBe(false);
+    // Byte-for-byte the uploaded text, not a re-serialization of the parsed,
+    // tagged, force-mutated graph.
+    expect(entry.text).toBe(JSON.stringify(uploadGraph));
+  });
+
+  it('rewrites the entry when the blend flag is toggled', async () => {
+    const { container, graphLoad } = await renderExplorer();
+    await uploadFile(container);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(stored().blend).toBe(false));
+
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(stored().blend).toBe(true));
+    // Still the raw text — a toggle must not re-serialize the live graph.
+    expect(stored().text).toBe(JSON.stringify(uploadGraph));
+  });
+
+  it('reports an over-budget file at upload time instead of writing it', async () => {
+    const { container, graphLoad } = await renderExplorer();
+
+    // Quota is counted in UTF-16 code units (~2 bytes per character), so a
+    // ~3M-character document is already past a typical 5 MB ceiling.
+    const huge = {
+      nodes: [{ id: 'big.ts', name: 'x'.repeat(3_000_000), type: 'file', repo: 'ext', project: 'lib', tags: [] }],
+      links: [],
+    };
+    await uploadFile(container, { name: 'huge.json', graph: huge });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+
+    // Said so, once, at upload time…
+    expect(await screen.findByText(/too large to survive a reload/i)).toBeTruthy();
+    // …skipped the write rather than letting it throw…
+    expect(sessionStorage.getItem(UPLOAD_STORAGE_KEY)).toBeNull();
+    // …and the upload itself still went through.
+    const [shown] = graphLoad.mock.calls[1];
+    expect(shown.nodes.map((n) => n.id)).toEqual(['big.ts']);
+  });
+
+  // R-5.6. Asserted on the helper rather than through the component: a throw
+  // inside the persist effect is swallowed by preact's async hook runner, so a
+  // component-level test cannot tell a guarded write from an unguarded one.
+  it('swallows a throwing write so the upload survives in memory', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError');
+    });
+    try {
+      expect(() => writeStoredUpload({ filename: 'f.json', text: '{}', blend: false }))
+        .not.toThrow();
+    } finally {
+      setItem.mockRestore();
+    }
+
+    // …and the upload still reaches the canvas with storage unavailable.
+    const { container, graphLoad } = await renderExplorer();
+    const setItem2 = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError');
+    });
+    try {
+      await uploadFile(container);
+      await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+      expect(graphLoad.mock.calls[1][0].nodes.map((n) => n.id)).toEqual(['x.ts']);
+      // Not the oversize path — this file fits; the write simply failed.
+      expect(screen.queryByText(/too large to survive a reload/i)).toBeNull();
+    } finally {
+      setItem2.mockRestore();
+    }
   });
 });

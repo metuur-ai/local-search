@@ -13,6 +13,9 @@ import {
   EDGE_FAMILY_ORDER, countEdgeFamilies, defaultFamilies,
   tagOrigin, mergeGraphs, copyGraph, normalizeValsByOrigin, detectIdCollisions,
 } from './graphData.js';
+import {
+  fitsStorageBudget, writeStoredUpload, clearStoredUpload,
+} from './uploadStorage.js';
 import { useForceGraph } from './useForceGraph.js';
 import { FilterDropdown } from './components/FilterDropdown.jsx';
 import { LinkTypeFilter } from './components/LinkTypeFilter.jsx';
@@ -51,6 +54,9 @@ export function GraphExplorer() {
   const [upload, setUpload] = useState(null);
   const [blend, setBlend] = useState(false);
   const [collisionNotice, setCollisionNotice] = useState(null);
+  // Said once, at upload time. Letting the write throw instead would report the
+  // problem only after the fact, on a reload that has already lost the file.
+  const [oversizeNotice, setOversizeNotice] = useState(null);
 
   const [originalData, setOriginalData] = useState({ nodes: [], links: [] });
   const [activeData, setActiveData] = useState({ nodes: [], links: [] });
@@ -213,6 +219,17 @@ export function GraphExplorer() {
     loadNewData(displayGraph, { families });
   }, [displayGraph, blend, baseGraph, upload, loadNewData]);
 
+  // Persist the upload as raw text plus the blend flag, so a reload lands on the
+  // view the user left rather than asking for the file again. Keyed on `upload`
+  // and `blend` because those are the only two things stored; the derived graph
+  // is deliberately not, and must not be — it is what the force layout mutates.
+  // An over-budget payload is skipped here and reported at upload time instead.
+  useEffect(() => {
+    if (!upload) { clearStoredUpload(); return; }
+    if (!fitsStorageBudget(upload.text)) return;
+    writeStoredUpload({ filename: upload.filename, text: upload.text, blend });
+  }, [upload, blend]);
+
   // Re-filter (debounced, matching the original 300ms) whenever a filter changes.
   useEffect(() => {
     if (skipFilterRef.current) { skipFilterRef.current = false; return undefined; }
@@ -261,6 +278,10 @@ export function GraphExplorer() {
         setUpload({ filename: file.name, text, graph: tagOrigin(g, file.name) });
         // A new file is a new question about collisions; the old verdict goes.
         setCollisionNotice(null);
+        setOversizeNotice(fitsStorageBudget(text) ? null : (
+          `${file.name} is too large to survive a reload — it stays on screen, `
+          + 'but re-upload it after refreshing the page.'
+        ));
         setShowReset(true);
       } catch (err) {
         alert('Error parsing JSON: ' + err.message);
@@ -514,6 +535,10 @@ export function GraphExplorer() {
 
         {collisionNotice && (
           <div id="graph-collision-notice" role="status">{collisionNotice}</div>
+        )}
+
+        {oversizeNotice && (
+          <div id="graph-oversize-notice" role="status">{oversizeNotice}</div>
         )}
 
         {emptyNotice && (

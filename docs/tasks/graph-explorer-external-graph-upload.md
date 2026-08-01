@@ -185,7 +185,7 @@ run first even though they sit last in the EARS document.
 
 ## Unit 5: Session persistence
 
-- [ ] 5.1 Persist the upload as raw text plus the blend flag (deps: 3.5, est: ~35m)
+- [x] 5.1 Persist the upload as raw text plus the blend flag (deps: 3.5, est: ~35m)
   - why: re-uploading a multi-megabyte file after every reload makes the feature tedious
     enough not to use. Persisting text rather than the parsed object removes the only failure
     mode that is silent and permanent.
@@ -194,7 +194,7 @@ run first even though they sit last in the EARS document.
     against the budget in UTF-16 code units before writing.
   - verify: component test uploads, asserts the key contents; asserts an over-budget file
     reports at upload time rather than failing silently.
-  - landed:
+  - landed: web/frontend/src/graph-explorer/uploadStorage.js, web/frontend/src/graph-explorer/GraphExplorer.jsx, web/frontend/test/graphExplorer.test.jsx
 
 - [ ] 5.2 Restore on mount, ahead of the initial fetch (deps: 5.1, est: ~35m)
   - why: the point of persistence is that the reload lands on the view the user left, not on
