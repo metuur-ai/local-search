@@ -100,7 +100,7 @@ run first even though they sit last in the EARS document.
     `origin: []` in the initial `options` state so it is an array on first render.
   - verify: `test/graphData.test.js` covers `collectFilterOptions`; component test asserts no
     `options.origin.length` read throws before the first load resolves.
-  - landed:
+  - landed: 88d5154
 
 - [x] 2.2 Apply the origin filter strictly (deps: 2.1, est: ~20m)
   - why: an untagged node must not leak through a Source selection — "unknown provenance"
@@ -109,7 +109,7 @@ run first even though they sit last in the EARS document.
     `__origin` is in the set; a node lacking `__origin` is never exempted.
   - verify: `test/graphData.test.js` — filter a mixed fixture containing one untagged node,
     assert it is excluded under every non-empty selection.
-  - landed:
+  - landed: 7433ef4
 
 - [x] 2.3 Render the Source dropdown only when it means something (deps: 2.1, est: ~25m)
   - why: a dropdown with a single option is noise; the control should appear exactly when
@@ -119,7 +119,7 @@ run first even though they sit last in the EARS document.
     clears it with the rest.
   - verify: component test — absent with only the local-search graph loaded, present after an
     upload, and "Clear all" empties the selection.
-  - landed:
+  - landed: 7f67971
 
 ---
 
