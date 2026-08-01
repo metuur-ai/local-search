@@ -1,0 +1,178 @@
+{
+  "nodes": [
+    {
+      "id": "sample/platforms/billing/README.md",
+      "name": "Billing",
+      "title": "Billing platform",
+      "path": "platforms/billing/README.md",
+      "repo": "sample-os",
+      "project": "billing",
+      "tags": [
+        "platform",
+        "payments"
+      ],
+      "val": 8
+    },
+    {
+      "id": "sample/platforms/ledger/README.md",
+      "name": "Ledger",
+      "title": "Ledger platform",
+      "path": "platforms/ledger/README.md",
+      "repo": "sample-os",
+      "project": "ledger",
+      "tags": [
+        "platform",
+        "payments"
+      ],
+      "val": 6
+    },
+    {
+      "id": "sample/platforms/invoicing/README.md",
+      "name": "Invoicing",
+      "title": "Invoicing platform",
+      "path": "platforms/invoicing/README.md",
+      "repo": "sample-os",
+      "project": "billing",
+      "tags": [
+        "platform"
+      ],
+      "val": 5
+    },
+    {
+      "id": "sample/ontology/money.md",
+      "name": "Money",
+      "title": "Money ontology",
+      "type": "ontology",
+      "path": "ontology/money.md",
+      "repo": "sample-os",
+      "project": "ontology",
+      "tags": [
+        "ontology"
+      ],
+      "val": 6
+    },
+    {
+      "id": "sample/prd/2026-refunds.md",
+      "name": "Refunds PRD",
+      "title": "Self-serve refunds",
+      "type": "prd",
+      "path": "prd/2026-refunds.md",
+      "repo": "sample-os",
+      "project": "billing",
+      "tags": [
+        "prd",
+        "payments"
+      ],
+      "val": 5
+    },
+    {
+      "id": "sample/standards/currency.md",
+      "name": "Currency handling",
+      "type": "standard",
+      "path": "standards/currency.md",
+      "repo": "sample-os",
+      "project": "ontology",
+      "tags": [
+        "standard"
+      ],
+      "val": 4
+    },
+    {
+      "id": "sample/research/fx-rates.md",
+      "name": "FX rate survey",
+      "type": "research",
+      "path": "research/fx-rates.md",
+      "repo": "sample-research",
+      "project": "pricing",
+      "tags": [
+        "research",
+        "payments"
+      ],
+      "val": 4
+    },
+    {
+      "id": "sample/team/payments.md",
+      "name": "Payments team",
+      "type": "team",
+      "path": "team/payments.md",
+      "repo": "sample-os",
+      "project": "billing",
+      "tags": [
+        "team"
+      ],
+      "val": 5
+    },
+    {
+      "id": "sample/platforms/pricing/README.md",
+      "flags": "unresolved"
+    },
+    {
+      "id": "sample/standards/pci.md",
+      "flags": "unresolved"
+    }
+  ],
+  "links": [
+    {
+      "source": "sample/platforms/billing/README.md",
+      "target": "sample/platforms/ledger/README.md",
+      "relation": "depends_on"
+    },
+    {
+      "source": "sample/platforms/invoicing/README.md",
+      "target": "sample/platforms/billing/README.md",
+      "relation": "depends_on"
+    },
+    {
+      "source": "sample/platforms/billing/README.md",
+      "target": "sample/ontology/money.md",
+      "relation": "uses"
+    },
+    {
+      "source": "sample/platforms/ledger/README.md",
+      "target": "sample/ontology/money.md",
+      "relation": "uses"
+    },
+    {
+      "source": "sample/prd/2026-refunds.md",
+      "target": "sample/platforms/billing/README.md",
+      "relation": "specifies"
+    },
+    {
+      "source": "sample/standards/currency.md",
+      "target": "sample/ontology/money.md",
+      "relation": "constrains"
+    },
+    {
+      "source": "sample/team/payments.md",
+      "target": "sample/platforms/billing/README.md",
+      "relation": "owns"
+    },
+    {
+      "source": "sample/team/payments.md",
+      "target": "sample/platforms/ledger/README.md",
+      "relation": "owns"
+    },
+    {
+      "source": "sample/platforms/billing/README.md",
+      "target": "sample/platforms/pricing/README.md",
+      "relation": "depends_on"
+    },
+    {
+      "source": "sample/prd/2026-refunds.md",
+      "target": "sample/standards/pci.md",
+      "relation": "complies_with"
+    },
+    {
+      "source": "sample/research/fx-rates.md",
+      "target": "sample/ontology/money.md"
+    },
+    {
+      "source": "sample/research/fx-rates.md",
+      "target": "sample/prd/2026-refunds.md"
+    },
+    {
+      "source": "sample/standards/currency.md",
+      "target": "sample/platforms/invoicing/README.md"
+    }
+  ]
+}

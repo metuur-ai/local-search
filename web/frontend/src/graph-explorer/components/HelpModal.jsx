@@ -1,7 +1,47 @@
 // Help modal: how to use the page, install, and docs links. Closes on the
 // close button, backdrop click, or Escape. Ported from the former help modal.
 
-import { useEffect } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
+
+import { GRAPH_PROMPT, NODE_LINK_PROMPT, FLAT_ARRAY_PROMPT } from '../graphPrompt.js';
+
+// One control per prompt. The state is per-instance on purpose: with three
+// buttons on the page a shared state would flash "Copied" under a button the
+// user did not press, and would reveal the wrong prompt in the fallback.
+function CopyPrompt({ label, prompt, testid, fallbackTestid }) {
+  // 'idle' | 'copied' | 'revealed'. `revealed` is the fallback for a clipboard
+  // that is absent (non-secure context) or whose write rejects: the prompt is
+  // put on screen to select by hand rather than the click doing nothing.
+  const [promptState, setPromptState] = useState('idle');
+
+  const copyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setPromptState('copied');
+    } catch {
+      setPromptState('revealed');
+    }
+  };
+
+  return (
+    <>
+      <div class="prompt-actions">
+        <button type="button" class="btn" data-testid={testid} onClick={copyPrompt}>
+          {label}
+        </button>
+        {promptState === 'copied' && (
+          <span class="prompt-status" role="status" data-testid={`${testid}-status`}>Copied to clipboard</span>
+        )}
+        {promptState === 'revealed' && (
+          <span class="prompt-status" role="status" data-testid={`${testid}-status`}>Clipboard unavailable — select and copy the text below</span>
+        )}
+      </div>
+      {promptState === 'revealed' && (
+        <textarea class="prompt-fallback" data-testid={fallbackTestid} readOnly rows={12} value={prompt} />
+      )}
+    </>
+  );
+}
 
 export function HelpModal({ onClose }) {
   useEffect(() => {
@@ -52,7 +92,25 @@ export function HelpModal({ onClose }) {
             </svg>
             Graph file format
           </div>
-          <p><strong>Upload JSON</strong> takes a node-link graph: an object with a <code>nodes</code> array and a <code>links</code> array. <code>edges</code> is accepted as a synonym for <code>links</code>.</p>
+          {/* Sibling of the section header, not a child: inside it the control
+              inherits the header's 10px uppercase letterspacing. */}
+          <CopyPrompt
+            label="Paste Prompt"
+            prompt={GRAPH_PROMPT}
+            testid="copy-prompt"
+            fallbackTestid="prompt-fallback"
+          />
+
+          <p><strong>Upload JSON</strong> accepts two shapes, and the file's first character decides which one it is read as. An object (<code>{'{'}</code>) is a <strong>node-link graph</strong>: you author the links, so it is the only shape that can state a typed relation. An array (<code>[</code>) is a <strong>flat list of file records</strong>: it carries no links of its own, so the viewer synthesizes them and every one of them is a similarity link. Each shape has its own prompt below.</p>
+
+          <h4 class="modal-subhead">Shape A — node-link</h4>
+          <CopyPrompt
+            label="Paste Shape A Prompt"
+            prompt={NODE_LINK_PROMPT}
+            testid="copy-prompt-node-link"
+            fallbackTestid="prompt-fallback-node-link"
+          />
+          <p>A node-link graph is an object with a <code>nodes</code> array and a <code>links</code> array. <code>edges</code> is accepted as a synonym for <code>links</code>.</p>
           <code class="block">{`{
   "nodes": [
     { "id": "platforms/billing/README.md",
@@ -85,7 +143,14 @@ export function HelpModal({ onClose }) {
             <li><code>similarity</code><span>No <code>relation</code> at all — a lexical resemblance rather than a claim anyone wrote down. Drawn faint grey.</span></li>
           </ul>
           <p>A freshly loaded graph opens on <strong>Declared</strong> and <strong>Unresolved</strong> whenever it has any of either, since declared structure is the point of the view. A graph with neither — every link a similarity link — opens on all three families instead of opening empty.</p>
-          <p>A plain <strong>array of file records</strong> is also accepted, and is the easier shape to hand-write. It has no links of its own: the viewer synthesizes a hub node per distinct <code>repo</code>, <code>project</code>, and tag, and links each file to the hubs it belongs to.</p>
+          <h4 class="modal-subhead">Shape B — flat array of file records</h4>
+          <CopyPrompt
+            label="Paste Shape B Prompt"
+            prompt={FLAT_ARRAY_PROMPT}
+            testid="copy-prompt-flat-array"
+            fallbackTestid="prompt-fallback-flat-array"
+          />
+          <p>A plain <strong>array of file records</strong> is the easier shape to hand-write. It has no links of its own: the viewer synthesizes a hub node per distinct <code>repo</code>, <code>project</code>, and tag, and links each file to the hubs it belongs to.</p>
           <code class="block">{`[
   { "id": "billing-readme", "name": "README.md",
     "title": "Billing platform", "type": "file",
@@ -96,6 +161,8 @@ export function HelpModal({ onClose }) {
           <p>The hub nodes are given the ids <code>repo_&lt;repo&gt;</code>, <code>proj_&lt;project&gt;</code>, and <code>tag_&lt;tag&gt;</code>. Because tags become hubs on this shape rather than staying node properties, the Tag filter has nothing to list — you narrow by tag by clicking its hub instead.</p>
           <p>What this shape cannot do is state a typed relation. There is nowhere to put a <code>relation</code>, so every link in the resulting graph is one the viewer invented from shared membership, and all of them are <strong>similarity</strong> links. A flat-array graph therefore has no declared structure at all and opens on all three families. If you want <code>depends_on</code> to mean something, use the node-link shape.</p>
           <p>Ids matter twice over if the file is to be blended with the local-search graph rather than replace it. Blending concatenates the two, so an id used by both puts two nodes on the canvas under one id, and every link naming it resolves to only one of them — not necessarily yours. Prefix your ids, and remember that a repo or tag sharing a name with one already on the canvas produces a colliding <code>repo_</code> or <code>tag_</code> hub too.</p>
+
+          <p>If you would rather not hand-write one, use a Paste Prompt button and hand the prompt to a model along with whatever you want graphed. <strong>Paste Prompt</strong> at the top of this section describes both shapes and lets the model pick; the per-shape buttons describe only that shape and every field this page reads on it.</p>
 
           <div class="modal-section">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">

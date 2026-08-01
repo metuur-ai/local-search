@@ -8,14 +8,20 @@
 // reads. Notably absent: a link `family`. The viewer recomputes it from `relation`
 // and the endpoints, so asking a model to author one would produce a field that is
 // silently overwritten.
-export const GRAPH_PROMPT = `Produce a graph file for the local-search Graph Explorer.
+// The prompt is assembled from shared chunks rather than written out three times,
+// so a per-shape prompt cannot drift from the combined one. `{` / `[` in the
+// preamble is deliberately shape-specific: a node-link-only prompt that still
+// allowed a leading `[` would invite the shape it did not describe.
+const preamble = (opener) => `Produce a graph file for the local-search Graph Explorer.
 
 Output a single JSON document and nothing else: no explanation, no preamble, no
-markdown code fence around it. The first character must be \`{\` or \`[\`.
+markdown code fence around it. The first character must be ${opener}.`;
 
-Pick one of the two shapes below.
+const TAIL = `Keep ids stable and unique, and prefix them with something specific to this graph
+if it may be blended with an existing one — two nodes sharing an id collapse into
+one on the canvas.`;
 
-Shape A — node-link (preferred: it is the only shape that can state typed relations)
+const SHAPE_A = `Shape A — node-link
 
 An object with a \`nodes\` array and a \`links\` array (\`edges\` is accepted as a
 synonym for \`links\`).
@@ -64,9 +70,9 @@ viewer derives it, so a family written into the file is recomputed, not honoured
 with a \`relation\` whose endpoints both resolve to nodes that are not flagged
 "unresolved" is declared; a link with a \`relation\` whose endpoint is missing from
 \`nodes\` or is flagged "unresolved" is dangling; a link with no \`relation\` is
-similarity.
+similarity.`;
 
-Shape B — flat array of file records (easier to hand-write, strictly less expressive)
+const SHAPE_B = `Shape B — flat array of file records
 
 A plain array of records with no links of its own. The viewer synthesizes one hub
 node per distinct \`repo\`, \`project\` and tag, and links each record to the hubs it
@@ -93,11 +99,27 @@ Only these fields are read on this shape:
   has nothing to list on this shape.
 - \`val\` — node radius. Defaults to 4.
 
-Anything else in a record is preserved on the node but never read. This shape cannot express a
-typed relation — there is nowhere to put one, so every synthesized link is a
-similarity link and the graph has no declared structure. Use shape A if the
-relationships matter.
+Anything else in a record is preserved on the node but never read. This shape cannot
+express a typed relation — there is nowhere to put one, so every synthesized link is
+a similarity link and the graph has no declared structure.`;
 
-Whichever shape you choose, keep ids stable and unique, and prefix them with
-something specific to this graph if it may be blended with an existing one — two
-nodes sharing an id collapse into one on the canvas.`;
+// Shape A only. `{` is the sole legal opener here.
+export const NODE_LINK_PROMPT = [preamble('`{`'), SHAPE_A, TAIL].join('\n\n');
+
+// Shape B only, with the expressiveness warning kept — a user who picked this
+// shape deliberately still needs to know what it costs them.
+export const FLAT_ARRAY_PROMPT = [
+  preamble('`[`'),
+  SHAPE_B,
+  'If typed relationships between records matter, use the node-link shape instead.',
+  TAIL,
+].join('\n\n');
+
+// Both shapes, for a user who does not yet know which one they want.
+export const GRAPH_PROMPT = [
+  preamble('`{` or `[`'),
+  'Pick one of the two shapes below. Shape A is preferred: it is the only shape that can state typed relations.',
+  SHAPE_A,
+  SHAPE_B + ' Use shape A if the relationships matter.',
+  'Whichever shape you choose, ' + TAIL[0].toLowerCase() + TAIL.slice(1),
+].join('\n\n');

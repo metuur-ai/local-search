@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/preact';
-import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/preact';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { HelpModal } from '../src/graph-explorer/components/HelpModal.jsx';
+import { GRAPH_PROMPT, NODE_LINK_PROMPT, FLAT_ARRAY_PROMPT } from '../src/graph-explorer/graphPrompt.js';
 
 // The format guide is the only place the accepted upload shapes are written
 // down for a human, so these assertions guard the fields a file must carry.
@@ -47,5 +48,121 @@ describe('HelpModal graph-format section', () => {
     expect(text).toContain('cannot do is state a typed relation');
     expect(text).toMatch(/all of them are/);
     expect(text).toContain('blended');
+  });
+});
+
+// The copy path is the only part of the guide with a failure mode: a clipboard
+// that is absent (non-secure context) or that rejects. Both paths must leave the
+// user with the prompt and the modal open.
+describe('HelpModal Paste Prompt', () => {
+  const stubClipboard = (writeText) => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: writeText ? { writeText } : undefined, configurable: true,
+    });
+  };
+
+  afterEach(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+  });
+
+  it('copies the prompt and confirms without closing the modal', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    const onClose = vi.fn();
+    render(<HelpModal onClose={onClose} />);
+
+    fireEvent.click(screen.getByTestId('copy-prompt'));
+
+    await waitFor(() => expect(screen.getByTestId('copy-prompt-status').textContent).toContain('Copied'));
+    expect(writeText).toHaveBeenCalledWith(GRAPH_PROMPT);
+    // Nothing to select by hand when the copy worked.
+    expect(screen.queryByTestId('prompt-fallback')).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('reveals the prompt in a read-only field when the write rejects', async () => {
+    stubClipboard(vi.fn().mockRejectedValue(new Error('denied')));
+    const onClose = vi.fn();
+    render(<HelpModal onClose={onClose} />);
+
+    fireEvent.click(screen.getByTestId('copy-prompt'));
+
+    const field = await screen.findByTestId('prompt-fallback');
+    expect(field.value).toBe(GRAPH_PROMPT);
+    expect(field.readOnly).toBe(true);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('reveals the prompt when there is no clipboard at all', async () => {
+    stubClipboard(null);
+    render(<HelpModal onClose={() => {}} />);
+
+    fireEvent.click(screen.getByTestId('copy-prompt'));
+
+    const field = await screen.findByTestId('prompt-fallback');
+    expect(field.value).toBe(GRAPH_PROMPT);
+  });
+});
+
+// Three copy buttons share one component, so the state that makes a button say
+// "Copied" (or spill a fallback textarea) has to live per instance. If it were
+// hoisted to the modal, pressing one button would answer for all three and the
+// fallback would show the wrong prompt.
+describe('HelpModal per-shape prompt buttons', () => {
+  const stubClipboard = (writeText) => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: writeText ? { writeText } : undefined, configurable: true,
+    });
+  };
+
+  afterEach(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+  });
+
+  const BUTTONS = [
+    ['copy-prompt', GRAPH_PROMPT],
+    ['copy-prompt-node-link', NODE_LINK_PROMPT],
+    ['copy-prompt-flat-array', FLAT_ARRAY_PROMPT],
+  ];
+
+  it('offers one button per prompt, each copying its own text', async () => {
+    for (const [testid, prompt] of BUTTONS) {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      stubClipboard(writeText);
+      const { unmount } = render(<HelpModal onClose={() => {}} />);
+
+      fireEvent.click(screen.getByTestId(testid));
+
+      await waitFor(() => expect(screen.getByTestId(`${testid}-status`).textContent).toContain('Copied'));
+      expect(writeText).toHaveBeenCalledTimes(1);
+      expect(writeText).toHaveBeenCalledWith(prompt);
+      unmount();
+    }
+  });
+
+  it('confirms only on the button that was pressed', async () => {
+    stubClipboard(vi.fn().mockResolvedValue(undefined));
+    render(<HelpModal onClose={() => {}} />);
+
+    fireEvent.click(screen.getByTestId('copy-prompt-node-link'));
+
+    await screen.findByTestId('copy-prompt-node-link-status');
+    expect(screen.queryByTestId('copy-prompt-status')).toBeNull();
+    expect(screen.queryByTestId('copy-prompt-flat-array-status')).toBeNull();
+  });
+
+  it('reveals only the pressed button\'s prompt when the clipboard is unavailable', async () => {
+    stubClipboard(null);
+    render(<HelpModal onClose={() => {}} />);
+
+    fireEvent.click(screen.getByTestId('copy-prompt-flat-array'));
+
+    const field = await screen.findByTestId('prompt-fallback-flat-array');
+    expect(field.value).toBe(FLAT_ARRAY_PROMPT);
+    expect(field.readOnly).toBe(true);
+    expect(screen.queryByTestId('prompt-fallback')).toBeNull();
+    expect(screen.queryByTestId('prompt-fallback-node-link')).toBeNull();
   });
 });
