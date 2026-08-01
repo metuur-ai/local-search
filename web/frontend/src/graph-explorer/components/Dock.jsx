@@ -1,7 +1,12 @@
-// Bottom control dock: zoom in/out, fit-to-screen, and the physics toggle.
-// The physics button label/icon reflects the current simulation state.
+// Bottom control dock: zoom in/out, fit-to-screen, the spread slider, and the
+// physics toggle. The physics button label/icon reflects the current simulation
+// state; the slider widens the layout for graphs that pack too tightly.
 
-export function Dock({ onZoomIn, onZoomOut, onFit, physicsRunning, onTogglePhysics }) {
+import { SPREAD_MIN, SPREAD_MAX } from '../useForceGraph.js';
+
+export function Dock({
+  onZoomIn, onZoomOut, onFit, physicsRunning, onTogglePhysics, spread, onSpreadChange,
+}) {
   return (
     <div class="dock">
       <button type="button" class="dock-btn" title="Zoom in" onClick={onZoomIn}>
@@ -19,6 +24,22 @@ export function Dock({ onZoomIn, onZoomOut, onFit, physicsRunning, onTogglePhysi
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
         </svg>
       </button>
+      <div class="dock-sep" />
+      <label class="dock-spread" title="Spread the layout — pulls a dense graph apart">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16m0 0l-4-4m4 4l-4 4M4 12l4-4m-4 4l4 4" />
+        </svg>
+        <input
+          type="range"
+          min={SPREAD_MIN}
+          max={SPREAD_MAX}
+          step="0.1"
+          value={spread}
+          aria-label="Layout spread"
+          onInput={(e) => onSpreadChange(Number(e.currentTarget.value))}
+        />
+        <span class="dock-spread-val">{spread.toFixed(1)}×</span>
+      </label>
       <div class="dock-sep" />
       <button
         type="button"

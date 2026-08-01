@@ -11,6 +11,17 @@ import {
   colors, COMMUNITY, buildPerformanceMaps, EDGE_FAMILY_META, linkEndId,
 } from './graphData.js';
 
+// Layout spacing. `s` is a multiplier over the defaults (1 = the original
+// packing); nodes shrink as the layout widens so dense graphs read as points
+// rather than overlapping blobs.
+export const SPREAD_MIN = 0.6;
+export const SPREAD_MAX = 3;
+const applySpread = (graph, s) => {
+  graph.d3Force('charge').strength(-40 * s).distanceMax(300 * s);
+  graph.d3Force('link').distance(35 * s);
+  graph.nodeRelSize(Math.min(4.5, Math.max(3, 4 - (s - 1) * 0.5)));
+};
+
 export function useForceGraph({ containerRef, onSelectNode, onPhysicsChange }) {
   const graphRef = useRef(null);
   const mapsRef = useRef({ neighborNodesMap: new Map(), nodeLinksMap: new Map(), nodeByIdMap: new Map() });
@@ -23,6 +34,8 @@ export function useForceGraph({ containerRef, onSelectNode, onPhysicsChange }) {
   const labelsRef = useRef(false); // "All labels" toggle
   const physicsRef = useRef(true);
   const fittedRef = useRef(false); // one-time auto zoom-to-fit after first settle
+  const spreadRef = useRef(1);     // layout spacing multiplier (see applySpread)
+  const refitRef = useRef(false);  // refit the view once the next settle finishes
 
   // Keep the latest callbacks reachable from the stable graph closures.
   const onSelectRef = useRef(onSelectNode);
@@ -177,15 +190,15 @@ export function useForceGraph({ containerRef, onSelectNode, onPhysicsChange }) {
         onSelectRef.current?.(null);
       });
 
-    graph.d3Force('charge').strength(-40).distanceMax(300);
-    graph.d3Force('link').distance(35);
+    applySpread(graph, spreadRef.current);
     graph.d3AlphaDecay(0.05).d3VelocityDecay(0.5);
     graph.cooldownTicks(150);
     graph.onEngineStop(() => {
       physicsRef.current = false;
       onPhysicsRef.current?.(false);
-      if (!fittedRef.current) {
+      if (!fittedRef.current || refitRef.current) {
         fittedRef.current = true;
+        refitRef.current = false;
         graph.zoomToFit(600, 70);
       }
     });
@@ -240,12 +253,30 @@ export function useForceGraph({ containerRef, onSelectNode, onPhysicsChange }) {
       graph.d3Force('charge').strength(0);
       graph.cooldownTicks(0);
     } else {
-      graph.d3Force('charge').strength(-40);
+      applySpread(graph, spreadRef.current);
       graph.d3ReheatSimulation();
       graph.cooldownTicks(150);
     }
     physicsRef.current = !physicsRef.current;
     onPhysicsRef.current?.(physicsRef.current);
+  }, []);
+
+  // Widen or tighten the layout. Spacing only means something while the
+  // simulation runs, so this reheats — and resumes physics if it was paused.
+  // A wider layout would otherwise push the graph past the edges of the
+  // viewport, so the view is refit once the new layout settles.
+  const setSpread = useCallback((value) => {
+    const graph = graphRef.current;
+    spreadRef.current = value;
+    if (!graph) return;
+    refitRef.current = true;
+    applySpread(graph, value);
+    graph.d3ReheatSimulation();
+    graph.cooldownTicks(150);
+    if (!physicsRef.current) {
+      physicsRef.current = true;
+      onPhysicsRef.current?.(true);
+    }
   }, []);
 
   const setShowLabels = useCallback((val) => {
@@ -319,7 +350,7 @@ export function useForceGraph({ containerRef, onSelectNode, onPhysicsChange }) {
   }, []);
 
   return {
-    load, zoomIn, zoomOut, fit, togglePhysics, setShowLabels,
+    load, zoomIn, zoomOut, fit, togglePhysics, setShowLabels, setSpread,
     deselect, selectById, getConnections,
   };
 }

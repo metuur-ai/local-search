@@ -109,6 +109,7 @@ export function GraphExplorer() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [physicsRunning, setPhysicsRunning] = useState(true);
   const [showLabels, setShowLabels] = useState(false);
+  const [spread, setSpread] = useState(1);
   const [showHelp, setShowHelp] = useState(false);
   // Which section the modal should land on. `null` opens it at the top, the way
   // the help icon always has.
@@ -130,7 +131,8 @@ export function GraphExplorer() {
 
   const {
     load: graphLoad, zoomIn, zoomOut, fit, togglePhysics,
-    setShowLabels: graphSetShowLabels, deselect, selectById, getConnections,
+    setShowLabels: graphSetShowLabels, setSpread: graphSetSpread,
+    deselect, selectById, getConnections,
   } = useForceGraph({
     containerRef,
     onSelectNode: setSelectedNode,
@@ -308,6 +310,11 @@ export function GraphExplorer() {
     setShowLabels(val);
     graphSetShowLabels(val);
   }, [graphSetShowLabels]);
+
+  const onSpreadChange = useCallback((val) => {
+    setSpread(val);
+    graphSetSpread(val);
+  }, [graphSetSpread]);
 
   const onUpload = useCallback((e) => {
     const file = e.currentTarget.files[0];
@@ -569,6 +576,8 @@ export function GraphExplorer() {
           onFit={fit}
           physicsRunning={physicsRunning}
           onTogglePhysics={togglePhysics}
+          spread={spread}
+          onSpreadChange={onSpreadChange}
         />
 
         {selectedNode && (
