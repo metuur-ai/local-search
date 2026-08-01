@@ -189,3 +189,46 @@ describe('origin tagging at the load sites', () => {
     expect(shown.nodes.every((n) => n.__origin === 'local-search')).toBe(true);
   });
 });
+
+describe('loadNewData options bag', () => {
+  // A blend toggle is an A/B comparison of two views of the same narrowing —
+  // wiping the filters and refitting on every flip makes it a reload with a
+  // checkbox affordance.
+  it('preserves the narrowed filters and skips the refit when blend is toggled', async () => {
+    const { container, graphLoad } = await renderExplorer();
+    await uploadFile(container);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+
+    // Narrow to the uploaded node by name. The filter effect is debounced 300ms.
+    const searchBox = screen.getByPlaceholderText('Search files, tags, or projects…');
+    fireEvent.input(searchBox, { target: { value: 'x' } });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(3), { timeout: 2000 });
+
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(4));
+
+    // The blend went to the canvas still narrowed: a.py and b.md are in the
+    // merged graph but do not match the search the user had already built.
+    const [shown, opts] = graphLoad.mock.calls[3];
+    expect(shown.nodes.map((n) => n.id)).toEqual(['x.ts']);
+    expect(opts.refit).toBe(false);
+    // …and the text the narrowing came from is still in the box.
+    expect(searchBox.value).toBe('x');
+  });
+
+  it('still resets the filters and refits for a fresh upload', async () => {
+    const { container, graphLoad } = await renderExplorer();
+
+    const searchBox = screen.getByPlaceholderText('Search files, tags, or projects…');
+    fireEvent.input(searchBox, { target: { value: 'a' } });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2), { timeout: 2000 });
+
+    await uploadFile(container);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(3));
+
+    const [shown, opts] = graphLoad.mock.calls[2];
+    expect(shown.nodes.map((n) => n.id)).toEqual(['x.ts']);
+    expect(opts.refit).toBe(true);
+    expect(searchBox.value).toBe('');
+  });
+});

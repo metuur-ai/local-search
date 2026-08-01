@@ -79,26 +79,37 @@ export function GraphExplorer() {
   // with a reheat. This flag skips exactly those runs.
   const skipFilterRef = useRef(true);
 
-  // Load a brand-new dataset: reset filters/selection, rebuild option lists, and
-  // hand the graph to the canvas with a re-armed zoom-to-fit.
-  const loadNewData = useCallback((g) => {
+  // Load a graph into the view. A dataset change (the default) resets
+  // filters/selection and re-arms the zoom-to-fit; a blend toggle passes
+  // `resetFilters: false, refit: false` because it is an A/B comparison of the
+  // narrowing the user just built, not a new dataset. `families` overrides the
+  // opening edge-family pick, which is otherwise derived from the graph.
+  const loadNewData = useCallback((g, {
+    resetFilters = true, refit = true, families: familiesOpt = null,
+  } = {}) => {
     skipFilterRef.current = true;
     setOriginalData(g);
     setOptions(collectFilterOptions(g.nodes));
-    setMultiSelect(EMPTY_MULTI());
-    setSearch(''); setNameFilter(''); setTitleFilter('');
-    setSelectedNode(null);
     setEmptyNotice(g.nodes.length === 0);
+
     // Open on declared structure when the graph has any — that is what the view
     // is for, and similarity links outnumber declared ones by ~8:1.
-    const fams = defaultFamilies(g.links);
+    const fams = familiesOpt || (resetFilters ? defaultFamilies(g.links) : families);
     setFamilies(fams);
-    const shown = applyFilters(g, {
-      search: '', name: '', title: '', multiSelect: EMPTY_MULTI(), families: fams,
-    });
+
+    const next = resetFilters
+      ? { search: '', name: '', title: '', multiSelect: EMPTY_MULTI() }
+      : { search, name: nameFilter, title: titleFilter, multiSelect };
+    if (resetFilters) {
+      setMultiSelect(next.multiSelect);
+      setSearch(''); setNameFilter(''); setTitleFilter('');
+      setSelectedNode(null);
+    }
+
+    const shown = applyFilters(g, { ...next, families: fams });
     setActiveData(shown);
-    graphLoad(shown, { refit: true });
-  }, [graphLoad]);
+    graphLoad(shown, { refit });
+  }, [graphLoad, families, search, nameFilter, titleFilter, multiSelect]);
 
   // Initial load: flat array (hub graph) OR {nodes,links} (graph export).
   // Tagged at the load site, before anything can merge it, so a later blend can
@@ -123,12 +134,17 @@ export function GraphExplorer() {
   // without changing what the user is looking at, and reloading then would reset
   // filters and refit the viewport for no visible reason. It also covers the
   // first render, where `baseGraph` is still the shared empty value.
+  // A flip of the toggle is the one input change that must not reset filters or
+  // refit, so the effect tracks which input moved rather than only the result.
   const loadedRef = useRef(EMPTY_GRAPH);
+  const blendRef = useRef(blend);
   useEffect(() => {
+    const blendToggled = blendRef.current !== blend;
+    blendRef.current = blend;
     if (displayGraph === loadedRef.current) return;
     loadedRef.current = displayGraph;
-    loadNewData(displayGraph);
-  }, [displayGraph, loadNewData]);
+    loadNewData(displayGraph, blendToggled ? { resetFilters: false, refit: false } : undefined);
+  }, [displayGraph, blend, loadNewData]);
 
   // Re-filter (debounced, matching the original 300ms) whenever a filter changes.
   useEffect(() => {
