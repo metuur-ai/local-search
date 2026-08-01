@@ -111,7 +111,7 @@ run first even though they sit last in the EARS document.
     assert it is excluded under every non-empty selection.
   - landed:
 
-- [ ] 2.3 Render the Source dropdown only when it means something (deps: 2.1, est: ~25m)
+- [x] 2.3 Render the Source dropdown only when it means something (deps: 2.1, est: ~25m)
   - why: a dropdown with a single option is noise; the control should appear exactly when
     there is a choice to make, and behave like every other filter once it does.
   - acceptance: R-2.7, R-2.8, R-2.9 — rendered IF AND ONLY IF more than one origin is

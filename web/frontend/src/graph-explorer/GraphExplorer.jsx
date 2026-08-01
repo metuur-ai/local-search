@@ -327,7 +327,8 @@ export function GraphExplorer() {
   // Active-filter chips across every dimension.
   const activeChips = useMemo(() => {
     const chips = [];
-    ['type', 'repo', 'project', 'tag'].forEach((dim) => {
+    // Derived from DIMS so a new dimension cannot land with no removable chip.
+    DIMS.map((d) => d.key).forEach((dim) => {
       multiSelect[dim].forEach((val) => chips.push({ dim, val }));
     });
     return chips;
@@ -416,7 +417,12 @@ export function GraphExplorer() {
         <div class="row row-2">
           <div class="filters">
             <span class="filters-label">Filters</span>
-            {DIMS.map(({ key, emptyLabel, searchLabel }) => (
+            {/* Source appears only once there is a choice to make: a dropdown
+                offering the one origin already on screen is pure noise in an
+                already-dense filter row. */}
+            {DIMS
+              .filter(({ key }) => key !== 'origin' || options.origin.length > 1)
+              .map(({ key, emptyLabel, searchLabel }) => (
               <FilterDropdown
                 key={key}
                 emptyLabel={emptyLabel}

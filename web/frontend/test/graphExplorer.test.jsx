@@ -307,6 +307,46 @@ describe('origin filter dimension', () => {
     expect(() => render(<GraphExplorer />)).not.toThrow();
     expect(screen.getByText('Upload JSON')).toBeTruthy();
   });
+
+  // R-2.7: the control appears exactly when there is a choice to make. One
+  // origin — which is every single-dataset state, blended or not — is noise.
+  it('hides the Source dropdown until more than one origin is on screen', async () => {
+    const { container, graphLoad } = await renderExplorer();
+    expect(screen.queryByText('All Sources')).toBeNull();
+
+    // An upload displayed standalone is still one origin, so still no control.
+    await uploadFile(container);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('All Sources')).toBeNull();
+
+    // Blended, both origins are on the canvas and the choice becomes real.
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(screen.getByText('All Sources')).toBeTruthy());
+  });
+
+  it('gives a Source selection a removable chip that "Clear all" also clears', async () => {
+    const { container, graphLoad } = await renderExplorer();
+    await uploadFile(container);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(screen.getByText('All Sources')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('All Sources'));
+    fireEvent.click(screen.getByLabelText('local-search'));
+
+    // R-2.8: Source is chipped like every other dimension…
+    await waitFor(() => expect(screen.getByTitle('origin: local-search')).toBeTruthy());
+    // …and individually removable.
+    fireEvent.click(screen.getByLabelText('Remove origin filter local-search'));
+    await waitFor(() => expect(screen.queryByTitle('origin: local-search')).toBeNull());
+
+    // R-2.9: and "Clear all" takes it out along with the other dimensions.
+    fireEvent.click(screen.getByText('All Sources'));
+    fireEvent.click(screen.getByLabelText('local-search'));
+    await waitFor(() => expect(screen.getByTitle('origin: local-search')).toBeTruthy());
+    fireEvent.click(screen.getByText('Clear all'));
+    await waitFor(() => expect(screen.queryByTitle('origin: local-search')).toBeNull());
+  });
 });
 
 describe('blend toggle control', () => {
