@@ -106,6 +106,51 @@ describe('GraphExplorer mount (test infrastructure smoke)', () => {
   });
 });
 
+// Drives the hidden file input the way the browser does. `FileReader` is async
+// even in jsdom, so callers await the resulting canvas load.
+async function uploadFile(container, { name = 'external.json', graph = uploadGraph } = {}) {
+  const input = container.querySelector('input[type="file"]');
+  const file = new File([JSON.stringify(graph)], name, { type: 'application/json' });
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  fireEvent.change(input);
+}
+
+const uploadGraph = {
+  nodes: [{ id: 'x.ts', name: 'x.ts', type: 'file', repo: 'ext', project: 'lib', tags: [] }],
+  links: [],
+};
+
+describe('derived display graph (baseGraph / upload / blend)', () => {
+  it('re-derives on blend toggle without re-fetching /api/graph', async () => {
+    const { container, fetchMock, graphLoad } = await renderExplorer();
+    expect(fetchCallsTo(fetchMock, '/api/graph')).toBe(1);
+
+    await uploadFile(container);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+    // Upload alone: only the uploaded nodes, tagged with the file's own label.
+    let [shown] = graphLoad.mock.calls[1];
+    expect(shown.nodes.map((n) => n.id)).toEqual(['x.ts']);
+    expect(shown.nodes.every((n) => n.__origin === 'external.json')).toBe(true);
+
+    const toggle = screen.getByLabelText('Blend local-search');
+
+    // Blend on: both halves on the canvas, each still carrying its own origin.
+    fireEvent.click(toggle);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(3));
+    [shown] = graphLoad.mock.calls[2];
+    expect(shown.nodes.map((n) => n.id).sort()).toEqual(['a.py', 'b.md', 'x.ts']);
+
+    // Blend off: back to the upload, recovered from state rather than the wire.
+    fireEvent.click(toggle);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(4));
+    [shown] = graphLoad.mock.calls[3];
+    expect(shown.nodes.map((n) => n.id)).toEqual(['x.ts']);
+
+    // The whole sequence went to the network exactly once, at mount.
+    expect(fetchCallsTo(fetchMock, '/api/graph')).toBe(1);
+  });
+});
+
 describe('origin tagging at the load sites', () => {
   it('tags every node of the fetched graph with __origin local-search', async () => {
     const { graphLoad } = await renderExplorer();

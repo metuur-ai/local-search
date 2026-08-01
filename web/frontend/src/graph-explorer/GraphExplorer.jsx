@@ -11,7 +11,7 @@ import {
   synthesizeGraphData, normalizeGraph, toGraph,
   applyFilters, collectFilterOptions,
   EDGE_FAMILY_ORDER, countEdgeFamilies, defaultFamilies,
-  tagOrigin,
+  tagOrigin, mergeGraphs,
 } from './graphData.js';
 import { useForceGraph } from './useForceGraph.js';
 import { FilterDropdown } from './components/FilterDropdown.jsx';
@@ -24,6 +24,10 @@ import { RefreshReposPanel } from './components/RefreshReposPanel.jsx';
 
 const EMPTY_MULTI = () => ({ type: new Set(), repo: new Set(), project: new Set(), tag: new Set() });
 
+// One shared instance, so the derive can recognise "nothing has loaded yet" by
+// identity and skip the load that would otherwise flash an empty canvas.
+const EMPTY_GRAPH = { nodes: [], links: [] };
+
 // Steady-state trigger labels + option-search placeholders per filter dimension.
 const DIMS = [
   { key: 'type', emptyLabel: 'All Files Types', searchLabel: 'File Types' },
@@ -35,6 +39,14 @@ const DIMS = [
 export function GraphExplorer() {
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // The two datasets are held independently and the graph on screen is derived
+  // from them, so the blend toggle is a re-derivation rather than a reload: an
+  // upload never overwrites the base graph, and turning blend off never has to
+  // go back to the network to recover either half.
+  const [baseGraph, setBaseGraph] = useState(EMPTY_GRAPH);
+  const [upload, setUpload] = useState(null);
+  const [blend, setBlend] = useState(false);
 
   const [originalData, setOriginalData] = useState({ nodes: [], links: [] });
   const [activeData, setActiveData] = useState({ nodes: [], links: [] });
@@ -94,10 +106,29 @@ export function GraphExplorer() {
   useEffect(() => {
     let active = true;
     fetchGraph()
-      .then((data) => { if (active) loadNewData(tagOrigin(toGraph(data), 'local-search')); })
+      .then((data) => { if (active) setBaseGraph(tagOrigin(toGraph(data), 'local-search')); })
       .catch(() => { /* Upload a file or refresh from repos to start. */ });
     return () => { active = false; };
-  }, [loadNewData]);
+  }, []);
+
+  // What is on screen, derived from the two sources plus the toggle.
+  const displayGraph = useMemo(() => {
+    if (!upload) return baseGraph;
+    if (!blend) return upload.graph;
+    return mergeGraphs(baseGraph, upload.graph);
+  }, [baseGraph, upload, blend]);
+
+  // Push the derived graph to the canvas whenever it is a different graph than
+  // the one already loaded. Identity, not the inputs: a source can change
+  // without changing what the user is looking at, and reloading then would reset
+  // filters and refit the viewport for no visible reason. It also covers the
+  // first render, where `baseGraph` is still the shared empty value.
+  const loadedRef = useRef(EMPTY_GRAPH);
+  useEffect(() => {
+    if (displayGraph === loadedRef.current) return;
+    loadedRef.current = displayGraph;
+    loadNewData(displayGraph);
+  }, [displayGraph, loadNewData]);
 
   // Re-filter (debounced, matching the original 300ms) whenever a filter changes.
   useEffect(() => {
@@ -135,12 +166,16 @@ export function GraphExplorer() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(event.target.result);
+        const text = event.target.result;
+        const json = JSON.parse(text);
         let g;
         if (Array.isArray(json)) g = synthesizeGraphData(json);
         else if (json.nodes && (json.edges || json.links)) g = normalizeGraph(json);
         else throw new Error('Format must be flat array or {nodes, links}');
-        loadNewData(g);
+        // The raw text is kept alongside the parsed graph: it is the one form of
+        // the upload that stays JSON-serializable no matter what the force layout
+        // does to the objects it is handed.
+        setUpload({ filename: file.name, text, graph: tagOrigin(g, file.name) });
         setShowReset(true);
       } catch (err) {
         alert('Error parsing JSON: ' + err.message);
@@ -149,19 +184,21 @@ export function GraphExplorer() {
       }
     };
     reader.readAsText(file);
-  }, [loadNewData]);
+  }, []);
 
   const onReset = useCallback(() => {
+    setUpload(null);
+    setBlend(false);
     fetchGraph()
-      .then((data) => loadNewData(tagOrigin(toGraph(data), 'local-search')))
-      .catch(() => loadNewData(tagOrigin(synthesizeGraphData([]), 'local-search')));
+      .then((data) => setBaseGraph(tagOrigin(toGraph(data), 'local-search')))
+      .catch(() => setBaseGraph(tagOrigin(synthesizeGraphData([]), 'local-search')));
     setShowReset(false);
-  }, [loadNewData]);
+  }, []);
 
   const onRebuilt = useCallback((g) => {
-    loadNewData(tagOrigin(g, 'local-search'));
+    setBaseGraph(tagOrigin(g, 'local-search'));
     setShowReset(true);
-  }, [loadNewData]);
+  }, []);
 
   // Stats readout, derived from the active (filtered) graph.
   const stats = useMemo(() => ({
@@ -268,6 +305,17 @@ export function GraphExplorer() {
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
               Upload JSON
             </button>
+            {upload && (
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  checked={blend}
+                  onChange={(e) => setBlend(e.currentTarget.checked)}
+                />
+                <span class="track" />
+                Blend local-search
+              </label>
+            )}
             {showReset && (
               <button type="button" class="btn btn-primary" onClick={onReset}>Reset</button>
             )}

@@ -192,6 +192,20 @@ export function tagOrigin(graph, origin) {
   };
 }
 
+// Combine two already-tagged graphs into one. The nodes and links are structural
+// copies, never the inputs' own objects: the force layout rewrites `link.source`
+// and `link.target` in place, and `applyFilters` aliases rather than copies, so
+// concatenating references would hand the layout the very objects the sources are
+// re-derived from — and leave them circular.
+export function mergeGraphs(a, b) {
+  const nodesOf = (g) => (g.nodes || []).map((n) => ({ ...n }));
+  const linksOf = (g) => (g.links || []).map((l) => ({ ...l }));
+  return {
+    nodes: [...nodesOf(a), ...nodesOf(b)],
+    links: [...linksOf(a), ...linksOf(b)],
+  };
+}
+
 // Count the node ids present in both graphs. Ids alone decide a collision — two
 // nodes sharing an id are a conflict however different the rest of them is.
 export function detectIdCollisions(a, b) {
