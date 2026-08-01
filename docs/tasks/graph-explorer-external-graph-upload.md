@@ -51,7 +51,7 @@ run first even though they sit last in the EARS document.
     and assert it survives untouched while `__origin` is set.
   - landed: 339bd1c — web/frontend/src/graph-explorer/graphData.js, web/frontend/test/graphData.test.js
 
-- [ ] 1.2 Tag at every load site, before any merge (deps: 1.1, est: ~15m)
+- [x] 1.2 Tag at every load site, before any merge (deps: 1.1, est: ~15m)
   - why: a merged graph is only separable if each contributing dataset was labelled on the
     way in; tagging after the merge is too late to tell the halves apart.
   - acceptance: R-1.2, R-1.3, R-1.6 — `'local-search'` on the `fetchGraph` and
@@ -125,7 +125,7 @@ run first even though they sit last in the EARS document.
 
 ## Unit 3: Blend state and the derived display graph
 
-- [ ] 3.1 Split state into `baseGraph` / `upload` / `blend` with a derived display graph
+- [x] 3.1 Split state into `baseGraph` / `upload` / `blend` with a derived display graph
       (deps: 1.2, 0.1, est: ~60m)
   - why: blending must be a toggle the user can flip after the fact, not a decision frozen at
     upload time — which means the displayed graph has to be derived from its inputs rather
@@ -220,7 +220,7 @@ run first even though they sit last in the EARS document.
 
 ## Unit 6: Format guide in the help modal
 
-- [ ] 6.1 Document the node-link shape (deps: 9.1, est: ~40m)
+- [x] 6.1 Document the node-link shape (deps: 9.1, est: ~40m)
   - why: the accepted shapes are currently discoverable only by reading `graphData.js`, which
     is not a reasonable ask of someone trying to produce a file.
   - acceptance: R-6.1, R-6.2, R-6.3, R-6.4, R-6.5, R-6.6 — `{ nodes, links }` documented;
@@ -230,7 +230,7 @@ run first even though they sit last in the EARS document.
     field is one the parser actually reads.
   - landed:
 
-- [ ] 6.2 Document the flat-array shape and its limits (deps: 9.1, est: ~30m)
+- [x] 6.2 Document the flat-array shape and its limits (deps: 9.1, est: ~30m)
   - why: the flat-array shape is the easy one to hand-write and the one whose limitations are
     invisible until the graph comes out wrong.
   - acceptance: R-6.7, R-6.8, R-6.9, R-6.10 — array-of-file-records documented; stated that
