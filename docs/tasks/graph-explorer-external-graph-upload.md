@@ -189,7 +189,7 @@ run first even though they sit last in the EARS document.
   - why: re-uploading a multi-megabyte file after every reload makes the feature tedious
     enough not to use. Persisting text rather than the parsed object removes the only failure
     mode that is silent and permanent.
-  - acceptance: R-5.1, R-5.2, R-5.3, R-5.4 — `{ filename, text, blend }` under a single
+  - acceptance: R-5.1, R-5.2, R-5.3 — `{ filename, text, blend }` under a single
     namespaced `sessionStorage` key; written on upload and on toggle; the length checked
     against the budget in UTF-16 code units before writing.
   - verify: component test uploads, asserts the key contents; asserts an over-budget file
@@ -199,7 +199,7 @@ run first even though they sit last in the EARS document.
 - [x] 5.2 Restore on mount, ahead of the initial fetch (deps: 5.1, est: ~35m)
   - why: the point of persistence is that the reload lands on the view the user left, not on
     the local-search graph followed by a flash of replacement.
-  - acceptance: R-5.5, R-5.6, R-5.7 — restore runs before the initial `/api/graph` resolves;
+  - acceptance: R-5.4, R-5.5, R-5.7 — restore runs before the initial `/api/graph` resolves;
     the upload is re-parsed from the stored text; a stored value that is absent,
     unparseable or malformed leaves the page exactly as it is today.
   - verify: component test seeds `sessionStorage`, mounts, asserts the restored dataset
@@ -209,12 +209,12 @@ run first even though they sit last in the EARS document.
 - [x] 5.3 Reset clears persistence; nothing goes server-side (deps: 5.1, est: ~15m)
   - why: an escape hatch that leaves the stored copy behind is not an escape hatch. And an
     uploaded file is the user's — it must not reach `localStorage` or any endpoint.
-  - acceptance: R-5.8, R-5.9, R-5.10 — Reset removes the entry and restores the fetched
+  - acceptance: R-5.9, R-5.10 — Reset removes the entry and restores the fetched
     graph; the upload is never written to `localStorage`; no upload is ever sent to a server
     endpoint.
   - verify: component test asserts the key is gone after Reset; assert no `fetch` call
     carries the upload body.
-  - landed: 5398dd8 — web/frontend/test/graphExplorer.test.jsx
+  - landed: 12e89b8 — web/frontend/test/graphExplorer.test.jsx
 
 ---
 
@@ -240,7 +240,7 @@ run first even though they sit last in the EARS document.
     renders as described.
   - landed:
 
-- [ ] 6.3 Route parse failures into the guide (deps: 6.1, est: ~25m)
+- [x] 6.3 Route parse failures into the guide (deps: 6.1, est: ~25m)
   - why: the moment the user has the question "what JSON does this accept?" is the moment the
     file failed — and today that moment is a dead-end `alert()`.
   - acceptance: R-6.11, R-6.12, R-6.13 — an inline error containing a control that opens the

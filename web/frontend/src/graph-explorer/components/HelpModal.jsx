@@ -43,12 +43,20 @@ function CopyPrompt({ label, prompt, testid, fallbackTestid }) {
   );
 }
 
-export function HelpModal({ onClose }) {
+export function HelpModal({ onClose, focusSection = null }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  // Opened from a parse error, the modal has to land on the section that answers
+  // the question. Opened from the help icon there is no section, and it opens at
+  // the top the way it always has.
+  useEffect(() => {
+    if (!focusSection) return;
+    document.querySelector(`[data-testid="help-${focusSection}"]`)?.scrollIntoView();
+  }, [focusSection]);
 
   return (
     <div class="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>

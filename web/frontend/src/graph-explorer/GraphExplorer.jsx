@@ -89,6 +89,9 @@ export function GraphExplorer() {
   // Said once, at upload time. Letting the write throw instead would report the
   // problem only after the fact, on a reload that has already lost the file.
   const [oversizeNotice, setOversizeNotice] = useState(null);
+  // A file that failed to parse is the one moment the user definitely wants the
+  // format guide, so the error carries the way in rather than being a dead end.
+  const [parseErrorNotice, setParseErrorNotice] = useState(null);
 
   const [originalData, setOriginalData] = useState({ nodes: [], links: [] });
   const [activeData, setActiveData] = useState({ nodes: [], links: [] });
@@ -107,6 +110,9 @@ export function GraphExplorer() {
   const [physicsRunning, setPhysicsRunning] = useState(true);
   const [showLabels, setShowLabels] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  // Which section the modal should land on. `null` opens it at the top, the way
+  // the help icon always has.
+  const [helpSection, setHelpSection] = useState(null);
   const [openDropdown, setOpenDropdown] = useState(null);
   // A restored upload arrives with its escape hatch: without this the Reset
   // button is hidden after a reload and the upload cannot be cleared.
@@ -304,13 +310,14 @@ export function GraphExplorer() {
         setUpload(parseUpload(text, file.name));
         // A new file is a new question about collisions; the old verdict goes.
         setCollisionNotice(null);
+        setParseErrorNotice(null);
         setOversizeNotice(fitsStorageBudget(text) ? null : (
           `${file.name} is too large to survive a reload — it stays on screen, `
           + 'but re-upload it after refreshing the page.'
         ));
         setShowReset(true);
       } catch (err) {
-        alert('Error parsing JSON: ' + err.message);
+        setParseErrorNotice(`${file.name} could not be read: ${err.message}`);
       } finally {
         e.target.value = '';
       }
@@ -435,7 +442,12 @@ export function GraphExplorer() {
           {/* actions */}
           <div class="actions">
             <input type="file" ref={fileInputRef} accept=".json" class="hidden" onChange={onUpload} />
-            <button type="button" class="btn" onClick={() => fileInputRef.current?.click()}>
+            <button
+              type="button"
+              class="btn"
+              title="Accepts { nodes, links } or a flat array of file records"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
               Upload JSON
             </button>
@@ -567,6 +579,19 @@ export function GraphExplorer() {
           <div id="graph-oversize-notice" role="status">{oversizeNotice}</div>
         )}
 
+        {parseErrorNotice && (
+          <div id="graph-parse-error-notice" role="alert">
+            {parseErrorNotice}{' '}
+            <button
+              type="button"
+              class="link-btn"
+              onClick={() => { setHelpSection('graph-format'); setShowHelp(true); }}
+            >
+              See the accepted formats
+            </button>
+          </div>
+        )}
+
         {emptyNotice && (
           <div id="graph-empty-notice">
             No cached graph yet. Click <b>Refresh from repos</b> to build one.
@@ -594,7 +619,12 @@ export function GraphExplorer() {
         </span>
       </footer>
 
-      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+      {showHelp && (
+        <HelpModal
+          focusSection={helpSection}
+          onClose={() => { setShowHelp(false); setHelpSection(null); }}
+        />
+      )}
     </>
   );
 }

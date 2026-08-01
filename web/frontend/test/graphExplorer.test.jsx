@@ -110,9 +110,12 @@ describe('GraphExplorer mount (test infrastructure smoke)', () => {
 
 // Drives the hidden file input the way the browser does. `FileReader` is async
 // even in jsdom, so callers await the resulting canvas load.
-async function uploadFile(container, { name = 'external.json', graph = uploadGraph } = {}) {
+// `text` bypasses the stringify so a test can hand over bytes that are not
+// valid JSON, which is the only way to reach the parse-failure path.
+async function uploadFile(container, { name = 'external.json', graph = uploadGraph, text } = {}) {
   const input = container.querySelector('input[type="file"]');
-  const file = new File([JSON.stringify(graph)], name, { type: 'application/json' });
+  const body = text === undefined ? JSON.stringify(graph) : text;
+  const file = new File([body], name, { type: 'application/json' });
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
   fireEvent.change(input);
 }
@@ -834,5 +837,69 @@ describe('Reset clears the persisted upload, and nothing leaves the tab', () => 
       expect(JSON.stringify(init || {})).not.toContain('x.ts');
       expect(JSON.stringify(init || {})).not.toContain(text);
     });
+  });
+});
+
+describe('a parse failure routes the user into the format guide', () => {
+  // R-6.11. The moment a file fails is the moment the user has the question the
+  // guide answers, so the error is the door to it — not a dismissed alert().
+  it('renders an inline error whose control opens the guide, and never alerts', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    // jsdom implements no layout, so `scrollIntoView` does not exist to spy on.
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const { container } = await renderExplorer();
+
+    await uploadFile(container, { name: 'broken.json', text: '{not json' });
+
+    const notice = await screen.findByRole('alert');
+    expect(notice.textContent).toMatch(/broken\.json/);
+    // The dead end is gone: nothing was thrown at a modal the user must dismiss.
+    expect(alertSpy).not.toHaveBeenCalled();
+
+    // The guide is not open until the user asks for it…
+    expect(screen.queryByTestId('help-graph-format')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /accepted format/i }));
+
+    // …and when they do, it opens on the format section rather than the top.
+    const section = await screen.findByTestId('help-graph-format');
+    expect(section).toBeTruthy();
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(scrollIntoView.mock.instances).toContain(section);
+
+    alertSpy.mockRestore();
+    delete Element.prototype.scrollIntoView;
+  });
+
+  it('clears the error once a good file parses', async () => {
+    const { container } = await renderExplorer();
+
+    await uploadFile(container, { name: 'broken.json', text: '{not json' });
+    await screen.findByRole('alert');
+
+    await uploadFile(container);
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  });
+
+  // R-6.13. The error path is the whole discoverability story; a dedicated
+  // toolbar button for the guide would spend default-page space to solve it
+  // twice.
+  it('adds no toolbar control for the guide', async () => {
+    const { container } = await renderExplorer();
+    const labels = [...container.querySelectorAll('.actions button')]
+      .map((b) => (b.textContent.trim() || b.getAttribute('aria-label')));
+
+    expect(labels).toEqual(['Upload JSON', 'Refresh from repos', 'Help']);
+  });
+
+  // R-6.12. Before the file picker opens, not after the file fails.
+  it('names the accepted shapes in the Upload control hover text', async () => {
+    const { container } = await renderExplorer();
+    const upload = [...container.querySelectorAll('.actions button')]
+      .find((b) => b.textContent.includes('Upload JSON'));
+
+    expect(upload.getAttribute('title')).toMatch(/nodes/i);
+    expect(upload.getAttribute('title')).toMatch(/links/i);
+    expect(upload.getAttribute('title')).toMatch(/array/i);
   });
 });

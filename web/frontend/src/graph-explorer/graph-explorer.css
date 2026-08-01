@@ -499,9 +499,17 @@ body {
 
 /* refused-blend notice — top of the canvas, so it does not sit over the graph
    the user still has (the upload is loaded standalone behind it) */
-#graph-collision-notice {
+#graph-collision-notice,
+#graph-parse-error-notice {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 15;
   padding: 10px 16px; border-radius: 10px; max-width: 520px;
   background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
   font-family: var(--font-sans); font-size: 13px; color: var(--ink-dim); text-align: center;
+}
+
+/* The way into the format guide has to read as a link, not as chrome the eye
+   skips: a parse error the user cannot act on is the alert() all over again. */
+#graph-parse-error-notice .link-btn {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; color: var(--accent); text-decoration: underline;
 }
