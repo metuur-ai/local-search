@@ -232,3 +232,125 @@ describe('loadNewData options bag', () => {
     expect(searchBox.value).toBe('');
   });
 });
+
+describe('replace, rebuild and no-op paths', () => {
+  it('replaces the upload with a second one rather than stacking them', async () => {
+    const { container, graphLoad } = await renderExplorer();
+
+    await uploadFile(container, { name: 'first.json', graph: uploadGraph });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+
+    const second = {
+      nodes: [{ id: 'y.rb', name: 'y.rb', type: 'file', repo: 'ext2', project: 'lib', tags: [] }],
+      links: [],
+    };
+    await uploadFile(container, { name: 'second.json', graph: second });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(3));
+
+    // One dataset on screen — the newest — not both uploads concatenated.
+    const [shown] = graphLoad.mock.calls[2];
+    expect(shown.nodes.map((n) => n.id)).toEqual(['y.rb']);
+    expect(shown.nodes.every((n) => n.__origin === 'second.json')).toBe(true);
+  });
+
+  it('keeps the upload and the blend across a RefreshReposPanel rebuild', async () => {
+    const rebuilt = {
+      nodes: [{ id: 'c.go', name: 'c.go', type: 'file', repo: 'beta', project: 'cmd', tags: [] }],
+      links: [],
+    };
+    const fetchMock = vi.fn((url) => {
+      const u = String(url);
+      if (u.startsWith('/api/graph/refresh')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(rebuilt) });
+      }
+      if (u.startsWith('/api/graph')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(fixtureGraph) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+    global.fetch = fetchMock;
+    const { container } = render(<GraphExplorer />);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalled());
+
+    await uploadFile(container);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalledTimes(2));
+    const toggle = screen.getByLabelText('Blend local-search');
+    fireEvent.click(toggle);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalledTimes(3));
+
+    fireEvent.click(screen.getByText('Refresh from repos'));
+    fireEvent.click(await screen.findByText('Rebuild graph'));
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalledTimes(4));
+
+    // The rebuild replaced the base half only; the upload and the blend survive.
+    const [shown] = graphMock.load.mock.calls[3];
+    expect(shown.nodes.map((n) => n.id).sort()).toEqual(['c.go', 'x.ts']);
+    expect(screen.getByLabelText('Blend local-search').checked).toBe(true);
+  });
+
+  it('does not reload when a rebuild leaves the displayed graph unchanged', async () => {
+    const rebuilt = {
+      nodes: [{ id: 'c.go', name: 'c.go', type: 'file', repo: 'beta', project: 'cmd', tags: [] }],
+      links: [],
+    };
+    const fetchMock = vi.fn((url) => {
+      const u = String(url);
+      if (u.startsWith('/api/graph/refresh')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(rebuilt) });
+      }
+      if (u.startsWith('/api/graph')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(fixtureGraph) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+    global.fetch = fetchMock;
+    const { container } = render(<GraphExplorer />);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalled());
+
+    // Upload shown standalone: the base half is off screen.
+    await uploadFile(container);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalledTimes(2));
+
+    fireEvent.click(screen.getByText('Refresh from repos'));
+    fireEvent.click(await screen.findByText('Rebuild graph'));
+    await waitFor(() => expect(fetchCallsTo(fetchMock, '/api/graph/refresh')).toBe(1));
+    // Let the rebuild's state update render on its own, before the toggle can
+    // coalesce with it — otherwise a reload it caused would hide inside the
+    // toggle's.
+    await new Promise((r) => { setTimeout(r, 20); });
+    expect(graphMock.load).toHaveBeenCalledTimes(2);
+
+    // Flipping the blend on is what proves the rebuild landed in `baseGraph`:
+    // the merged half is the rebuilt graph, not the mount fetch's.
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalledTimes(3));
+    const [shown] = graphMock.load.mock.calls[2];
+    expect(shown.nodes.map((n) => n.id).sort()).toEqual(['c.go', 'x.ts']);
+
+    // Three loads total: mount, upload, toggle. The rebuild itself contributed
+    // none — the user was not looking at the half it replaced, and reloading
+    // would have reset their filters and refit the viewport for nothing.
+    expect(graphMock.load).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not flash the empty-graph notice before the mount fetch resolves', async () => {
+    let resolveGraph;
+    const pending = new Promise((res) => { resolveGraph = res; });
+    global.fetch = vi.fn((url) => {
+      if (String(url).startsWith('/api/graph')) {
+        return Promise.resolve({ ok: true, json: () => pending });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+
+    render(<GraphExplorer />);
+    // First paint, fetch still in flight: no notice, and nothing pushed to the
+    // canvas — an empty load here would clear it and then immediately refill.
+    expect(document.querySelector('#graph-empty-notice')).toBe(null);
+    expect(graphMock.load).not.toHaveBeenCalled();
+
+    resolveGraph(fixtureGraph);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalledTimes(1));
+    expect(document.querySelector('#graph-empty-notice')).toBe(null);
+  });
+});
