@@ -204,9 +204,9 @@ run first even though they sit last in the EARS document.
     unparseable or malformed leaves the page exactly as it is today.
   - verify: component test seeds `sessionStorage`, mounts, asserts the restored dataset
     renders and the blend flag is honoured; a corrupted-value test asserts a clean fallback.
-  - landed: f827eaa — web/frontend/src/graph-explorer/GraphExplorer.jsx, web/frontend/test/graphExplorer.test.jsx
+  - landed: f78ffd2 — web/frontend/src/graph-explorer/GraphExplorer.jsx, web/frontend/test/graphExplorer.test.jsx
 
-- [ ] 5.3 Reset clears persistence; nothing goes server-side (deps: 5.1, est: ~15m)
+- [x] 5.3 Reset clears persistence; nothing goes server-side (deps: 5.1, est: ~15m)
   - why: an escape hatch that leaves the stored copy behind is not an escape hatch. And an
     uploaded file is the user's — it must not reach `localStorage` or any endpoint.
   - acceptance: R-5.8, R-5.9, R-5.10 — Reset removes the entry and restores the fetched
@@ -214,7 +214,7 @@ run first even though they sit last in the EARS document.
     endpoint.
   - verify: component test asserts the key is gone after Reset; assert no `fetch` call
     carries the upload body.
-  - landed:
+  - landed: 5398dd8 — web/frontend/test/graphExplorer.test.jsx
 
 ---
 

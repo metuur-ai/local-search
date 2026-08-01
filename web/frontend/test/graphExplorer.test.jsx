@@ -782,3 +782,57 @@ describe('restoring the upload from sessionStorage on mount', () => {
     expect(screen.queryByLabelText('Blend local-search')).toBeNull();
   });
 });
+
+describe('Reset clears the persisted upload, and nothing leaves the tab', () => {
+  it('removes the stored entry and puts the base graph back on screen', async () => {
+    const { container, graphLoad } = await renderExplorer();
+    await uploadFile(container);
+    await waitFor(() => expect(sessionStorage.getItem(UPLOAD_STORAGE_KEY)).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Reset'));
+
+    // The escape hatch is only an escape hatch if the stored copy goes too —
+    // otherwise the next reload brings the upload straight back.
+    await waitFor(() => expect(sessionStorage.getItem(UPLOAD_STORAGE_KEY)).toBeNull());
+    await waitFor(() => {
+      const last = graphLoad.mock.calls[graphLoad.mock.calls.length - 1][0];
+      expect(last.nodes.map((n) => n.id)).toEqual(['a.py', 'b.md']);
+    });
+    // Blend is off, so its toggle is gone with the upload it belonged to.
+    expect(screen.queryByLabelText('Blend local-search')).toBeNull();
+  });
+
+  it('clears a restored upload too, so the reload cannot resurrect it', async () => {
+    writeStoredUpload({
+      filename: 'restored.json', text: JSON.stringify(uploadGraph), blend: true,
+    });
+    await renderExplorer();
+
+    fireEvent.click(screen.getByText('Reset'));
+
+    await waitFor(() => expect(sessionStorage.getItem(UPLOAD_STORAGE_KEY)).toBeNull());
+  });
+
+  it('never writes the upload to localStorage or sends it to a server', async () => {
+    const { container, fetchMock } = await renderExplorer();
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
+    await uploadFile(container);
+    await waitFor(() => expect(sessionStorage.getItem(UPLOAD_STORAGE_KEY)).toBeTruthy());
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(JSON.parse(sessionStorage.getItem(UPLOAD_STORAGE_KEY)).blend)
+      .toBe(true));
+
+    // The file is the user's: it stays in this tab.
+    expect(localStorage.length).toBe(0);
+    expect(setItem.mock.instances.every((s) => s === sessionStorage)).toBe(true);
+    setItem.mockRestore();
+
+    // …and no request carries it. Every call is inspected, not just /api/graph.
+    const text = JSON.stringify(uploadGraph);
+    fetchMock.mock.calls.forEach(([, init]) => {
+      expect(JSON.stringify(init || {})).not.toContain('x.ts');
+      expect(JSON.stringify(init || {})).not.toContain(text);
+    });
+  });
+});
