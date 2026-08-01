@@ -14,7 +14,7 @@ import {
   tagOrigin, mergeGraphs, copyGraph, normalizeValsByOrigin, detectIdCollisions,
 } from './graphData.js';
 import {
-  fitsStorageBudget, writeStoredUpload, clearStoredUpload,
+  fitsStorageBudget, readStoredUpload, writeStoredUpload, clearStoredUpload,
 } from './uploadStorage.js';
 import { useForceGraph } from './useForceGraph.js';
 import { FilterDropdown } from './components/FilterDropdown.jsx';
@@ -42,6 +42,34 @@ const DIMS = [
   { key: 'origin', emptyLabel: 'All Sources', searchLabel: 'Sources' },
 ];
 
+// The one parse path for an uploaded file, used by both a fresh pick and a
+// restore: a stored file has to be accepted, tagged and rejected on exactly the
+// same terms as the file it came from. Throws on a format the viewer cannot read.
+function parseUpload(text, filename) {
+  const json = JSON.parse(text);
+  let g;
+  if (Array.isArray(json)) g = synthesizeGraphData(json);
+  else if (json.nodes && (json.edges || json.links)) g = normalizeGraph(json);
+  else throw new Error('Format must be flat array or {nodes, links}');
+  // The raw text is kept alongside the parsed graph: it is the one form of the
+  // upload that stays JSON-serializable no matter what the force layout does to
+  // the objects it is handed.
+  return { filename, text, graph: tagOrigin(g, filename) };
+}
+
+// Read back what the previous visit left, if anything. Absent, unreadable or
+// unparseable all come back as `null` — a bad stored value costs the upload,
+// never the page.
+function restoreUpload() {
+  const stored = readStoredUpload();
+  if (!stored) return null;
+  try {
+    return { upload: parseUpload(stored.text, stored.filename), blend: stored.blend };
+  } catch {
+    return null;
+  }
+}
+
 export function GraphExplorer() {
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -50,9 +78,13 @@ export function GraphExplorer() {
   // from them, so the blend toggle is a re-derivation rather than a reload: an
   // upload never overwrites the base graph, and turning blend off never has to
   // go back to the network to recover either half.
+  // Restored as lazy initial state, not in an effect: an initializer runs during
+  // the first render, so the stored upload is what the canvas opens on rather
+  // than something that replaces the local-search graph a moment after it lands.
+  const [restored] = useState(restoreUpload);
   const [baseGraph, setBaseGraph] = useState(EMPTY_GRAPH);
-  const [upload, setUpload] = useState(null);
-  const [blend, setBlend] = useState(false);
+  const [upload, setUpload] = useState(() => (restored ? restored.upload : null));
+  const [blend, setBlend] = useState(() => (restored ? restored.blend : false));
   const [collisionNotice, setCollisionNotice] = useState(null);
   // Said once, at upload time. Letting the write throw instead would report the
   // problem only after the fact, on a reload that has already lost the file.
@@ -76,7 +108,9 @@ export function GraphExplorer() {
   const [showLabels, setShowLabels] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [showReset, setShowReset] = useState(false);
+  // A restored upload arrives with its escape hatch: without this the Reset
+  // button is hidden after a reload and the upload cannot be cleared.
+  const [showReset, setShowReset] = useState(() => restored !== null);
   const [emptyNotice, setEmptyNotice] = useState(false);
 
   const {
@@ -267,15 +301,7 @@ export function GraphExplorer() {
     reader.onload = (event) => {
       try {
         const text = event.target.result;
-        const json = JSON.parse(text);
-        let g;
-        if (Array.isArray(json)) g = synthesizeGraphData(json);
-        else if (json.nodes && (json.edges || json.links)) g = normalizeGraph(json);
-        else throw new Error('Format must be flat array or {nodes, links}');
-        // The raw text is kept alongside the parsed graph: it is the one form of
-        // the upload that stays JSON-serializable no matter what the force layout
-        // does to the objects it is handed.
-        setUpload({ filename: file.name, text, graph: tagOrigin(g, file.name) });
+        setUpload(parseUpload(text, file.name));
         // A new file is a new question about collisions; the old verdict goes.
         setCollisionNotice(null);
         setOversizeNotice(fitsStorageBudget(text) ? null : (

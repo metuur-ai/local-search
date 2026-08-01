@@ -701,3 +701,84 @@ describe('persisting the upload to sessionStorage', () => {
     }
   });
 });
+
+describe('restoring the upload from sessionStorage on mount', () => {
+  // A fetch stub whose /api/graph promise is held open until the test releases
+  // it, so "restored before the initial fetch resolves" can be asserted as an
+  // ordering fact rather than inferred from the end state.
+  function stubDeferredFetch(graph = fixtureGraph) {
+    let release;
+    const pending = new Promise((resolve) => { release = () => resolve(graph); });
+    global.fetch = vi.fn((url) => {
+      if (String(url).startsWith('/api/graph')) {
+        return Promise.resolve({ ok: true, json: () => pending });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+    return () => release();
+  }
+
+  it('puts the stored upload on the canvas before /api/graph resolves', async () => {
+    writeStoredUpload({
+      filename: 'restored.json', text: JSON.stringify(uploadGraph), blend: false,
+    });
+    const releaseFetch = stubDeferredFetch();
+
+    render(<GraphExplorer />);
+
+    // First thing the canvas ever sees is the restored upload — no flash of the
+    // local-search graph, which has not even resolved yet.
+    await waitFor(() => expect(forceGraph.load).toHaveBeenCalledTimes(1));
+    const [shown] = forceGraph.load.mock.calls[0];
+    expect(shown.nodes.map((n) => n.id)).toEqual(['x.ts']);
+    // Re-parsed from the stored text through the upload path: origin-tagged with
+    // the stored filename.
+    expect(shown.nodes.every((n) => n.__origin === 'restored.json')).toBe(true);
+    // The escape hatch survives the reload too.
+    expect(screen.getByText('Reset')).toBeTruthy();
+
+    // The base graph landing afterwards fills baseGraph without displacing the
+    // restored upload — the canvas is not reloaded at all…
+    releaseFetch();
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(forceGraph.load).toHaveBeenCalledTimes(1);
+    // …yet blending now finds both halves, which is only possible if the fetch
+    // populated baseGraph behind the restored upload.
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(forceGraph.load).toHaveBeenCalledTimes(2));
+    expect(forceGraph.load.mock.calls[1][0].nodes.map((n) => n.id).sort())
+      .toEqual(['a.py', 'b.md', 'x.ts']);
+  });
+
+  it('honours a stored blend flag once the base graph arrives', async () => {
+    writeStoredUpload({
+      filename: 'restored.json', text: JSON.stringify(uploadGraph), blend: true,
+    });
+    stubFetch();
+
+    render(<GraphExplorer />);
+
+    await waitFor(() => {
+      const calls = forceGraph.load.mock.calls;
+      expect(calls[calls.length - 1][0].nodes.length).toBe(3);
+    });
+    const last = forceGraph.load.mock.calls[forceGraph.load.mock.calls.length - 1][0];
+    expect(last.nodes.map((n) => n.id).sort()).toEqual(['a.py', 'b.md', 'x.ts']);
+    expect(screen.getByLabelText('Blend local-search').checked).toBe(true);
+  });
+
+  it('falls back to no upload when the stored value is malformed', async () => {
+    // Well-formed envelope, unparseable payload — the failure the restore path
+    // owns, as opposed to a missing key.
+    sessionStorage.setItem(
+      UPLOAD_STORAGE_KEY,
+      JSON.stringify({ filename: 'broken.json', text: '{not json', blend: true }),
+    );
+    const { graphLoad } = await renderExplorer();
+
+    // Exactly today's page: the fetched graph, blend off, no upload.
+    expect(graphLoad).toHaveBeenCalledTimes(1);
+    expect(graphLoad.mock.calls[0][0].nodes.map((n) => n.id)).toEqual(['a.py', 'b.md']);
+    expect(screen.queryByLabelText('Blend local-search')).toBeNull();
+  });
+});

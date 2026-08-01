@@ -196,7 +196,7 @@ run first even though they sit last in the EARS document.
     reports at upload time rather than failing silently.
   - landed: web/frontend/src/graph-explorer/uploadStorage.js, web/frontend/src/graph-explorer/GraphExplorer.jsx, web/frontend/test/graphExplorer.test.jsx
 
-- [ ] 5.2 Restore on mount, ahead of the initial fetch (deps: 5.1, est: ~35m)
+- [x] 5.2 Restore on mount, ahead of the initial fetch (deps: 5.1, est: ~35m)
   - why: the point of persistence is that the reload lands on the view the user left, not on
     the local-search graph followed by a flash of replacement.
   - acceptance: R-5.5, R-5.6, R-5.7 — restore runs before the initial `/api/graph` resolves;
@@ -204,7 +204,7 @@ run first even though they sit last in the EARS document.
     unparseable or malformed leaves the page exactly as it is today.
   - verify: component test seeds `sessionStorage`, mounts, asserts the restored dataset
     renders and the blend flag is honoured; a corrupted-value test asserts a clean fallback.
-  - landed:
+  - landed: f827eaa — web/frontend/src/graph-explorer/GraphExplorer.jsx, web/frontend/test/graphExplorer.test.jsx
 
 - [ ] 5.3 Reset clears persistence; nothing goes server-side (deps: 5.1, est: ~15m)
   - why: an escape hatch that leaves the stored copy behind is not an escape hatch. And an
