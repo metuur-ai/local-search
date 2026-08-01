@@ -151,6 +151,70 @@ describe('derived display graph (baseGraph / upload / blend)', () => {
   });
 });
 
+// Shares `a.py` with `fixtureGraph`, so blending it against the base graph is
+// exactly one id collision.
+const collidingGraph = {
+  nodes: [{ id: 'a.py', name: 'a.py', type: 'file', repo: 'ext', project: 'lib', tags: [] }],
+  links: [],
+};
+
+describe('collision gate on every merge entry point', () => {
+  it('refuses the blend when the toggle is turned on over a colliding upload', async () => {
+    const { container, graphLoad } = await renderExplorer();
+
+    await uploadFile(container, { name: 'clash.json', graph: collidingGraph });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+
+    const toggle = screen.getByLabelText('Blend local-search');
+    fireEvent.click(toggle);
+
+    // The message names the count…
+    await waitFor(() => expect(screen.getByText(/1 node id/)).toBeTruthy());
+    // …`blend` is back to false…
+    expect(toggle.checked).toBe(false);
+    // …and nothing merged reached the canvas.
+    const merged = graphLoad.mock.calls.find(
+      ([g]) => g.nodes.some((n) => n.__origin === 'local-search')
+        && g.nodes.some((n) => n.__origin === 'clash.json'),
+    );
+    expect(merged).toBeUndefined();
+  });
+
+  it('loads a colliding upload standalone when it arrives while blend is on', async () => {
+    const { container, graphLoad } = await renderExplorer();
+
+    // A clean upload first, so blend can legitimately be switched on.
+    await uploadFile(container, { name: 'clean.json', graph: uploadGraph });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+    const toggle = screen.getByLabelText('Blend local-search');
+    fireEvent.click(toggle);
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(3));
+    expect(toggle.checked).toBe(true);
+
+    // Now a colliding one, uploaded while blend is true.
+    await uploadFile(container, { name: 'clash.json', graph: collidingGraph });
+    await waitFor(() => expect(screen.getByText(/1 node id/)).toBeTruthy());
+
+    expect(toggle.checked).toBe(false);
+    // R-4.4: the upload is not discarded — it is on screen, alone.
+    const [shown] = graphLoad.mock.calls[graphLoad.mock.calls.length - 1];
+    expect(shown.nodes.map((n) => n.id)).toEqual(['a.py']);
+    expect(shown.nodes.every((n) => n.__origin === 'clash.json')).toBe(true);
+  });
+
+  it('clears the collision message when the upload is replaced', async () => {
+    const { container, graphLoad } = await renderExplorer();
+
+    await uploadFile(container, { name: 'clash.json', graph: collidingGraph });
+    await waitFor(() => expect(graphLoad).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByLabelText('Blend local-search'));
+    await waitFor(() => expect(screen.getByText(/1 node id/)).toBeTruthy());
+
+    await uploadFile(container, { name: 'clean.json', graph: uploadGraph });
+    await waitFor(() => expect(screen.queryByText(/node id/)).toBeNull());
+  });
+});
+
 describe('origin tagging at the load sites', () => {
   it('tags every node of the fetched graph with __origin local-search', async () => {
     const { graphLoad } = await renderExplorer();

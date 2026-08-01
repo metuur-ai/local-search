@@ -76,7 +76,7 @@ run first even though they sit last in the EARS document.
     still count.
   - landed: 339bd1c — web/frontend/src/graph-explorer/graphData.js, web/frontend/test/graphData.test.js
 
-- [ ] 4.2 Gate every merge entry point on the collision check (deps: 4.1, est: ~30m)
+- [x] 4.2 Gate every merge entry point on the collision check (deps: 4.1, est: ~30m)
   - why: there are two ways into a blend — uploading while blend is on, and toggling blend on
     after an upload — and both must refuse to corrupt the view, without throwing away the
     file the user just picked.
@@ -85,7 +85,7 @@ run first even though they sit last in the EARS document.
     graph still loads standalone rather than being discarded.
   - verify: component test uploads a colliding fixture with blend on — asserts the message
     names the count, `blend` stays false, and the uploaded graph is on screen alone.
-  - landed:
+  - landed: 44ef9bd
 
 ---
 

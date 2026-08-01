@@ -11,7 +11,7 @@ import {
   synthesizeGraphData, normalizeGraph, toGraph,
   applyFilters, collectFilterOptions,
   EDGE_FAMILY_ORDER, countEdgeFamilies, defaultFamilies,
-  tagOrigin, mergeGraphs, copyGraph, normalizeValsByOrigin,
+  tagOrigin, mergeGraphs, copyGraph, normalizeValsByOrigin, detectIdCollisions,
 } from './graphData.js';
 import { useForceGraph } from './useForceGraph.js';
 import { FilterDropdown } from './components/FilterDropdown.jsx';
@@ -47,6 +47,7 @@ export function GraphExplorer() {
   const [baseGraph, setBaseGraph] = useState(EMPTY_GRAPH);
   const [upload, setUpload] = useState(null);
   const [blend, setBlend] = useState(false);
+  const [collisionNotice, setCollisionNotice] = useState(null);
 
   const [originalData, setOriginalData] = useState({ nodes: [], links: [] });
   const [activeData, setActiveData] = useState({ nodes: [], links: [] });
@@ -134,12 +135,36 @@ export function GraphExplorer() {
     () => (baseGraph === EMPTY_GRAPH ? EMPTY_GRAPH : copyGraph(baseGraph)), [baseGraph],
   );
   const uploadCopy = useMemo(() => (upload ? copyGraph(upload.graph) : null), [upload]);
+
+  // Collisions are checked here, at derive time, rather than at each of the
+  // three events that can produce a blend (upload while blended, toggling on, a
+  // baseGraph replacement while blended). All three land on this memo, so one
+  // check covers them with identical handling and none can be forgotten.
+  const collisions = useMemo(
+    () => (upload && blend ? detectIdCollisions(baseGraph, upload.graph) : 0),
+    [baseGraph, upload, blend],
+  );
+
   const displayGraph = useMemo(() => {
     if (!upload) return baseCopy;
-    if (!blend) return uploadCopy;
+    // A refused blend falls back to the upload alone rather than to nothing:
+    // the file the user just picked is still worth looking at.
+    if (!blend || collisions > 0) return uploadCopy;
     // Sizes only comparable once both halves are on one scale.
     return normalizeValsByOrigin(mergeGraphs(baseGraph, upload.graph));
-  }, [baseGraph, upload, blend, baseCopy, uploadCopy]);
+  }, [baseGraph, upload, blend, collisions, baseCopy, uploadCopy]);
+
+  // Refuse the blend and say why. `blend` reverts, which zeroes `collisions` on
+  // the next pass — so the notice is set only on the way up and is cleared by
+  // the upload being replaced or reset, not by the revert.
+  useEffect(() => {
+    if (collisions === 0) return;
+    setBlend(false);
+    setCollisionNotice(
+      `Blend refused: ${collisions} node id${collisions === 1 ? '' : 's'} `
+      + 'appear in both graphs. Showing the upload on its own.',
+    );
+  }, [collisions]);
 
   // Push the derived graph to the canvas whenever it is a different graph than
   // the one already loaded. Identity, not the inputs: a source can change
@@ -215,6 +240,8 @@ export function GraphExplorer() {
         // the upload that stays JSON-serializable no matter what the force layout
         // does to the objects it is handed.
         setUpload({ filename: file.name, text, graph: tagOrigin(g, file.name) });
+        // A new file is a new question about collisions; the old verdict goes.
+        setCollisionNotice(null);
         setShowReset(true);
       } catch (err) {
         alert('Error parsing JSON: ' + err.message);
@@ -228,6 +255,7 @@ export function GraphExplorer() {
   const onReset = useCallback(() => {
     setUpload(null);
     setBlend(false);
+    setCollisionNotice(null);
     fetchGraph()
       .then((data) => setBaseGraph(tagOrigin(toGraph(data), 'local-search')))
       .catch(() => setBaseGraph(tagOrigin(synthesizeGraphData([]), 'local-search')));
@@ -457,6 +485,10 @@ export function GraphExplorer() {
             onSelectId={selectById}
             onClose={deselect}
           />
+        )}
+
+        {collisionNotice && (
+          <div id="graph-collision-notice" role="status">{collisionNotice}</div>
         )}
 
         {emptyNotice && (
