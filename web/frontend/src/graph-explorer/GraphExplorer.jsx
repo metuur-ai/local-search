@@ -11,6 +11,7 @@ import {
   synthesizeGraphData, normalizeGraph, toGraph,
   applyFilters, collectFilterOptions,
   EDGE_FAMILY_ORDER, countEdgeFamilies, defaultFamilies,
+  tagOrigin,
 } from './graphData.js';
 import { useForceGraph } from './useForceGraph.js';
 import { FilterDropdown } from './components/FilterDropdown.jsx';
@@ -88,10 +89,12 @@ export function GraphExplorer() {
   }, [graphLoad]);
 
   // Initial load: flat array (hub graph) OR {nodes,links} (graph export).
+  // Tagged at the load site, before anything can merge it, so a later blend can
+  // still tell which half of the canvas came from local-search.
   useEffect(() => {
     let active = true;
     fetchGraph()
-      .then((data) => { if (active) loadNewData(toGraph(data)); })
+      .then((data) => { if (active) loadNewData(tagOrigin(toGraph(data), 'local-search')); })
       .catch(() => { /* Upload a file or refresh from repos to start. */ });
     return () => { active = false; };
   }, [loadNewData]);
@@ -150,13 +153,13 @@ export function GraphExplorer() {
 
   const onReset = useCallback(() => {
     fetchGraph()
-      .then((data) => loadNewData(toGraph(data)))
-      .catch(() => loadNewData(synthesizeGraphData([])));
+      .then((data) => loadNewData(tagOrigin(toGraph(data), 'local-search')))
+      .catch(() => loadNewData(tagOrigin(synthesizeGraphData([]), 'local-search')));
     setShowReset(false);
   }, [loadNewData]);
 
   const onRebuilt = useCallback((g) => {
-    loadNewData(g);
+    loadNewData(tagOrigin(g, 'local-search'));
     setShowReset(true);
   }, [loadNewData]);
 

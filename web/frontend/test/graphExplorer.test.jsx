@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/preact';
+import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // `useForceGraph` reaches `force-graph` → a real <canvas>, which jsdom does not
@@ -103,5 +103,44 @@ describe('GraphExplorer mount (test infrastructure smoke)', () => {
     const [shown, opts] = graphLoad.mock.calls[0];
     expect(shown.nodes.map((n) => n.id)).toEqual(['a.py', 'b.md']);
     expect(opts).toEqual({ refit: true });
+  });
+});
+
+describe('origin tagging at the load sites', () => {
+  it('tags every node of the fetched graph with __origin local-search', async () => {
+    const { graphLoad } = await renderExplorer();
+
+    const [shown] = graphLoad.mock.calls[0];
+    expect(shown.nodes.length).toBe(2);
+    expect(shown.nodes.every((n) => n.__origin === 'local-search')).toBe(true);
+  });
+
+  it('tags every node of the RefreshReposPanel rebuild with __origin local-search', async () => {
+    const rebuilt = {
+      nodes: [{ id: 'c.go', name: 'c.go', type: 'file', repo: 'beta', project: 'cmd', tags: [] }],
+      links: [],
+    };
+    const fetchMock = vi.fn((url) => {
+      const u = String(url);
+      if (u.startsWith('/api/graph/refresh')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(rebuilt) });
+      }
+      if (u.startsWith('/api/graph')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(fixtureGraph) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+    global.fetch = fetchMock;
+
+    render(<GraphExplorer />);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByText('Refresh from repos'));
+    fireEvent.click(await screen.findByText('Rebuild graph'));
+
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalledTimes(2));
+    const [shown] = graphMock.load.mock.calls[1];
+    expect(shown.nodes.map((n) => n.id)).toEqual(['c.go']);
+    expect(shown.nodes.every((n) => n.__origin === 'local-search')).toBe(true);
   });
 });
