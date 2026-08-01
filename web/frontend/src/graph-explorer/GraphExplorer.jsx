@@ -114,8 +114,17 @@ export function GraphExplorer() {
   // the help icon always has.
   const [helpSection, setHelpSection] = useState(null);
   const [openDropdown, setOpenDropdown] = useState(null);
-  // A restored upload arrives with its escape hatch: without this the Reset
-  // button is hidden after a reload and the upload cannot be cleared.
+  // R-8.7. One rule, two triggers. Reset is offered while the canvas is showing
+  // something the page would not have loaded on its own — an upload is in place
+  // (this session's, or one restored from the last), or a repo rebuild has
+  // replaced the local-search graph. Pressing it always returns the page to the
+  // server's current graph: `onReset` drops the upload and its blend if there is
+  // one and re-fetches `/api/graph` either way, which is what makes the same
+  // control mean the same thing whichever trigger raised it. Afterwards there is
+  // nothing left to undo, so it hides again.
+  //
+  // The initial value is the restored-upload case: without it the button is
+  // hidden after a reload and the restored upload cannot be cleared.
   const [showReset, setShowReset] = useState(() => restored !== null);
   const [emptyNotice, setEmptyNotice] = useState(false);
 

@@ -903,3 +903,135 @@ describe('a parse failure routes the user into the format guide', () => {
     expect(upload.getAttribute('title')).toMatch(/array/i);
   });
 });
+
+// R-8.7. `Reset` has two independent triggers, so the rule has to be stated
+// once and hold for both:
+//
+//   Reset is offered while the canvas is showing something the page would not
+//   have loaded on its own — an upload is in place, or a repo rebuild has
+//   replaced the local-search graph. Pressing it always returns the page to the
+//   server's current graph: the upload and its blend are dropped if there is
+//   one, and `/api/graph` is re-fetched in every case. Afterwards there is
+//   nothing left to undo, so the control goes away.
+//
+// All four combinations of (upload present, rebuild occurred) are covered
+// because the two triggers were added independently and only their product
+// proves a single rule governs both.
+describe('the Reset visibility rule holds for both of its triggers', () => {
+  const rebuiltGraph = {
+    nodes: [{ id: 'c.go', name: 'c.go', type: 'file', repo: 'beta', project: 'cmd', tags: [] }],
+    links: [],
+  };
+
+  // `/api/graph/refresh` answers with the rebuilt graph; `/api/graph` keeps
+  // answering with the fixture, which is what makes "Reset re-fetched" and
+  // "the rebuild is still on screen" distinguishable on the canvas.
+  function stubRebuildFetch() {
+    const fetchMock = vi.fn((url) => {
+      const u = String(url);
+      if (u.startsWith('/api/graph/refresh')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(rebuiltGraph) });
+      }
+      if (u.startsWith('/api/graph')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(fixtureGraph) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+    global.fetch = fetchMock;
+    return fetchMock;
+  }
+
+  async function rebuildFromRepos() {
+    fireEvent.click(screen.getByText('Refresh from repos'));
+    fireEvent.click(await screen.findByText('Rebuild graph'));
+  }
+
+  const shownIds = () => {
+    const calls = graphMock.load.mock.calls;
+    return calls[calls.length - 1][0].nodes.map((n) => n.id).sort();
+  };
+
+  // Neither trigger: the page every user who never uploads and never rebuilds
+  // sees. Nothing to undo, so nothing to offer.
+  it('hides Reset when neither an upload nor a rebuild has happened', async () => {
+    await renderExplorer();
+
+    expect(screen.queryByText('Reset')).toBeNull();
+  });
+
+  // Upload only.
+  it('shows Reset for an upload alone, and drops the upload', async () => {
+    const { container } = await renderExplorer();
+    await uploadFile(container);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalledTimes(2));
+
+    expect(screen.getByText('Reset')).toBeTruthy();
+    fireEvent.click(screen.getByText('Reset'));
+
+    await waitFor(() => expect(shownIds()).toEqual(['a.py', 'b.md']));
+    expect(screen.queryByLabelText('Blend local-search')).toBeNull();
+    expect(screen.queryByText('Reset')).toBeNull();
+  });
+
+  // Rebuild only. The trigger is not the upload feature at all, which is
+  // exactly why the rule has to cover it.
+  it('shows Reset for a rebuild alone, and re-fetches the graph', async () => {
+    const fetchMock = stubRebuildFetch();
+    render(<GraphExplorer />);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalled());
+    expect(screen.queryByText('Reset')).toBeNull();
+
+    await rebuildFromRepos();
+    await waitFor(() => expect(shownIds()).toEqual(['c.go']));
+
+    expect(screen.getByText('Reset')).toBeTruthy();
+    fireEvent.click(screen.getByText('Reset'));
+
+    // Back to whatever /api/graph now answers with — a second fetch, not a
+    // cached copy of the pre-rebuild graph.
+    await waitFor(() => expect(shownIds()).toEqual(['a.py', 'b.md']));
+    const baseFetches = fetchMock.mock.calls
+      .filter(([u]) => !String(u).startsWith('/api/graph/refresh'))
+      .filter(([u]) => String(u).startsWith('/api/graph')).length;
+    expect(baseFetches).toBe(2);
+    expect(screen.queryByText('Reset')).toBeNull();
+  });
+
+  // Both triggers at once: one press has to settle both, or the control means
+  // something different depending on which trigger the user remembers.
+  it('shows Reset once for both triggers, and one press settles both', async () => {
+    stubRebuildFetch();
+    const { container } = render(<GraphExplorer />);
+    await waitFor(() => expect(graphMock.load).toHaveBeenCalled());
+
+    await uploadFile(container);
+    await waitFor(() => expect(shownIds()).toEqual(['x.ts']));
+    await rebuildFromRepos();
+    // Blend is off, so the rebuild lands in the base half without touching the
+    // canvas — but it still counts as a trigger, and Reset still has to settle
+    // it along with the upload.
+    await waitFor(() => expect(screen.getByLabelText('Blend local-search')).toBeTruthy());
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(shownIds()).toEqual(['x.ts']);
+
+    // One control, not one per trigger.
+    expect(screen.getAllByText('Reset')).toHaveLength(1);
+    fireEvent.click(screen.getByText('Reset'));
+
+    await waitFor(() => expect(shownIds()).toEqual(['a.py', 'b.md']));
+    expect(screen.queryByLabelText('Blend local-search')).toBeNull();
+    expect(screen.queryByText('Reset')).toBeNull();
+  });
+
+  // 5.2 restores the upload from sessionStorage, so a reload lands in the
+  // "upload present" case without anyone having pressed Upload this session.
+  // The rule is stated over the upload, not over the click that made it.
+  it('offers Reset for a restored upload, before any click this session', async () => {
+    writeStoredUpload({
+      filename: 'restored.json', text: JSON.stringify(uploadGraph), blend: false,
+    });
+    await renderExplorer();
+
+    expect(screen.getByText('Reset')).toBeTruthy();
+  });
+});
