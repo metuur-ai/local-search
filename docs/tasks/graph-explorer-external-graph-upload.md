@@ -137,7 +137,7 @@ run first even though they sit last in the EARS document.
     once across the whole sequence.
   - landed:
 
-- [ ] 3.2 Give `loadNewData` an options bag (deps: 3.1, est: ~30m)
+- [x] 3.2 Give `loadNewData` an options bag (deps: 3.1, est: ~30m)
   - why: every load path resets filters because the dataset changed underneath the user — but
     a blend toggle is the one case where the user is deliberately comparing two views and
     wants the narrowing they just built to survive. One parameter resolves the contradiction.
@@ -146,7 +146,7 @@ run first even though they sit last in the EARS document.
     `nameFilter` and `titleFilter`; every other caller keeps today's reset behaviour.
   - verify: component test narrows a filter, toggles blend, asserts the selection is intact
     and the viewport did not refit; a second test asserts a fresh upload still resets.
-  - landed:
+  - landed: c114e5a
 
 - [ ] 3.3 Blend toggle control and its default families (deps: 3.2, 4.2, est: ~45m)
   - why: opening a blend on all families would open on the base graph's similarity links,
@@ -159,7 +159,7 @@ run first even though they sit last in the EARS document.
     asserts the selected families equal the union of each dataset's own defaults.
   - landed:
 
-- [ ] 3.4 Replace, rebuild and no-op paths (deps: 3.1, est: ~30m)
+- [x] 3.4 Replace, rebuild and no-op paths (deps: 3.1, est: ~30m)
   - why: the three ways the inputs can change after mount each need a defined answer, and one
     of them — an unchanged display graph — must not churn the layout.
   - acceptance: R-3.13, R-3.14, R-3.15 — a second upload replaces `upload` rather than
@@ -168,7 +168,7 @@ run first even though they sit last in the EARS document.
     does not clear the canvas while `baseGraph` is still empty and no upload exists.
   - verify: component test uploads twice and asserts one dataset on screen; a rebuild test
     asserts the upload survives; assert no empty-canvas frame during initial load.
-  - landed:
+  - landed: 1e382a1
 
 - [x] 3.5 Keep the derived graph serializable and dimensionally consistent (deps: 3.1, est: ~30m)
   - why: `applyFilters` aliases rather than copies, so anything the force layout mutates is
@@ -179,7 +179,7 @@ run first even though they sit last in the EARS document.
     origins at blend time.
   - verify: component test renders a blend, lets the layout run, then asserts
     `JSON.stringify` on the persisted payload succeeds; assert `val` ranges align.
-  - landed: copyGraph at every derive branch, normalizeValsByOrigin, per-origin family union
+  - landed: 2227c73 — copyGraph at every derive branch, normalizeValsByOrigin, per-origin family union
 
 ---
 
@@ -254,7 +254,7 @@ run first even though they sit last in the EARS document.
 
 ## Unit 7: Paste Prompt
 
-- [ ] 7.1 Define the prompt as an exported constant (deps: 6.1, est: ~30m)
+- [x] 7.1 Define the prompt as an exported constant (deps: 6.1, est: ~30m)
   - why: most users will not hand-write a graph file. Handing them a prompt that produces one
     turns the format from a specification into a request. Keeping it as a constant guarantees
     the documented fields and the prompted fields stay one source of truth.
@@ -263,7 +263,7 @@ run first even though they sit last in the EARS document.
     requirement; instructs the model to emit a single JSON document and nothing else.
   - verify: unit test asserts the constant names every field documented in Unit 6 — the test
     that keeps guide and prompt from drifting.
-  - landed:
+  - landed: 35b926d
 
 - [ ] 7.2 Paste Prompt control and clipboard handling (deps: 7.1, est: ~30m)
   - why: a prompt the user has to select by hand out of a modal is a prompt they will
