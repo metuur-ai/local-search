@@ -7,6 +7,10 @@ import {
   toGraph,
   applyFilters,
   collectFilterOptions,
+  countEdgeFamilies,
+  tagOrigin,
+  detectIdCollisions,
+  EDGE_FAMILY,
   colors,
 } from '../src/graph-explorer/graphData.js';
 
@@ -55,6 +59,81 @@ describe('synthesizeGraphData', () => {
     // f1: repo + project + 2 tags = 4 links; f2: repo + 1 tag = 2 links.
     expect(g.links).toHaveLength(6);
     expect(g.nodes.find((n) => n.id === 'f1').renderColor).toBe(colors.file);
+  });
+
+  it('tags every emitted link with the similarity family', () => {
+    const g = synthesizeGraphData([
+      { id: 'f1', name: 'a.md', repo: 'r1', project: 'p1', tags: ['x', 'y'] },
+      { id: 'f2', name: 'b.md', repo: 'r1', tags: 'z' },
+    ]);
+    expect(g.links.every((l) => l.family === EDGE_FAMILY.SIMILARITY)).toBe(true);
+    expect(countEdgeFamilies(g.links).similarity).toBe(g.links.length);
+  });
+
+  it('keeps synthesized links on screen when the similarity family is selected', () => {
+    const g = synthesizeGraphData([
+      { id: 'f1', name: 'a.md', repo: 'r1', project: 'p1', tags: ['x', 'y'] },
+      { id: 'f2', name: 'b.md', repo: 'r1', tags: 'z' },
+    ]);
+    const filtered = applyFilters(g, {
+      multiSelect: { type: new Set(), repo: new Set(), project: new Set(), tag: new Set() },
+      families: new Set([EDGE_FAMILY.SIMILARITY]),
+    });
+    expect(filtered.links).toHaveLength(g.links.length);
+    expect(filtered.nodes.length).toBeGreaterThan(0);
+  });
+});
+
+describe('countEdgeFamilies', () => {
+  it('still reports a link with no family as similarity', () => {
+    expect(countEdgeFamilies([{ source: 'a', target: 'b' }])).toEqual({
+      declared: 0, dangling: 0, similarity: 1,
+    });
+  });
+});
+
+describe('tagOrigin', () => {
+  it('sets __origin on every node', () => {
+    const g = tagOrigin({ nodes: [{ id: 'a' }, { id: 'b' }], links: [] }, 'local-search');
+    expect(g.nodes.map((n) => n.__origin)).toEqual(['local-search', 'local-search']);
+  });
+
+  it('leaves a pre-existing origin field untouched', () => {
+    const g = tagOrigin({ nodes: [{ id: 'a', origin: 'theirs' }], links: [] }, 'upload.json');
+    expect(g.nodes[0].origin).toBe('theirs');
+    expect(g.nodes[0].__origin).toBe('upload.json');
+  });
+
+  it('does not modify node id or link source/target', () => {
+    const g = tagOrigin({
+      nodes: [{ id: 'a' }, { id: 'b' }],
+      links: [{ source: 'a', target: 'b' }],
+    }, 'upload.json');
+    expect(g.nodes.map((n) => n.id)).toEqual(['a', 'b']);
+    expect(g.links).toEqual([{ source: 'a', target: 'b' }]);
+  });
+});
+
+describe('detectIdCollisions', () => {
+  it('returns 0 for disjoint graphs', () => {
+    expect(detectIdCollisions(
+      { nodes: [{ id: 'a' }], links: [] },
+      { nodes: [{ id: 'b' }], links: [] },
+    )).toBe(0);
+  });
+
+  it('returns the exact overlap count', () => {
+    expect(detectIdCollisions(
+      { nodes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], links: [] },
+      { nodes: [{ id: 'b' }, { id: 'c' }, { id: 'd' }], links: [] },
+    )).toBe(2);
+  });
+
+  it('counts ids only, ignoring every other field', () => {
+    expect(detectIdCollisions(
+      { nodes: [{ id: 'a', name: 'alpha', type: 'file', path: 'x.md' }], links: [] },
+      { nodes: [{ id: 'a', name: 'zeta', type: 'repo', path: 'y.md' }], links: [] },
+    )).toBe(1);
   });
 });
 

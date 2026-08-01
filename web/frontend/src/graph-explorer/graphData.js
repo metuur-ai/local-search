@@ -110,6 +110,13 @@ export function parseNodeTags(raw) {
 
 // Build a graph ({nodes, links}) from a flat array of file records (hub export):
 // synthesize repo/project/tag hub nodes and the links from each file to them.
+//
+// Synthesized links carry no `relation`, so they are similarity links by the
+// same rule `edgeFamilyOf` applies. Tag them explicitly rather than leaning on
+// the `undefined` fallback in `countEdgeFamilies`: the fallback makes them
+// *render* as similarity but leaves `link.family` undefined, so the family
+// filter — which tests `families.has(link.family)` — drops every one of them and
+// selecting "Similarity" on a flat-array graph yields a blank canvas.
 export function synthesizeGraphData(rawData) {
   const nodes = [], links = [];
   const projects = new Map(), tags = new Map(), repos = new Map();
@@ -125,11 +132,11 @@ export function synthesizeGraphData(rawData) {
 
     if (item.repo) {
       if (!repos.has(item.repo)) repos.set(item.repo, { id: `repo_${item.repo}`, name: item.repo, type: 'repo', val: 12, renderColor: colors.repo });
-      links.push({ source: nodeId, target: `repo_${item.repo}` });
+      links.push({ source: nodeId, target: `repo_${item.repo}`, family: EDGE_FAMILY.SIMILARITY });
     }
     if (item.project) {
       if (!projects.has(item.project)) projects.set(item.project, { id: `proj_${item.project}`, name: item.project, type: 'project', val: 8, renderColor: colors.project });
-      links.push({ source: nodeId, target: `proj_${item.project}` });
+      links.push({ source: nodeId, target: `proj_${item.project}`, family: EDGE_FAMILY.SIMILARITY });
     }
     if (item.tags) {
       let cleanTags = [];
@@ -137,7 +144,7 @@ export function synthesizeGraphData(rawData) {
       else if (Array.isArray(item.tags)) cleanTags = item.tags;
       cleanTags.forEach((tag) => {
         if (!tags.has(tag)) tags.set(tag, { id: `tag_${tag}`, name: `#${tag}`, type: 'tag', val: 6, renderColor: colors.tag });
-        links.push({ source: nodeId, target: `tag_${tag}` });
+        links.push({ source: nodeId, target: `tag_${tag}`, family: EDGE_FAMILY.SIMILARITY });
       });
     }
   });
@@ -173,6 +180,26 @@ export function normalizeGraph(json) {
 // is synthesized; a {nodes, links|edges} object is normalized.
 export function toGraph(data) {
   return Array.isArray(data) ? synthesizeGraphData(data) : normalizeGraph(data);
+}
+
+// Label every node with the origin the viewer assigns it. The `__origin` name is
+// deliberate: an uploaded file may carry its own `origin` field, which this must
+// neither read nor clobber. Ids and link endpoints are left exactly as they are.
+export function tagOrigin(graph, origin) {
+  return {
+    ...graph,
+    nodes: (graph.nodes || []).map((n) => ({ ...n, __origin: origin })),
+  };
+}
+
+// Count the node ids present in both graphs. Ids alone decide a collision — two
+// nodes sharing an id are a conflict however different the rest of them is.
+export function detectIdCollisions(a, b) {
+  const aIds = new Set((a.nodes || []).map((n) => n.id));
+  const bIds = new Set((b.nodes || []).map((n) => n.id));
+  let count = 0;
+  bIds.forEach((id) => { if (aIds.has(id)) count += 1; });
+  return count;
 }
 
 // Build O(1) lookup maps for a graph. Returns fresh maps rather than mutating
