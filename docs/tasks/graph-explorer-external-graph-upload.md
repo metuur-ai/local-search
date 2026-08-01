@@ -265,7 +265,7 @@ run first even though they sit last in the EARS document.
     that keeps guide and prompt from drifting.
   - landed: 35b926d
 
-- [ ] 7.2 Paste Prompt control and clipboard handling (deps: 7.1, est: ~30m)
+- [x] 7.2 Paste Prompt control and clipboard handling (deps: 7.1, est: ~30m)
   - why: a prompt the user has to select by hand out of a modal is a prompt they will
     retype badly.
   - acceptance: R-7.4, R-7.5, R-7.6, R-7.7 — control rendered in the graph-format section;
@@ -274,7 +274,7 @@ run first even though they sit last in the EARS document.
     does not close as a side effect of copying.
   - verify: component test with a stubbed `navigator.clipboard.writeText` covers both the
     success path and the throw path; assert the modal stays open in both.
-  - landed:
+  - landed: 6f2da06 — web/frontend/test/helpModal.test.jsx
 
 ---
 
@@ -305,7 +305,7 @@ run first even though they sit last in the EARS document.
     `refreshReposPanel`, `graphView` and `graphData` suites.
   - landed:
 
-- [ ] 8.3 Settle the `Reset` visibility rule (deps: 5.3, est: ~20m)
+- [x] 8.3 Settle the `Reset` visibility rule (deps: 5.3, est: ~20m)
   - why: `Reset` now has two independent triggers — an upload being present and a repo
     rebuild having occurred — and a control whose meaning depends on which one fired is a
     control nobody can predict.
@@ -313,4 +313,4 @@ run first even though they sit last in the EARS document.
     control's effect stated for each case.
   - verify: component test covers all four combinations of (upload present, rebuild occurred)
     and asserts visibility and effect match the documented rule.
-  - landed:
+  - landed: da4cced — web/frontend/src/graph-explorer/GraphExplorer.jsx, web/frontend/test/graphExplorer.test.jsx
