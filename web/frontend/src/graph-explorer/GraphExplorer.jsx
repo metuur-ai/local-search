@@ -22,7 +22,9 @@ import { Dock } from './components/Dock.jsx';
 import { HelpModal } from './components/HelpModal.jsx';
 import { RefreshReposPanel } from './components/RefreshReposPanel.jsx';
 
-const EMPTY_MULTI = () => ({ type: new Set(), repo: new Set(), project: new Set(), tag: new Set() });
+const EMPTY_MULTI = () => ({
+  type: new Set(), repo: new Set(), project: new Set(), tag: new Set(), origin: new Set(),
+});
 
 // One shared instance, so the derive can recognise "nothing has loaded yet" by
 // identity and skip the load that would otherwise flash an empty canvas.
@@ -34,6 +36,7 @@ const DIMS = [
   { key: 'repo', emptyLabel: 'All Repos', searchLabel: 'Repos' },
   { key: 'project', emptyLabel: 'All Directories', searchLabel: 'Directories' },
   { key: 'tag', emptyLabel: 'All Tags', searchLabel: 'Tags' },
+  { key: 'origin', emptyLabel: 'All Sources', searchLabel: 'Sources' },
 ];
 
 export function GraphExplorer() {
@@ -51,7 +54,11 @@ export function GraphExplorer() {
 
   const [originalData, setOriginalData] = useState({ nodes: [], links: [] });
   const [activeData, setActiveData] = useState({ nodes: [], links: [] });
-  const [options, setOptions] = useState({ type: [], repo: [], project: [], tag: [] });
+  // `origin: []` from the start: the Source control reads `options.origin.length`
+  // on the very first render, before any graph has resolved.
+  const [options, setOptions] = useState({
+    type: [], repo: [], project: [], tag: [], origin: [],
+  });
   const [multiSelect, setMultiSelect] = useState(EMPTY_MULTI);
   const [families, setFamilies] = useState(() => new Set(EDGE_FAMILY_ORDER));
   const [search, setSearch] = useState('');

@@ -205,6 +205,22 @@ describe('collectFilterOptions', () => {
     expect(opts.project).toEqual(['p1']);
     expect(opts.tag).toEqual(['a', 'b']);
   });
+
+  // R-2.3: Source is a filter dimension like any other, built from the viewer's
+  // own `__origin` tag rather than from anything the uploaded file supplied.
+  it('collects sorted distinct __origin values as the origin dimension', () => {
+    const opts = collectFilterOptions([
+      { id: 'a', __origin: 'upload.json' },
+      { id: 'b', __origin: 'local-search' },
+      { id: 'c', __origin: 'upload.json' },
+    ]);
+    expect(opts.origin).toEqual(['local-search', 'upload.json']);
+  });
+
+  it('omits untagged nodes from the origin options rather than listing undefined', () => {
+    const opts = collectFilterOptions([{ id: 'a' }, { id: 'b', __origin: 'local-search' }]);
+    expect(opts.origin).toEqual(['local-search']);
+  });
 });
 
 describe('mergeGraphs', () => {

@@ -380,16 +380,21 @@ export function defaultFamilies(links) {
 // Collect the distinct filter option values present across a graph's nodes.
 export function collectFilterOptions(nodes) {
   const repos = new Set(), projects = new Set(), tags = new Set(), types = new Set();
+  const origins = new Set();
   nodes.forEach((n) => {
     if (n.repo) repos.add(n.repo);
     if (n.project) projects.add(n.project);
     parseNodeTags(n.tags).forEach((t) => tags.add(t));
     if (n.type) types.add(n.type);
+    // `__origin` is viewer-assigned, so an untagged node means "loaded by a path
+    // that predates tagging" — not a Source the user can meaningfully pick.
+    if (n.__origin) origins.add(n.__origin);
   });
   return {
     type: Array.from(types).sort(),
     repo: Array.from(repos).sort(),
     project: Array.from(projects).sort(),
     tag: Array.from(tags).sort(),
+    origin: Array.from(origins).sort(),
   };
 }

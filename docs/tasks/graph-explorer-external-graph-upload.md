@@ -91,7 +91,7 @@ run first even though they sit last in the EARS document.
 
 ## Unit 2: Source filter dimension
 
-- [ ] 2.1 Add `origin` as a filter dimension (deps: 1.2, est: ~25m)
+- [x] 2.1 Add `origin` as a filter dimension (deps: 1.2, est: ~25m)
   - why: once two datasets share a canvas the user needs to isolate either one, and the
     dimension has to exist in state before any control can render it.
   - acceptance: R-2.1, R-2.2, R-2.3, R-2.4 — `origin: new Set()` in `EMPTY_MULTI`;

@@ -297,6 +297,18 @@ describe('loadNewData options bag', () => {
   });
 });
 
+describe('origin filter dimension', () => {
+  // R-2.4: the Source control reads `options.origin.length` on the first render,
+  // which happens before the mount fetch resolves. If the initial `options` state
+  // omits `origin`, that read throws and the page never paints.
+  it('renders before the first load resolves, with no graph in state yet', () => {
+    // A fetch that never settles: the component only ever sees initial state.
+    global.fetch = vi.fn(() => new Promise(() => {}));
+    expect(() => render(<GraphExplorer />)).not.toThrow();
+    expect(screen.getByText('Upload JSON')).toBeTruthy();
+  });
+});
+
 describe('blend toggle control', () => {
   it('is absent until something has been uploaded', async () => {
     const { container } = await renderExplorer();
