@@ -1197,7 +1197,9 @@ func readMediaForCompanion(repoName, repoRoot, companionAbsPath string) ([]*extr
 func splitTags(tags string) []string {
 	var result []string
 	for _, t := range strings.Split(tags, ",") {
-		t = strings.TrimSpace(t)
+		// Trim the quotes of a YAML flow sequence's items (`tags: ["a", "b"]`);
+		// the enclosing brackets are already dropped at extraction time.
+		t = strings.TrimSpace(strings.Trim(strings.TrimSpace(t), `"'`))
 		if t != "" {
 			result = append(result, t)
 		}

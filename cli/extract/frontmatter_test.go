@@ -124,6 +124,26 @@ func TestCombinedTags_R22_SharedParseMatchesLegacy(t *testing.T) {
 	}
 }
 
+func TestTags_FlowSequenceBracketsAreUnwrapped(t *testing.T) {
+	cases := []struct{ content, want string }{
+		{"---\ntags: [research, codebase]\n---\nBody.\n", "research, codebase"},
+		{"---\ntags: [\"research\", \"codebase\"]\n---\nBody.\n", `"research", "codebase"`},
+		{"---\ntags: []\n---\nBody.\n", ""},
+		{"---\ntags: go, http\n---\nBody.\n", "go, http"},
+		// unterminated sequence stays verbatim, as before
+		{"---\ntags: [unclosed\n---\nBody.\n", "[unclosed"},
+	}
+	for _, c := range cases {
+		if got := extractTags(c.content); got != c.want {
+			t.Errorf("extractTags(%q) = %q, want %q", c.content, got, c.want)
+		}
+		fm := parseFrontmatter(c.content)
+		if got := legacyTagsFromRaw(fm.raw); got != c.want {
+			t.Errorf("legacyTagsFromRaw(%q) = %q, want %q", c.content, got, c.want)
+		}
+	}
+}
+
 func TestFromFile_R23_MalformedFrontmatterIndexesStructurally(t *testing.T) {
 	dir := t.TempDir()
 	abs := filepath.Join(dir, "note.md")

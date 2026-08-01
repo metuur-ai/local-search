@@ -47,6 +47,20 @@ func TestSplitTags_TrimsSpaces(t *testing.T) {
 	}
 }
 
+func TestSplitTags_TrimsQuotesFromFlowSequenceItems(t *testing.T) {
+	got := splitTags(`"research", 'codebase', plain`)
+	want := []string{"research", "codebase", "plain"}
+	if len(got) != len(want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("expected %v, got %v", want, got)
+			break
+		}
+	}
+}
+
 // ── chunkPaths ────────────────────────────────────────────────────────────────
 
 func TestChunkPaths_EmptyInput(t *testing.T) {

@@ -98,6 +98,10 @@ func scalarField(fields map[string]any, key string) string {
 
 var frontmatterRe = regexp.MustCompile(`(?s)^---\s*\n(.*?)\n---\s*\n`)
 var tagsLineRe = regexp.MustCompile(`(?im)^tags:\s*(.+)`)
+
+// tagsFlowSeqRe matches a complete YAML flow sequence (`tags: [a, b, c]`) so the
+// enclosing brackets can be dropped. An unterminated `[a, b` is left verbatim.
+var tagsFlowSeqRe = regexp.MustCompile(`^\[(.*)\]$`)
 var headingRe = regexp.MustCompile(`(?m)^#\s+(.+)`)
 
 // specRefRe matches `@spec req://<path>/<id>@<version>#<clause>` and captures the
@@ -462,9 +466,20 @@ func extractTags(content string) string {
 		return ""
 	}
 	if m := tagsLineRe.FindStringSubmatch(fm[1]); len(m) > 1 {
-		return strings.TrimSpace(m[1])
+		return normalizeTagsLine(m[1])
 	}
 	return ""
+}
+
+// normalizeTagsLine unwraps the YAML flow-sequence form so the comma split at
+// index time doesn't leave `[` on the first tag and `]` on the last — which made
+// `[research` and `research` count as two distinct tags.
+func normalizeTagsLine(s string) string {
+	s = strings.TrimSpace(s)
+	if m := tagsFlowSeqRe.FindStringSubmatch(s); m != nil {
+		s = strings.TrimSpace(m[1])
+	}
+	return s
 }
 
 // legacyTagsFromRaw extracts the verbatim `tags:` line from the raw
@@ -475,7 +490,7 @@ func legacyTagsFromRaw(raw string) string {
 		return ""
 	}
 	if m := tagsLineRe.FindStringSubmatch(raw); len(m) > 1 {
-		return strings.TrimSpace(m[1])
+		return normalizeTagsLine(m[1])
 	}
 	return ""
 }
