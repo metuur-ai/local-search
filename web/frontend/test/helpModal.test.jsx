@@ -55,6 +55,35 @@ describe('HelpModal graph-format section', () => {
 // that is absent (non-secure context) or that rejects. Both paths must leave the
 // user with the prompt and the modal open.
 describe('HelpModal Paste Prompt', () => {
+  // R-7.4. Two things about the control are load-bearing and neither is implied
+  // by the copy behaviour: it is labelled "Paste Prompt", and it lives in the
+  // graph-format section — the section a parse failure scrolls the user to. Put
+  // it anywhere else and the user who just had a file rejected never sees it.
+  //
+  // The assertion is on document order rather than DOM containment on purpose:
+  // `help-graph-format` marks the section *header*, and every body element of
+  // that section — prose, code blocks, this control — is a sibling of it, not a
+  // child. So "in the section" means "after this header and before the next
+  // section header", which is what the reader sees.
+  it('renders a control labelled "Paste Prompt" inside the graph-format section', () => {
+    const { container } = render(<HelpModal onClose={() => {}} />);
+
+    const button = screen.getByTestId('copy-prompt');
+    expect(button.textContent.trim()).toBe('Paste Prompt');
+
+    const sections = [...container.querySelectorAll('.modal-section')];
+    const header = screen.getByTestId('help-graph-format');
+    const next = sections[sections.indexOf(header) + 1];
+
+    // After the graph-format header…
+    expect(header.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    // …and before whatever section comes next, so it is not stranded further
+    // down the modal under an unrelated heading.
+    expect(next.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_PRECEDING)
+      .toBeTruthy();
+  });
+
   const stubClipboard = (writeText) => {
     Object.defineProperty(navigator, 'clipboard', {
       value: writeText ? { writeText } : undefined, configurable: true,
@@ -97,12 +126,21 @@ describe('HelpModal Paste Prompt', () => {
 
   it('reveals the prompt when there is no clipboard at all', async () => {
     stubClipboard(null);
-    render(<HelpModal onClose={() => {}} />);
+    const onClose = vi.fn();
+    render(<HelpModal onClose={onClose} />);
 
     fireEvent.click(screen.getByTestId('copy-prompt'));
 
     const field = await screen.findByTestId('prompt-fallback');
     expect(field.value).toBe(GRAPH_PROMPT);
+    // R-7.6 says "selectable", which is what separates a read-only field from a
+    // disabled one: a disabled textarea cannot be selected, so revealing the
+    // text into one would still leave the user with no way to take it.
+    expect(field.readOnly).toBe(true);
+    expect(field.disabled).toBe(false);
+    // R-7.7 on the third path too — the modal survives a missing clipboard.
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeTruthy();
   });
 });
 
