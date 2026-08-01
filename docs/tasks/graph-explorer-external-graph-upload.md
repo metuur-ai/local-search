@@ -248,7 +248,7 @@ run first even though they sit last in the EARS document.
     button is added.
   - verify: component test uploads malformed JSON, asserts the inline error renders, asserts
     the control opens the modal at that section, and asserts no `alert` fired.
-  - landed:
+  - landed: 9af6d20 — web/frontend/src/graph-explorer/GraphExplorer.jsx, web/frontend/src/graph-explorer/components/HelpModal.jsx, web/frontend/src/graph-explorer/graph-explorer.css, web/frontend/test/graphExplorer.test.jsx
 
 ---
 
