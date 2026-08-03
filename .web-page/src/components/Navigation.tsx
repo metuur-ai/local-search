@@ -68,8 +68,10 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab }) => {
         </div>
       </header>
 
-      {/* N5 · Floating pill. Detached from the mast, blurred over the
-          workbench beneath it. Docks to the bottom edge below 640px. */}
+      {/* N5 · Floating pill. Detached from the mast, but riding on a full-bleed
+          opaque band so scrolled content passes underneath instead of drawing
+          level with it. Docks to the bottom edge below 640px. */}
+      <div className="nav-pill__band" aria-hidden="true" />
       <nav className="nav-pill" aria-label="Sections">
         <div className="nav-pill__track">
           {TABS.map((tab) => {

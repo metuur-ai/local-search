@@ -1,6 +1,6 @@
 /* Hallmark · macrostructure: Workbench · tone: technical · anchor hue: green
- * theme: custom (vibe: "cool paper, ruler hairlines, one emerald signal")
- *   paper  oklch(98.4% 0.004 250)   accent oklch(60% 0.14 163)
+ * theme: custom (vibe: "cool paper, ruler hairlines, one electric-lime signal")
+ *   paper  oklch(98.4% 0.004 250)   accent oklch(72% 0.18 130)
  *   display Space Grotesk · body Inter · shell JetBrains Mono
  *   axes: light paper / grotesk-sans / chromatic-other (green)
  * genre: modern-minimal · nav: N5 floating pill · footer: Ft1 mast-headed
@@ -58,36 +58,59 @@
   --color-rule: oklch(89% 0.008 250);
   --color-rule-strong: oklch(82% 0.01 250);
 
-  /* --- Accent: one emerald signal, used sparingly ------------------------ */
-  --color-accent: oklch(52% 0.14 163);
-  --color-accent-ink: oklch(38% 0.1 163);
-  --color-accent-soft: oklch(94% 0.04 163);
-  --color-accent-contrast: oklch(99% 0.01 163);
-  --color-focus: oklch(52% 0.14 163);
+  /* --- Accent: one electric lime signal, used sparingly ------------------
+     This accent inverts the usual polarity and that is the whole point of it.
+     The lime is a LIGHT colour (L72), so it is a surface that takes dark ink,
+     not a fill that takes white. `--color-accent-contrast` is therefore
+     near-black: white on this lime measures 2.30:1 and fails outright. If you
+     ever lower the accent toward L52 to "match the old emerald", you must flip
+     the contrast token back to near-white in the same edit — the two move
+     together or every filled button breaks.
 
-  /* --- Dark panel ramp --------------------------------------------------- */
-  --color-panel: #26324a;
-  --color-panel-inset: #1e2839;
-  --color-panel-raised: #33415e;
-  --color-panel-edge: #3d4d70;
+     `--color-focus` is deliberately NOT the L72 lime. A focus ring has to
+     clear 3:1 against the paper it is drawn on, and the bright lime manages
+     only 2.25:1 there. The ring uses the darker `-ink` lime (6.80:1) instead,
+     which is why these two are different values rather than one shared one. */
+  --color-accent: oklch(72% 0.18 130);
+  --color-accent-ink: oklch(45% 0.13 132);
+  --color-accent-soft: oklch(95.5% 0.05 130);
+  --color-accent-contrast: oklch(20% 0.03 130);
+  --color-focus: oklch(45% 0.13 132);
 
-  /* The L52 accent is tuned for white-on-solid on light paper, which makes it
-     too dark to read as a focus ring against the dark panel ramp (2.06:1 on
-     panel-raised). Dark surfaces re-point --color-focus at a light tint of the
-     same emerald, so every `ring-focus` / `outline-focus` inside a panel
-     inherits a ring that clears 3:1 without any component knowing about it. */
-  --color-focus-on-panel: oklch(76% 0.14 163);
+  /* --- Mid-slate panel ramp ---------------------------------------------- */
+  --color-panel: oklch(34% 0.03 255);
+  --color-panel-inset: oklch(29% 0.028 255);
+  --color-panel-raised: oklch(40% 0.032 255);
+  --color-panel-edge: oklch(47% 0.035 255);
+
+  /* `--color-focus` is the DARK lime, because it has to bite into near-white
+     paper. Dropped onto the panel ramp that same value all but disappears —
+     1.29:1 on panel-raised, a ring you cannot see. Dark surfaces re-point
+     --color-focus at the bright L72 lime (3.90:1 on panel-raised), so every
+     `ring-focus` / `outline-focus` inside a panel inherits a visible ring
+     without any component knowing which surface it landed on.
+
+     Note this is the inverse of the old emerald arrangement, where the panel
+     override was LIGHTER than the paper ring for the same reason in reverse.
+     Both tokens must be re-checked together if the lime is ever re-tuned. */
+  --color-focus-on-panel: oklch(72% 0.18 130);
 
   /* --- Status ------------------------------------------------------------
-     Built on the same geometry as the accent (L52/C0.14 base, L38/C0.10 ink,
-     L94/C0.04 soft) so a warning chip and an accent chip read as the same
+     One geometry across all three hues — L52/C0.14 base, L38/C0.10 ink,
+     L94/C0.04 soft — so a warning chip and an info chip read as the same
      material in two hues rather than two different design languages.
 
+     The accent deliberately does NOT share this geometry any more. Status
+     colours are dark solids that carry near-white `-contrast` ink; the lime
+     accent is a light solid that carries near-black. That asymmetry is the
+     signal: anything mid-dark on this page is a state, and the one bright
+     thing is the brand. Do not "harmonise" the accent back down to L52.
+
      The L52 base is not cosmetic: it is the lightest value at which the
-     near-white `-contrast` ink clears WCAG AA (4.5:1) on every one of the four
-     hues. Do not lighten these back toward L60 without re-checking that pair —
-     at L60 the accent solid only reaches 4.14:1 and every filled button in the
-     app fails. Solids are for filled surfaces; use `-ink` for text on light.
+     near-white `-contrast` ink clears WCAG AA (4.5:1) on every one of the
+     three hues. Do not lighten these toward L60 without re-checking that pair
+     — at L60 a solid only reaches 4.14:1 and every filled status button in
+     the app fails. Solids are for filled surfaces; use `-ink` on light.
 
      These are for STATE, not decoration: danger for destructive and failure,
      warn for caution and pending, info for neutral annotation. A card does not
@@ -112,39 +135,46 @@
      The one sanctioned place for multiple hues: encoding graph node types,
      token roles in highlighted shell output, and BM25 term classes — data
      whose categories are unordered and need to be told apart at a glance.
-     cat-1 is the accent, so the primary category and the brand agree.
+     cat-1 carries the accent HUE, so the primary category and the brand agree
+     — but not the accent VALUE. Every colour in this ramp has to clear 3:1 on
+     paper, because these get used as small graph fills and legend swatches
+     with no ink on them; the L72 accent lime manages only 2.25:1. cat-1 is
+     the same lime dropped to L62 (3.32:1), which is where the rest of the
+     ramp already sits. Match the ratio, not the hex, when adding to this set.
      Five is the ceiling; past that, use shape or position instead of hue.
   ----------------------------------------------------------------------- */
-  --color-cat-1: oklch(60% 0.14 163);
+  --color-cat-1: oklch(62% 0.15 130);
   --color-cat-2: oklch(60% 0.14 250);
   --color-cat-3: oklch(58% 0.16 300);
   --color-cat-4: oklch(64% 0.14 70);
   --color-cat-5: oklch(62% 0.11 205);
 
-  --color-cat-1-soft: oklch(94% 0.04 163);
+  --color-cat-1-soft: oklch(94% 0.045 130);
   --color-cat-2-soft: oklch(94% 0.04 250);
   --color-cat-3-soft: oklch(94% 0.045 300);
   --color-cat-4-soft: oklch(94% 0.045 70);
   --color-cat-5-soft: oklch(94% 0.035 205);
 
-  /* --- On-panel: text and syntax over the dark ramp -----------------------
+  /* --- On-panel: text and syntax over the slate ramp ----------------------
      The soft/ink pairs above are built for paper. A terminal needs its own
      set or every code block falls back to raw `emerald-400`/`blue-300`, which
      is how the palette leaked in the first place. All of these are measured
      against --color-panel-inset, the darkest surface they can land on.
   ----------------------------------------------------------------------- */
-  --color-panel-ink: oklch(96% 0.006 250);
-  --color-panel-ink-2: oklch(80% 0.014 250);
-  /* 74.5%, not 66%: the quiet on-panel ink has to clear 4.5:1 against
+  --color-panel-ink: oklch(97% 0.005 250);
+  --color-panel-ink-2: oklch(84% 0.012 250);
+  /* 78%, not 66%: the quiet on-panel ink has to clear 4.5:1 against
      --color-panel-raised, the lightest surface it can sit on, not just
-     against the darkest one. Same reasoning as --color-ink-3 on paper. */
-  --color-panel-ink-3: oklch(74.5% 0.016 250);
+     against the darkest one. Same reasoning as --color-ink-3 on paper.
+     The mid-slate ramp is lighter than the old navy, so this floor rose
+     from 74.5% with it — at 75% the pair measures 4.14:1 and fails. */
+  --color-panel-ink-3: oklch(78% 0.014 250);
 
   --color-syntax-string: oklch(82% 0.15 163);
   --color-syntax-keyword: oklch(80% 0.11 250);
   --color-syntax-number: oklch(84% 0.13 70);
   --color-syntax-fn: oklch(84% 0.09 300);
-  --color-syntax-comment: oklch(74.5% 0.015 250);
+  --color-syntax-comment: oklch(78% 0.015 250);
 
   /* --- Type, radii, motion ----------------------------------------------- */
   --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
@@ -206,6 +236,8 @@
    a short tab and a tall one, and keeps it aligned with the fixed header. */
 .app-scroll {
   scrollbar-gutter: stable;
+  /* Anchor jumps must land below the mast + pill, not underneath them. */
+  scroll-padding-top: calc(var(--mast-h) + var(--pill-h) + var(--space-md));
 }
 
 /* ---------------------------------------------------------------------------
@@ -336,14 +368,19 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   N5 · Floating pill.
-   Visibly detached, content-sized, blurred over the scrolling workbench.
-   Labels are short by design — a pill that spans the viewport is just a
-   full-width bar with rounded ends.
+   N5 · Pill on a band.
+   The pill itself stays content-sized — labels are short by design, and a pill
+   that spans the viewport is just a full-width bar with rounded ends. But a
+   *purely* floating pill let live content scroll up alongside it: section
+   headings and buttons landed either side of the pill at the same optical
+   height and read as one garbled row. The ::before is a full-bleed opaque
+   band pinned behind it, so scrolled content passes cleanly underneath
+   instead of sitting next to it. Opaque, not blurred: translucency over
+   arbitrary content was the original problem, not the fix for it.
 --------------------------------------------------------------------------- */
 .nav-pill {
   position: fixed;
-  top: calc(var(--mast-h) + var(--space-2xs));
+  top: var(--mast-h);
   left: 50%;
   transform: translateX(-50%);
   z-index: 25;
@@ -352,12 +389,26 @@ body {
   gap: var(--space-3xs);
   max-width: min(720px, calc(100vw - var(--space-lg)));
   padding: var(--space-3xs);
-  background: color-mix(in oklch, var(--color-paper) 78%, transparent);
-  backdrop-filter: blur(14px) saturate(120%);
-  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  background: var(--color-paper);
   border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius-pill);
   box-shadow: 0 8px 24px -14px oklch(21% 0.02 255 / 0.28);
+}
+
+/* Full-bleed opaque band behind the pill. Scrolled content passes underneath
+   it instead of drawing level with the pill on either side. */
+/* Sibling, not a pseudo-element: a negative-z child would paint over the pill's
+   own background and border and erase the pill outline. */
+.nav-pill__band {
+  position: fixed;
+  z-index: 24;
+  left: 0;
+  right: 0;
+  top: var(--mast-h);
+  height: calc(var(--pill-h) + var(--space-2xs));
+  background: var(--color-paper);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  pointer-events: none;
 }
 
 .nav-pill__track {
@@ -424,6 +475,15 @@ body {
     transform: none;
     max-width: none;
     display: flex;
+  }
+
+  /* Docked at the bottom, the band goes with it. */
+  .nav-pill__band {
+    top: auto;
+    bottom: 0;
+    height: calc(var(--pill-h) + var(--space-sm));
+    border-bottom: 0;
+    border-top: var(--rule-hair) solid var(--color-rule);
   }
 
   .nav-pill__track {
