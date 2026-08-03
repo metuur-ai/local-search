@@ -119,92 +119,93 @@ export const AiSkillSection: React.FC = () => {
     },
   ];
 
+  const focusRing =
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2';
+
   return (
     <div className="app-container space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-purple-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 shadow-md border border-purple-800/40 relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+      <div className="bg-panel text-panel-ink rounded-card p-6 shadow-2xs border border-panel-edge">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2 max-w-2xl">
             <div className="flex items-center gap-2">
-              <span className="p-1.5 bg-purple-500/20 text-purple-300 rounded-lg border border-purple-500/30">
-                <Bot className="w-5 h-5" />
+              <span className="p-1.5 bg-accent-soft text-accent-ink rounded-input border border-accent/25">
+                <Bot className="w-5 h-5" aria-hidden="true" />
               </span>
-              <span className="text-xs font-mono font-bold uppercase tracking-widest text-purple-300">
+              <span className="text-xs font-mono font-bold uppercase tracking-widest text-panel-ink-2">
                 Claude Code Integration
               </span>
-              <span className="px-2 py-0.5 bg-purple-500/30 text-purple-200 text-[10px] font-mono rounded border border-purple-400/30">
+              <span className="px-2 py-0.5 bg-panel-raised text-panel-ink-2 text-[10px] font-mono rounded-input border border-panel-edge">
                 /local-search skill
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white font-sans">
-              The Claude Code Skill Guide & Contract
+            <h2 className="text-xl sm:text-2xl font-display font-semibold tracking-tight text-panel-ink">
+              The Claude Code Skill Guide &amp; Contract
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Local Search ships a bundled skill that enables Claude Code to autonomously query specifications, enforce requirement traceability (<code className="text-purple-300 font-mono">@spec ID</code>), and ground AI responses without context bloat or cloud secrets.
+            <p className="text-sm text-panel-ink-2 leading-relaxed">
+              Local Search ships a bundled skill that enables Claude Code to autonomously query specifications, enforce requirement traceability (<code className="text-panel-ink font-mono">@spec ID</code>), and ground AI responses without context bloat or cloud secrets.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="bg-panel-inset border border-purple-500/30 p-3 rounded-xl font-mono text-[11px] text-purple-200 space-y-1">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+            <div className="bg-panel-inset border border-panel-edge p-3 rounded-card font-mono text-[11px] text-panel-ink-2 space-y-1">
+              <div className="flex items-center gap-1.5 text-accent-ink font-bold">
+                <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Installed via CLI</span>
               </div>
-              <div className="text-slate-400">$ local-search install-skill</div>
-              <div className="text-[10px] text-slate-400">Target: ~/.claude/skills/local-search</div>
+              <div className="text-panel-ink-3">$ local-search install-skill</div>
+              <div className="text-[10px] text-panel-ink-3">Target: ~/.claude/skills/local-search</div>
             </div>
           </div>
         </div>
 
         {/* Sub-tab Navigation Buttons */}
-        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-purple-800/40 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-panel-edge overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-2.5 rounded-input text-xs font-semibold flex items-center gap-1.5 transition-all ${focusRing} ${
               activeTab === 'overview'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
+                ? 'bg-accent text-accent-contrast'
+                : 'bg-panel-inset text-panel-ink-2 hover:bg-panel-raised hover:text-panel-ink'
             }`}
           >
-            <Bot className="w-3.5 h-3.5" />
-            <span>Skill Overview & Discovery</span>
+            <Bot className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Skill Overview &amp; Discovery</span>
           </button>
 
           <button
             onClick={() => setActiveTab('init')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-2.5 rounded-input text-xs font-semibold flex items-center gap-1.5 transition-all ${focusRing} ${
               activeTab === 'init'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
+                ? 'bg-accent text-accent-contrast'
+                : 'bg-panel-inset text-panel-ink-2 hover:bg-panel-raised hover:text-panel-ink'
             }`}
           >
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Project Scope (.agent/config)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('capabilities')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-2.5 rounded-input text-xs font-semibold flex items-center gap-1.5 transition-all ${focusRing} ${
               activeTab === 'capabilities'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
+                ? 'bg-accent text-accent-contrast'
+                : 'bg-panel-inset text-panel-ink-2 hover:bg-panel-raised hover:text-panel-ink'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
             <span>7 Skill Options (What, How, Why)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('sandbox')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-2.5 rounded-input text-xs font-semibold flex items-center gap-1.5 transition-all ${focusRing} ${
               activeTab === 'sandbox'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-panel-inset text-slate-300 hover:bg-panel-raised'
+                ? 'bg-accent text-accent-contrast'
+                : 'bg-panel-inset text-panel-ink-2 hover:bg-panel-raised hover:text-panel-ink'
             }`}
           >
-            <Play className="w-3.5 h-3.5" />
+            <Play className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Skill Agent Simulator</span>
           </button>
         </div>
@@ -215,78 +216,80 @@ export const AiSkillSection: React.FC = () => {
         <div className="space-y-6 animate-fadeIn">
           {/* Installation Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-purple-600" />
+            <div className="bg-white border border-rule rounded-card p-5 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-rule pb-2">
+                <span className="font-bold text-ink text-sm flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-ink-3" aria-hidden="true" />
                   Global Skill Installation
                 </span>
-                <span className="text-[10px] bg-purple-100 text-purple-800 font-mono px-2 py-0.5 rounded font-bold">
+                <span className="text-[10px] bg-paper-3 text-ink-2 font-mono px-2 py-0.5 rounded-input font-bold">
                   DEFAULT
                 </span>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm text-ink-2 leading-relaxed">
                 Installs the bundled skill into Claude Code's global skill directory so it is available across all workspaces on your machine.
               </p>
-              <div className="bg-panel-inset p-3 rounded-xl font-mono text-[11px] text-purple-200 flex items-center justify-between">
+              <div className="bg-panel-inset p-3 rounded-input font-mono text-[11px] text-panel-ink-2 flex items-center justify-between">
                 <span>$ local-search install-skill</span>
                 <button
                   onClick={() => handleCopy('local-search install-skill', 101)}
-                  className="text-slate-400 hover:text-white p-1"
+                  aria-label="Copy install command"
+                  className={`text-panel-ink-3 hover:text-panel-ink p-2 rounded-input transition-colors ${focusRing}`}
                 >
-                  {copiedIndex === 101 ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedIndex === 101 ? <Check className="w-3.5 h-3.5 text-accent-ink" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-500">
-                Destination: <code className="font-mono text-slate-700">~/.claude/skills/local-search</code>
+              <p className="text-[11px] text-ink-3">
+                Destination: <code className="font-mono text-ink-2">~/.claude/skills/local-search</code>
               </p>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                  <FolderGit2 className="w-4 h-4 text-blue-600" />
+            <div className="bg-white border border-rule rounded-card p-5 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-rule pb-2">
+                <span className="font-bold text-ink text-sm flex items-center gap-2">
+                  <FolderGit2 className="w-4 h-4 text-ink-3" aria-hidden="true" />
                   Local Project Skill Installation
                 </span>
-                <span className="text-[10px] bg-blue-100 text-blue-800 font-mono px-2 py-0.5 rounded font-bold">
+                <span className="text-[10px] bg-paper-3 text-ink-2 font-mono px-2 py-0.5 rounded-input font-bold">
                   TEAM / REPO
                 </span>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Lands the skill at <code className="font-mono text-slate-800">./.claude/skills/local-search</code> so everyone cloning the repository gets skill capabilities without extra setup.
+              <p className="text-sm text-ink-2 leading-relaxed">
+                Lands the skill at <code className="font-mono text-ink-2">./.claude/skills/local-search</code> so everyone cloning the repository gets skill capabilities without extra setup.
               </p>
-              <div className="bg-panel-inset p-3 rounded-xl font-mono text-[11px] text-blue-200 flex items-center justify-between">
+              <div className="bg-panel-inset p-3 rounded-input font-mono text-[11px] text-panel-ink-2 flex items-center justify-between">
                 <span>$ local-search install-skill --local</span>
                 <button
                   onClick={() => handleCopy('local-search install-skill --local', 102)}
-                  className="text-slate-400 hover:text-white p-1"
+                  aria-label="Copy local install command"
+                  className={`text-panel-ink-3 hover:text-panel-ink p-2 rounded-input transition-colors ${focusRing}`}
                 >
-                  {copiedIndex === 102 ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedIndex === 102 ? <Check className="w-3.5 h-3.5 text-accent-ink" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-500">
-                Destination: <code className="font-mono text-slate-700">./.claude/skills/local-search</code>
+              <p className="text-[11px] text-ink-3">
+                Destination: <code className="font-mono text-ink-2">./.claude/skills/local-search</code>
               </p>
             </div>
           </div>
 
           {/* Invocation Mechanics */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
-            <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600" />
+          <div className="bg-white border border-rule rounded-card p-6 space-y-4 shadow-2xs">
+            <h3 className="font-display font-semibold text-ink text-base flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-ink-3" aria-hidden="true" />
               How Claude Invokes the Skill
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 bg-purple-50/80 border border-purple-200 rounded-xl space-y-2">
-                <div className="font-bold text-purple-950 text-sm flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-purple-700" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="p-4 bg-accent-soft border border-accent/25 rounded-card space-y-2">
+                <div className="font-bold text-accent-ink text-sm flex items-center gap-1.5">
+                  <Zap className="w-4 h-4" aria-hidden="true" />
                   <span>1. Automatic Intent Triggering</span>
                 </div>
-                <p className="text-purple-900 leading-relaxed">
+                <p className="text-ink-2 leading-relaxed">
                   The skill's description acts as a broad trigger list. Claude Code automatically loads the skill whenever a prompt involves specifications, requirements, policies, or architecture.
                 </p>
-                <div className="bg-white p-2.5 rounded border border-purple-200 font-mono text-[10px] text-slate-800">
+                <div className="bg-white p-2.5 rounded-input border border-rule font-mono text-[11px] text-ink-2">
                   Example Prompts:<br/>
                   - &quot;What is our refund policy?&quot;<br/>
                   - &quot;How does payment eligibility work in payments.md?&quot;<br/>
@@ -294,15 +297,15 @@ export const AiSkillSection: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                  <Terminal className="w-4 h-4 text-slate-700" />
+              <div className="p-4 bg-paper-2 border border-rule rounded-card space-y-2">
+                <div className="font-bold text-ink text-sm flex items-center gap-1.5">
+                  <Terminal className="w-4 h-4 text-ink-3" aria-hidden="true" />
                   <span>2. Explicit Command Triggering</span>
                 </div>
-                <p className="text-slate-700 leading-relaxed">
-                  You can explicitly type <code className="font-mono bg-white px-1 border rounded text-purple-700 font-bold">/local-search</code> in Claude Code to force skill execution directly.
+                <p className="text-ink-2 leading-relaxed">
+                  You can explicitly type <code className="font-mono bg-white px-1 border border-rule rounded-input text-ink font-bold">/local-search</code> in Claude Code to force skill execution directly.
                 </p>
-                <div className="bg-white p-2.5 rounded border border-slate-200 font-mono text-[10px] text-slate-800">
+                <div className="bg-white p-2.5 rounded-input border border-rule font-mono text-[11px] text-ink-2">
                   Explicit Usage:<br/>
                   /local-search what specifications cover Stripe webhook failures?
                 </div>
@@ -311,33 +314,33 @@ export const AiSkillSection: React.FC = () => {
           </div>
 
           {/* Core Principles */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="bg-white border border-slate-200 p-4 rounded-xl space-y-2 shadow-xs">
-              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
-                <Cpu className="w-4 h-4 text-purple-600" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="bg-white border border-rule p-4 rounded-card space-y-2 shadow-2xs">
+              <div className="flex items-center gap-1.5 font-bold text-ink text-sm">
+                <Cpu className="w-4 h-4 text-ink-3" aria-hidden="true" />
                 <span>Search First, Ground Always</span>
               </div>
-              <p className="text-slate-600 leading-relaxed">
+              <p className="text-ink-2 leading-relaxed">
                 Standing instruction obligates Claude to search specifications before answering. Claude must ground every statement in retrieved spec markdown.
               </p>
             </div>
 
-            <div className="bg-white border border-slate-200 p-4 rounded-xl space-y-2 shadow-xs">
-              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <div className="bg-white border border-rule p-4 rounded-card space-y-2 shadow-2xs">
+              <div className="flex items-center gap-1.5 font-bold text-ink text-sm">
+                <ShieldCheck className="w-4 h-4 text-accent-ink" aria-hidden="true" />
                 <span>Mandatory Citations</span>
               </div>
-              <p className="text-slate-600 leading-relaxed">
-                Every code snippet or architectural answer produced by Claude explicitly cites target markdown files and requirement IDs (<code className="font-mono text-purple-700">@spec R-1.3</code>).
+              <p className="text-ink-2 leading-relaxed">
+                Every code snippet or architectural answer produced by Claude explicitly cites target markdown files and requirement IDs (<code className="font-mono text-ink">@spec R-1.3</code>).
               </p>
             </div>
 
-            <div className="bg-white border border-slate-200 p-4 rounded-xl space-y-2 shadow-xs">
-              <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
-                <Zap className="w-4 h-4 text-blue-600" />
+            <div className="bg-white border border-rule p-4 rounded-card space-y-2 shadow-2xs">
+              <div className="flex items-center gap-1.5 font-bold text-ink text-sm">
+                <Zap className="w-4 h-4 text-ink-3" aria-hidden="true" />
                 <span>Strict Context Limits</span>
               </div>
-              <p className="text-slate-600 leading-relaxed">
+              <p className="text-ink-2 leading-relaxed">
                 Skill limits document reading to the top 2-4 matches. This prevents context flooding and guarantees rapid LLM response times.
               </p>
             </div>
@@ -348,30 +351,30 @@ export const AiSkillSection: React.FC = () => {
       {/* Tab 2: Project Scope (.agent/local-search-config.yaml) */}
       {activeTab === 'init' && (
         <div className="space-y-6 animate-fadeIn">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white border border-rule rounded-card p-6 space-y-4 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-rule pb-3">
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Project Scope Config: local-search init</h3>
-                <p className="text-xs text-slate-500">Manages <code className="font-mono text-purple-700">.agent/local-search-config.yaml</code> to restrict AI searches to relevant project repos.</p>
+                <h3 className="font-display font-semibold text-ink text-base">Project Scope Config: local-search init</h3>
+                <p className="text-sm text-ink-3">Manages <code className="font-mono text-ink">.agent/local-search-config.yaml</code> to restrict AI searches to relevant project repos.</p>
               </div>
-              <span className="font-mono text-[11px] bg-slate-100 px-2.5 py-1 rounded border border-slate-200 text-slate-700">
+              <span className="font-mono text-[11px] bg-paper-3 px-2.5 py-1 rounded-input border border-rule text-ink-2">
                 Non-Interactive Contract
               </span>
             </div>
 
             {/* Code YAML Block */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono text-slate-600">
-                <span>Sample <code className="text-purple-700">.agent/local-search-config.yaml</code></span>
+              <div className="flex items-center justify-between text-xs font-mono text-ink-2">
+                <span>Sample <code className="text-ink">.agent/local-search-config.yaml</code></span>
                 <button
                   onClick={() => handleCopy(`repositories:\n  - product-specs\n  - platform-docs\n  - graph:legacy-ontology`, 103)}
-                  className="text-purple-600 hover:text-purple-800 flex items-center gap-1"
+                  className={`text-accent-ink hover:opacity-80 flex items-center gap-1 p-1.5 rounded-input transition-colors ${focusRing}`}
                 >
-                  {copiedIndex === 103 ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>Copy YAML</span>
+                  {copiedIndex === 103 ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
+                  <span>{copiedIndex === 103 ? 'Copied' : 'Copy YAML'}</span>
                 </button>
               </div>
-              <pre className="bg-panel-inset text-purple-200 p-4 rounded-xl font-mono text-[11px] leading-relaxed overflow-x-auto border border-panel-edge">
+              <pre className="bg-panel-inset text-syntax-string p-4 rounded-card font-mono text-[11px] leading-relaxed overflow-x-auto border border-panel-edge">
 {`# LocalSearch project scope — repositories searched when running from this project.
 # Names must match \`local-search repo list\`. Managed by \`local-search init\`.
 repositories:
@@ -383,39 +386,39 @@ repositories:
 
             {/* 5 Rules Table */}
             <div className="space-y-3 pt-2">
-              <h4 className="font-bold text-slate-900 text-sm">5 Non-Obvious Execution Rules</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div className="font-bold text-purple-900">1. Flag Precedence</div>
-                  <p className="text-slate-600 text-[11px]">
+              <h4 className="font-display font-semibold text-ink text-sm">5 Non-Obvious Execution Rules</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="p-3 bg-paper-2 rounded-card border border-rule space-y-1">
+                  <div className="font-bold text-ink">1. Flag Precedence</div>
+                  <p className="text-ink-2 text-[13px]">
                     Flags compose in strict order: <code className="font-mono">--set</code> → <code className="font-mono">--add</code> → <code className="font-mono">--remove</code>.
                   </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div className="font-bold text-purple-900">2. Validation Before Write</div>
-                  <p className="text-slate-600 text-[11px]">
+                <div className="p-3 bg-paper-2 rounded-card border border-rule space-y-1">
+                  <div className="font-bold text-ink">2. Validation Before Write</div>
+                  <p className="text-ink-2 text-[13px]">
                     <code className="font-mono">--add</code> validates against registered repos. Invalid names reject the write entirely—zero partial writes.
                   </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div className="font-bold text-purple-900">3. File Auto-Creation</div>
-                  <p className="text-slate-600 text-[11px]">
+                <div className="p-3 bg-paper-2 rounded-card border border-rule space-y-1">
+                  <div className="font-bold text-ink">3. File Auto-Creation</div>
+                  <p className="text-ink-2 text-[13px]">
                     Running <code className="font-mono">local-search init --json</code> creates <code className="font-mono">.agent/local-search-config.yaml</code> automatically if missing.
                   </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div className="font-bold text-purple-900">4. Stale Entry Reporting</div>
-                  <p className="text-slate-600 text-[11px]">
-                    Dangling entries appear in the <code className="font-mono text-amber-700">&quot;unknown&quot;</code> array without being auto-deleted, avoiding git merge churn.
+                <div className="p-3 bg-paper-2 rounded-card border border-rule space-y-1">
+                  <div className="font-bold text-ink">4. Stale Entry Reporting</div>
+                  <p className="text-ink-2 text-[13px]">
+                    Dangling entries appear in the <code className="font-mono text-warn-ink">&quot;unknown&quot;</code> array without being auto-deleted, avoiding git merge churn.
                   </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1 col-span-1 md:col-span-2">
-                  <div className="font-bold text-purple-900">5. Zero-Scan Speed Guarantee</div>
-                  <p className="text-slate-600 text-[11px]">
+                <div className="p-3 bg-paper-2 rounded-card border border-rule space-y-1 col-span-1 md:col-span-2">
+                  <div className="font-bold text-ink">5. Zero-Scan Speed Guarantee</div>
+                  <p className="text-ink-2 text-[13px]">
                     <code className="font-mono">local-search init</code> opens the DB and verifies schema but <strong>never triggers a scan</strong>, guaranteeing sub-10ms response.
                   </p>
                 </div>
@@ -429,30 +432,30 @@ repositories:
       {activeTab === 'capabilities' && (
         <div className="space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-slate-900 text-base">The 7 Skill Options & Capabilities</h3>
-            <span className="text-xs text-slate-500 font-mono">SKILL.md Contract</span>
+            <h3 className="font-display font-semibold text-ink text-base">The 7 Skill Options &amp; Capabilities</h3>
+            <span className="text-xs text-ink-3 font-mono">SKILL.md Contract</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {skillOptions.map((opt, idx) => (
-              <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 shadow-xs hover:border-purple-300 transition-all">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span className="text-xs font-mono font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+              <div key={idx} className="bg-white border border-rule rounded-card p-5 space-y-3 shadow-2xs hover:border-rule-strong transition-all">
+                <div className="flex items-center justify-between border-b border-rule pb-2">
+                  <span className="text-xs font-mono font-bold text-accent-ink bg-accent-soft px-2 py-0.5 rounded-input border border-accent/25">
                     {opt.num}
                   </span>
-                  <span className="font-bold text-slate-900 text-sm">{opt.title}</span>
+                  <span className="font-bold text-ink text-sm">{opt.title}</span>
                 </div>
 
-                <div className="bg-panel-inset p-2.5 rounded-lg font-mono text-[11px] text-purple-200">
+                <div className="bg-panel-inset p-2.5 rounded-input font-mono text-[11px] text-syntax-string">
                   $ {opt.command}
                 </div>
 
-                <p className="text-xs text-slate-600 leading-relaxed">
+                <p className="text-sm text-ink-2 leading-relaxed">
                   {opt.desc}
                 </p>
 
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[11px] text-slate-700">
-                  <span className="font-bold text-slate-900">Why it matters:</span> {opt.why}
+                <div className="p-2.5 bg-paper-2 rounded-input border border-rule text-[13px] text-ink-2">
+                  <span className="font-bold text-ink">Why it matters:</span> {opt.why}
                 </div>
               </div>
             ))}
@@ -462,36 +465,36 @@ repositories:
 
       {/* Tab 4: Agent Simulator */}
       {activeTab === 'sandbox' && (
-        <div className="bg-panel border border-panel-edge rounded-2xl p-6 text-slate-100 space-y-5 shadow-xl animate-fadeIn font-mono text-xs">
+        <div className="bg-panel border border-panel-edge rounded-card p-6 text-panel-ink space-y-5 shadow-lg animate-fadeIn font-mono text-xs">
           <div className="flex items-center justify-between border-b border-panel-edge pb-3">
             <div className="flex items-center gap-2">
-              <Bot className="w-5 h-5 text-purple-400" />
-              <span className="font-bold text-sm text-purple-200">Claude Code Skill Execution Simulator</span>
+              <Bot className="w-5 h-5 text-panel-ink-2" aria-hidden="true" />
+              <span className="font-bold text-sm text-panel-ink">Claude Code Skill Execution Simulator</span>
             </div>
-            <span className="text-[10px] text-slate-400 bg-panel-raised px-2 py-1 rounded border border-panel-edge">
+            <span className="text-[10px] text-panel-ink-3 bg-panel-raised px-2 py-1 rounded-input border border-panel-edge">
               Contract: json context
             </span>
           </div>
 
           {/* Controls Form */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-panel-inset p-4 rounded-xl border border-panel-edge">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-panel-inset p-4 rounded-card border border-panel-edge">
             <div className="space-y-1">
-              <label className="text-[11px] text-slate-400 font-semibold">User Prompt / Query:</label>
+              <label className="text-[11px] text-panel-ink-3 font-semibold">User Prompt / Query:</label>
               <input
                 type="text"
                 value={sandboxQuery}
                 onChange={(e) => setSandboxQuery(e.target.value)}
-                className="w-full bg-panel border border-panel-edge rounded-lg px-3 py-1.5 text-xs text-purple-200 focus:outline-none focus:border-purple-500"
+                className={`w-full bg-panel border border-panel-edge rounded-input px-3 py-1.5 text-xs text-panel-ink ${focusRing}`}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] text-slate-400 font-semibold">Project Scope (--scope):</label>
+              <label className="text-[11px] text-panel-ink-3 font-semibold">Project Scope (--scope):</label>
               <input
                 type="text"
                 value={sandboxScope}
                 onChange={(e) => setSandboxScope(e.target.value)}
-                className="w-full bg-panel border border-panel-edge rounded-lg px-3 py-1.5 text-xs text-blue-200 focus:outline-none focus:border-purple-500"
+                className={`w-full bg-panel border border-panel-edge rounded-input px-3 py-1.5 text-xs text-panel-ink ${focusRing}`}
               />
             </div>
 
@@ -499,9 +502,9 @@ repositories:
               <button
                 onClick={() => runSkillSimulation(sandboxQuery, sandboxScope)}
                 disabled={isSimulating}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold rounded-lg text-xs flex items-center gap-2 transition-all cursor-pointer"
+                className={`min-h-11 px-4 py-2 bg-accent text-accent-contrast hover:opacity-90 disabled:opacity-50 font-bold rounded-input text-xs flex items-center gap-2 transition-all cursor-pointer ${focusRing}`}
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
+                <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
                 <span>Simulate Claude Agent Skill Execution</span>
               </button>
             </div>
@@ -510,15 +513,15 @@ repositories:
           {/* Simulation Results Output */}
           {sandboxResult && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="p-3 bg-panel-inset rounded-xl border border-purple-900/60 space-y-1">
-                <div className="text-[11px] text-slate-400 font-bold">1. Skill Command Dispatched:</div>
-                <div className="text-emerald-400 font-bold">$ {sandboxResult.command}</div>
+              <div className="p-3 bg-panel-inset rounded-card border border-panel-edge space-y-1">
+                <div className="text-[11px] text-panel-ink-3 font-bold">1. Skill Command Dispatched:</div>
+                <div className="text-syntax-string font-bold">$ {sandboxResult.command}</div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <div className="text-[11px] text-slate-400 font-bold">2. JSON Payload Returned to Claude:</div>
-                  <pre className="bg-panel-inset p-3 rounded-xl text-[10px] text-slate-300 overflow-x-auto max-h-56 border border-panel-edge">
+                  <div className="text-[11px] text-panel-ink-3 font-bold">2. JSON Payload Returned to Claude:</div>
+                  <pre className="bg-panel-inset p-3 rounded-card text-[10px] text-panel-ink-2 overflow-x-auto max-h-56 border border-panel-edge">
 {JSON.stringify(
   {
     query: sandboxQuery,
@@ -533,11 +536,11 @@ repositories:
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-[11px] text-purple-300 font-bold flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  <div className="text-[11px] text-panel-ink-2 font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-panel-ink-2" aria-hidden="true" />
                     <span>3. Grounded Claude Agent Answer:</span>
                   </div>
-                  <div className="bg-purple-950/40 p-4 rounded-xl border border-purple-800/60 text-slate-200 text-[11px] leading-relaxed whitespace-pre-line font-sans">
+                  <div className="bg-panel-raised p-4 rounded-card border border-panel-edge text-panel-ink text-[11px] leading-relaxed whitespace-pre-line font-body">
                     {sandboxResult.agentAnswer}
                   </div>
                 </div>

@@ -16,6 +16,7 @@ import {
   Zap,
   Tag,
   ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface CliTerminalCardProps {
@@ -52,26 +53,26 @@ export const CliTerminalCard: React.FC<CliTerminalCardProps> = ({ onTaskComplete
 
     if (lower.startsWith('local-search search') || lower.startsWith('search')) {
       outputNode = (
-        <div className="space-y-1 font-mono text-[11px] text-slate-200">
-          <div className="text-blue-400 font-semibold">[source=fts · rank=bm25 · repos=3 (2 with graphs)]</div>
-          <div className="text-slate-400 mt-1">Specs (3):</div>
-          <div className="pl-2 border-l-2 border-blue-500 my-1">
-            <div className="text-emerald-400 font-bold">[product-specs · FTS] payments/refund.md</div>
-            <div className="text-slate-300">Refund Flow & Policy (billing, payments, @spec:r-1.3, @spec:tasks-012)</div>
+        <div className="space-y-1 font-mono text-[11px] text-panel-ink">
+          <div className="text-syntax-keyword font-semibold">[source=fts · rank=bm25 · repos=3 (2 with graphs)]</div>
+          <div className="text-panel-ink-3 mt-1">Specs (3):</div>
+          <div className="pl-2 border-l-2 border-syntax-keyword my-1">
+            <div className="text-syntax-string font-bold">[product-specs · FTS] payments/refund.md</div>
+            <div className="text-panel-ink-2">Refund Flow & Policy (billing, payments, @spec:r-1.3, @spec:tasks-012)</div>
           </div>
           <div className="pl-2 border-l-2 border-panel-edge my-1">
-            <div className="text-slate-300">[billing-service · FTS] integrations/stripe.md</div>
-            <div className="text-slate-400">Stripe Integration Spec (billing, stripe, webhooks)</div>
+            <div className="text-panel-ink-2">[billing-service · FTS] integrations/stripe.md</div>
+            <div className="text-panel-ink-3">Stripe Integration Spec (billing, stripe, webhooks)</div>
           </div>
           <div className="pl-2 border-l-2 border-panel-edge my-1">
-            <div className="text-slate-300">[product-specs · FTS] payments/chargeback.md</div>
-            <div className="text-slate-400">Chargeback & Dispute Management (billing, fraud, disputes)</div>
+            <div className="text-panel-ink-2">[product-specs · FTS] payments/chargeback.md</div>
+            <div className="text-panel-ink-3">Chargeback & Dispute Management (billing, fraud, disputes)</div>
           </div>
         </div>
       );
     } else if (lower.startsWith('local-search read') || lower.startsWith('read')) {
       outputNode = (
-        <pre className="font-mono text-[11px] text-slate-300 bg-panel-inset p-2 rounded border border-panel-edge overflow-x-auto">
+        <pre className="font-mono text-[11px] text-panel-ink-2 bg-panel-inset p-2 rounded-card border border-panel-edge overflow-x-auto">
 {`---
 id: capability://payments/refund
 tags: billing, payments, customer-support
@@ -87,63 +88,75 @@ relationships: product-specs:chargeback
       );
     } else if (lower.startsWith('local-search scope') || lower.startsWith('scope')) {
       outputNode = (
-        <div className="font-mono text-[11px] text-slate-300 space-y-1">
-          <div><span className="text-blue-400">Scope:</span>   product-specs, platform-docs, billing-service</div>
-          <div><span className="text-blue-400">Source:</span>  /Users/you/work/.agent/local-search-config.yaml</div>
-          <div><span className="text-blue-400">Weights:</span> specs=1.00 graphify=0.70 codegraph=0.80</div>
-          <div><span className="text-blue-400">Limits:</span>  specs=20 graphify=10 codegraph=10 blast_depth=2</div>
+        <div className="font-mono text-[11px] text-panel-ink-2 space-y-1">
+          <div><span className="text-syntax-keyword">Scope:</span>   product-specs, platform-docs, billing-service</div>
+          <div><span className="text-syntax-keyword">Source:</span>  /Users/you/work/.agent/local-search-config.yaml</div>
+          <div><span className="text-syntax-keyword">Weights:</span> specs=1.00 graphify=0.70 codegraph=0.80</div>
+          <div><span className="text-syntax-keyword">Limits:</span>  specs=20 graphify=10 codegraph=10 blast_depth=2</div>
         </div>
       );
     } else if (lower.startsWith('local-search tags') || lower.startsWith('tags')) {
       outputNode = (
-        <div className="font-mono text-[11px] text-slate-300 grid grid-cols-2 gap-1">
-          <div><span className="text-amber-400">spec:r-1.3</span> (4 specs)</div>
-          <div><span className="text-amber-400">spec:tasks-012</span> (2 specs)</div>
-          <div><span className="text-blue-400">billing</span> (6 specs)</div>
-          <div><span className="text-blue-400">auth</span> (4 specs)</div>
-          <div><span className="text-blue-400">jwt</span> (3 specs)</div>
-          <div><span className="text-emerald-400">link:chargeback-doc</span> (2 specs)</div>
+        <div className="font-mono text-[11px] text-panel-ink-2 grid grid-cols-2 gap-1">
+          <div><span className="text-syntax-number">spec:r-1.3</span> (4 specs)</div>
+          <div><span className="text-syntax-number">spec:tasks-012</span> (2 specs)</div>
+          <div><span className="text-syntax-keyword">billing</span> (6 specs)</div>
+          <div><span className="text-syntax-keyword">auth</span> (4 specs)</div>
+          <div><span className="text-syntax-keyword">jwt</span> (3 specs)</div>
+          <div><span className="text-syntax-string">link:chargeback-doc</span> (2 specs)</div>
         </div>
       );
     } else if (lower.startsWith('local-search graph explain') || lower.startsWith('graph explain')) {
       outputNode = (
-        <div className="font-mono text-[11px] text-slate-300 space-y-1">
-          <div className="text-blue-400 font-bold">capability://payments/refund [capability]</div>
-          <div className="text-slate-400 pl-2">defined: product-specs:payments/refund.md</div>
-          <div className="text-emerald-400 font-semibold mt-1">outgoing:</div>
-          <div className="pl-4 text-slate-300">depends_on -&gt; component://auth-api (field dependsOn)</div>
-          <div className="pl-4 text-slate-300">depends_on -&gt; component://stripe-integration (field dependsOn)</div>
-          <div className="pl-4 text-slate-300">related_to -&gt; capability://payments/chargeback (field relationships)</div>
+        <div className="font-mono text-[11px] text-panel-ink-2 space-y-1">
+          <div className="text-syntax-keyword font-bold">capability://payments/refund [capability]</div>
+          <div className="text-panel-ink-3 pl-2">defined: product-specs:payments/refund.md</div>
+          <div className="text-syntax-string font-semibold mt-1">outgoing:</div>
+          <div className="pl-4 text-panel-ink-2">depends_on -&gt; component://auth-api (field dependsOn)</div>
+          <div className="pl-4 text-panel-ink-2">depends_on -&gt; component://stripe-integration (field dependsOn)</div>
+          <div className="pl-4 text-panel-ink-2">related_to -&gt; capability://payments/chargeback (field relationships)</div>
         </div>
       );
     } else if (lower.startsWith('local-search doctor') || lower.startsWith('doctor')) {
       outputNode = (
-        <div className="font-mono text-[11px] text-slate-300 space-y-1">
-          <div className="text-emerald-400 font-bold">local-search doctor — v0.3.15</div>
-          <div className="text-slate-400">✓ Database file: ~/.local-search/specs.db (81.9 MB)</div>
-          <div className="text-slate-400">✓ Integrity: ok</div>
-          <div className="text-slate-400">✓ Schema version: v3</div>
-          <div className="text-amber-400">⚠ Repository &quot;squirrel&quot; changed since last scan</div>
-          <div className="text-emerald-400 font-bold mt-1">Result: healthy with 1 warning.</div>
+        <div className="font-mono text-[11px] text-panel-ink-2 space-y-1">
+          <div className="text-syntax-string font-bold">local-search doctor — v0.3.15</div>
+          <div className="text-panel-ink-3 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3 h-3 text-syntax-string shrink-0" aria-hidden="true" />
+            Database file: ~/.local-search/specs.db (81.9 MB)
+          </div>
+          <div className="text-panel-ink-3 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3 h-3 text-syntax-string shrink-0" aria-hidden="true" />
+            Integrity: ok
+          </div>
+          <div className="text-panel-ink-3 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3 h-3 text-syntax-string shrink-0" aria-hidden="true" />
+            Schema version: v3
+          </div>
+          <div className="text-syntax-number flex items-center gap-1.5">
+            <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden="true" />
+            Repository &quot;squirrel&quot; changed since last scan
+          </div>
+          <div className="text-syntax-string font-bold mt-1">Result: healthy with 1 warning.</div>
         </div>
       );
     } else if (lower === 'help' || lower === 'local-search help') {
       outputNode = (
-        <div className="font-mono text-[11px] text-slate-300 space-y-1">
-          <div className="text-blue-400 font-bold">Available local-search CLI commands:</div>
-          <div>• <span className="text-emerald-400">search &lt;query&gt;</span> [--repos a,b] [--semantic] [--source auto|fts|graph]</div>
-          <div>• <span className="text-emerald-400">find &lt;query&gt;</span> [--scope repo1,repo2]</div>
-          <div>• <span className="text-emerald-400">read &lt;name&gt;</span> — Print full spec file content</div>
-          <div>• <span className="text-emerald-400">repo add &lt;path&gt; &lt;name&gt;</span> — Register folder</div>
-          <div>• <span className="text-emerald-400">scope show / set / clear</span> — Manage project scope (.agent/local-search-config.yaml)</div>
-          <div>• <span className="text-emerald-400">tags</span> — View requirement @spec tags and frequencies</div>
-          <div>• <span className="text-emerald-400">graph explain &lt;entity&gt;</span> — 1-hop neighborhood walkthrough</div>
-          <div>• <span className="text-emerald-400">doctor</span> — Comprehensive health &amp; index diagnostic check</div>
+        <div className="font-mono text-[11px] text-panel-ink-2 space-y-1">
+          <div className="text-syntax-keyword font-bold">Available local-search CLI commands:</div>
+          <div>• <span className="text-syntax-string">search &lt;query&gt;</span> [--repos a,b] [--semantic] [--source auto|fts|graph]</div>
+          <div>• <span className="text-syntax-string">find &lt;query&gt;</span> [--scope repo1,repo2]</div>
+          <div>• <span className="text-syntax-string">read &lt;name&gt;</span> — Print full spec file content</div>
+          <div>• <span className="text-syntax-string">repo add &lt;path&gt; &lt;name&gt;</span> — Register folder</div>
+          <div>• <span className="text-syntax-string">scope show / set / clear</span> — Manage project scope (.agent/local-search-config.yaml)</div>
+          <div>• <span className="text-syntax-string">tags</span> — View requirement @spec tags and frequencies</div>
+          <div>• <span className="text-syntax-string">graph explain &lt;entity&gt;</span> — 1-hop neighborhood walkthrough</div>
+          <div>• <span className="text-syntax-string">doctor</span> — Comprehensive health &amp; index diagnostic check</div>
         </div>
       );
     } else {
       outputNode = (
-        <div className="text-slate-400 font-mono text-[11px]">
+        <div className="text-panel-ink-3 font-mono text-[11px]">
           Executed &quot;{rawCmd}&quot; successfully against local specs cache (~12ms).
         </div>
       );
@@ -284,44 +297,44 @@ relationships: product-specs:chargeback
   return (
     <div className="space-y-6">
       {/* Top Section Switching Banner */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white border border-rule rounded-card p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
-            <Terminal className="w-5 h-5 text-blue-100" />
+          <div className="w-10 h-10 rounded-card bg-info-soft text-info-ink border border-info/25 flex items-center justify-center">
+            <Terminal className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="font-extrabold text-slate-900 text-lg">CLI Terminal Explorer & Complete Command Guide</h2>
-            <p className="text-xs text-slate-500">
-              Interactive terminal simulator and complete reference for all 12 <code className="font-mono text-slate-700">local-search</code> command groups.
+            <h2 className="font-display font-semibold text-ink text-lg">CLI Terminal Explorer & Complete Command Guide</h2>
+            <p className="text-sm text-ink-3">
+              Interactive terminal simulator and complete reference for all 12 <code className="font-mono text-ink-2">local-search</code> command groups.
             </p>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex flex-wrap items-center gap-1 text-xs font-semibold">
+        <div className="bg-paper-3 p-1 rounded-card border border-rule flex flex-wrap items-center gap-1 text-xs font-semibold">
           <button
             onClick={() => setActiveSection('terminal')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-input flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
               activeSection === 'terminal'
-                ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-info-ink shadow-2xs border border-rule/80'
+                : 'text-ink-2 hover:text-ink'
             }`}
           >
-            <Terminal className="w-3.5 h-3.5 text-blue-600" />
+            <Terminal className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Interactive Terminal</span>
           </button>
 
           <button
             onClick={() => setActiveSection('commands')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1.5 rounded-input flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
               activeSection === 'commands'
-                ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-info-ink shadow-2xs border border-rule/80'
+                : 'text-ink-2 hover:text-ink'
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+            <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
             <span>12 Commands Directory</span>
-            <span className="px-1.5 py-0.2 bg-blue-100 text-blue-800 text-[10px] font-mono rounded">
+            <span className="px-1.5 py-0.5 bg-info-soft text-info-ink text-[10px] font-mono rounded-input">
               12
             </span>
           </button>
@@ -331,24 +344,24 @@ relationships: product-specs:chargeback
 
       {/* Section 1: Terminal Simulator */}
       {activeSection === 'terminal' && (
-        <div className="bg-panel-inset text-slate-100 rounded-2xl p-5 flex flex-col shadow-lg border border-panel-edge font-sans h-[520px]">
+        <div className="bg-panel-inset text-panel-ink rounded-card p-5 flex flex-col shadow-2xs border border-panel-edge font-sans h-[520px]">
           {/* Terminal Titlebar */}
           <div className="flex items-center justify-between pb-3 mb-3 border-b border-panel-edge text-xs">
             <div className="flex items-center gap-2">
               <div className="flex gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
-                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
-                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+                <span className="w-3 h-3 rounded-pill bg-danger/80 inline-block"></span>
+                <span className="w-3 h-3 rounded-pill bg-warn/80 inline-block"></span>
+                <span className="w-3 h-3 rounded-pill bg-accent/80 inline-block"></span>
               </div>
-              <span className="font-mono font-bold text-slate-300 ml-2 flex items-center gap-1.5">
-                <Terminal className="w-3.5 h-3.5 text-blue-400" />
+              <span className="font-mono font-bold text-panel-ink-2 ml-2 flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5 text-syntax-keyword" aria-hidden="true" />
                 local-search CLI Simulator (~/.local-search/specs.db)
               </span>
             </div>
 
             <button
               onClick={() => setHistory([])}
-              className="text-[10px] text-slate-400 hover:text-slate-200 transition-colors"
+              className="text-[10px] text-panel-ink-3 hover:text-panel-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded-input"
             >
               Clear Screen
             </button>
@@ -356,7 +369,7 @@ relationships: product-specs:chargeback
 
           {/* Quick Run Buttons for Non-Technical Users */}
           <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-[10px] font-semibold text-slate-400">Quick Commands:</span>
+            <span className="text-[10px] font-semibold text-panel-ink-3">Quick Commands:</span>
             {presetButtons.map((btn, idx) => (
               <button
                 key={idx}
@@ -364,9 +377,9 @@ relationships: product-specs:chargeback
                   setInputVal(btn.cmd);
                   handleRunCommand(btn.cmd);
                 }}
-                className="px-2 py-1 bg-panel-raised hover:bg-panel-edge text-blue-200 border border-panel-edge hover:border-panel-raised rounded-lg text-[11px] font-mono transition-all flex items-center gap-1 cursor-pointer"
+                className="px-2 py-1 bg-panel-raised hover:bg-panel-edge text-panel-ink-2 border border-panel-edge hover:border-panel-raised rounded-input text-[11px] font-mono transition-all flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
               >
-                <Play className="w-2.5 h-2.5 fill-current text-blue-400" />
+                <Play className="w-2.5 h-2.5 fill-current" aria-hidden="true" />
                 <span>{btn.label}</span>
               </button>
             ))}
@@ -375,15 +388,15 @@ relationships: product-specs:chargeback
           {/* Terminal Output Stream */}
           <div className="flex-1 overflow-y-auto pr-2 space-y-3 mb-3 font-mono text-xs">
             {history.map((item, idx) => (
-              <div key={idx} className="space-y-1 border-b border-slate-900 pb-2.5 last:border-0">
-                <div className="flex items-center justify-between text-slate-400 text-[11px]">
+              <div key={idx} className="space-y-1 border-b border-panel-edge pb-2.5 last:border-0">
+                <div className="flex items-center justify-between text-panel-ink-3 text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-emerald-400 font-bold">$</span>
-                    <span className="text-slate-100 font-semibold">{item.command}</span>
+                    <span className="text-syntax-string font-bold">$</span>
+                    <span className="text-panel-ink font-semibold">{item.command}</span>
                   </div>
-                  <span className="text-slate-400 text-[10px]">{item.timestamp}</span>
+                  <span className="text-panel-ink-3 text-[10px]">{item.timestamp}</span>
                 </div>
-                <div className="pl-3 text-slate-300">{item.output}</div>
+                <div className="pl-3 text-panel-ink-2">{item.output}</div>
               </div>
             ))}
             <div ref={terminalEndRef} />
@@ -391,7 +404,7 @@ relationships: product-specs:chargeback
 
           {/* Terminal Input Row */}
           <div className="relative flex items-center">
-            <span className="absolute left-3 text-emerald-400 font-mono font-bold text-xs pointer-events-none">
+            <span className="absolute left-3 text-syntax-string font-mono font-bold text-xs pointer-events-none">
               $
             </span>
             <input
@@ -400,14 +413,14 @@ relationships: product-specs:chargeback
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleRunCommand()}
               placeholder="type local-search command or 'help'..."
-              className="w-full pl-7 pr-20 py-2 bg-panel border border-panel-edge rounded-xl text-xs font-mono text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              className="w-full pl-7 pr-20 py-2 bg-panel border border-panel-edge rounded-input text-xs font-mono text-panel-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 transition-all"
             />
             <button
               onClick={() => handleRunCommand()}
-              className="absolute right-1.5 py-1 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+              className="absolute right-1.5 py-1 px-3 bg-info hover:bg-info/90 text-white rounded-input text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
               <span>Run</span>
-              <CornerDownLeft className="w-3 h-3" />
+              <CornerDownLeft className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -417,24 +430,24 @@ relationships: product-specs:chargeback
       {activeSection === 'commands' && (
         <div className="space-y-4 animate-fadeIn">
           {/* Filter and Search Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="bg-white p-4 rounded-card border border-rule shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 text-ink-3 absolute left-3 top-2.5" aria-hidden="true" />
               <input
                 type="text"
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
                 placeholder="Search commands, flags, or descriptions..."
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                className="w-full pl-9 pr-3 py-1.5 bg-paper-2 border border-rule rounded-input text-xs text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 font-mono"
               />
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Filter className="w-3.5 h-3.5 text-slate-500" />
+              <Filter className="w-3.5 h-3.5 text-ink-3" aria-hidden="true" />
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none font-sans cursor-pointer"
+                className="bg-paper-2 border border-rule rounded-input px-3 py-1.5 text-xs text-ink-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 font-sans cursor-pointer"
               >
                 <option value="all">All 12 Command Categories</option>
                 {Array.from(new Set(commandDirectory.map((c) => c.category))).map((cat, idx) => (
@@ -451,14 +464,14 @@ relationships: product-specs:chargeback
             {filteredCommands.map((item, idx) => (
               <div
                 key={idx}
-                className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 shadow-xs hover:border-blue-300 transition-all"
+                className="bg-white border border-rule rounded-card p-5 space-y-3 shadow-2xs hover:border-info/40 transition-all"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rule pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold uppercase">
+                    <span className="font-mono text-[10px] bg-paper-3 text-ink-2 px-2 py-0.5 rounded-input border border-rule font-bold uppercase">
                       {item.category}
                     </span>
-                    <span className="font-mono font-bold text-slate-900 text-sm">{item.cmd}</span>
+                    <span className="font-mono font-bold text-ink text-sm">{item.cmd}</span>
                   </div>
 
                   <button
@@ -468,38 +481,38 @@ relationships: product-specs:chargeback
                       setActiveSection('terminal');
                       handleRunCommand(cleanCmd);
                     }}
-                    className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold flex items-center gap-1 self-start sm:self-auto cursor-pointer transition-all"
+                    className="px-2.5 py-1 bg-info-soft hover:bg-info-soft/70 text-info-ink border border-info/25 rounded-input text-xs font-semibold flex items-center gap-1 self-start sm:self-auto cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                   >
-                    <Play className="w-3 h-3 fill-current text-blue-600" />
+                    <Play className="w-3 h-3 fill-current" aria-hidden="true" />
                     <span>Run in Terminal</span>
                   </button>
                 </div>
 
                 {/* Flags Row */}
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono">
-                  <span className="text-slate-400 font-sans text-xs">Supported Flags:</span>
+                  <span className="text-ink-3 font-sans text-xs">Supported Flags:</span>
                   {item.flags.map((flag, fIdx) => (
-                    <span key={fIdx} className="bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                    <span key={fIdx} className="bg-paper-3 border border-rule text-ink-2 px-2 py-0.5 rounded-input">
                       {flag}
                     </span>
                   ))}
                 </div>
 
                 {/* What / How / Why Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs pt-1">
-                  <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1">
-                    <div className="font-bold text-blue-900 text-[11px] uppercase tracking-wider">What it does</div>
-                    <p className="text-blue-950 leading-relaxed text-[11px]">{item.what}</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm pt-1">
+                  <div className="p-3 bg-info-soft/60 rounded-card border border-info/20 space-y-1">
+                    <div className="font-bold text-info-ink text-[11px] uppercase tracking-wider">What it does</div>
+                    <p className="text-info-ink leading-relaxed text-sm">{item.what}</p>
                   </div>
 
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wider">How it executes</div>
-                    <p className="text-slate-700 leading-relaxed text-[11px]">{item.how}</p>
+                  <div className="p-3 bg-paper-2 rounded-card border border-rule space-y-1">
+                    <div className="font-bold text-ink text-[11px] uppercase tracking-wider">How it executes</div>
+                    <p className="text-ink-2 leading-relaxed text-sm">{item.how}</p>
                   </div>
 
-                  <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-1">
-                    <div className="font-bold text-emerald-900 text-[11px] uppercase tracking-wider">Why it exists</div>
-                    <p className="text-emerald-950 leading-relaxed text-[11px]">{item.why}</p>
+                  <div className="p-3 bg-accent-soft/60 rounded-card border border-accent/20 space-y-1">
+                    <div className="font-bold text-accent-ink text-[11px] uppercase tracking-wider">Why it exists</div>
+                    <p className="text-accent-ink leading-relaxed text-sm">{item.why}</p>
                   </div>
                 </div>
               </div>

@@ -20,42 +20,48 @@ const XMark: React.FC<{ className?: string }> = ({ className }) => (
  * clipping, so it has a minimum height rather than a fixed one.
  */
 export const SiteFooter: React.FC = () => {
-  const linkClass =
-    'text-slate-400 hover:text-white transition-colors rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400';
-
   return (
-    <footer className="min-h-10 bg-panel text-slate-400 px-4 sm:px-8 py-2 flex flex-wrap items-center justify-center sm:justify-between gap-x-5 gap-y-1 text-[11px] font-mono shrink-0 border-t border-panel-edge z-10">
-      <p>
-        © 2026 local-search v{VERSION} · made by{' '}
+    <footer className="foot-mast shrink-0">
+      <p className="foot-mast__wordmark">local-search</p>
+      <p className="foot-mast__tagline hidden sm:block">
+        Search your specs where they already live.
+      </p>
+
+      <div className="foot-mast__links">
+        <a
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="GitHub repository"
+          className="foot-mast__link"
+        >
+          <Github className="w-3.5 h-3.5" aria-hidden="true" />
+          <span className="hidden sm:inline">Source</span>
+        </a>
+
         <a
           href={X_URL}
           target="_blank"
           rel="noreferrer"
-          className="text-slate-300 hover:text-white transition-colors"
+          aria-label="Author on X"
+          className="foot-mast__link"
         >
-          @javierhbr
-        </a>
-      </p>
-
-      <div className="flex items-center gap-4">
-        <a href={GITHUB_URL} target="_blank" rel="noreferrer" aria-label="GitHub repository" className={linkClass}>
-          <Github className="w-4 h-4" />
-        </a>
-
-        <a href={X_URL} target="_blank" rel="noreferrer" aria-label="Author on X" className={linkClass}>
-          <XMark className="w-3.5 h-3.5" />
+          <XMark className="w-3 h-3" />
+          <span className="hidden sm:inline">@javierhbr</span>
         </a>
 
         <a
           href={COFFEE_URL}
           target="_blank"
           rel="noreferrer"
-          className={`${linkClass} flex items-center gap-1.5`}
+          className="foot-mast__link"
         >
-          <Coffee className="w-4 h-4" />
-          <span>Buy me a coffee</span>
+          <Coffee className="w-3.5 h-3.5" aria-hidden="true" />
+          <span className="hidden sm:inline">Buy me a coffee</span>
         </a>
       </div>
+
+      <p className="foot-mast__licence">© 2026 local-search v{VERSION}</p>
     </footer>
   );
 };

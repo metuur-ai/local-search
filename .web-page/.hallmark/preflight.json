@@ -1,0 +1,12 @@
+{
+  "scanned": "2026-08-03",
+  "design_md": null,
+  "font_stack": null,
+  "palette": "Tailwind @theme dark blue-slate ramp (src/index.css L20-25); rest Tailwind defaults",
+  "motion_library": null,
+  "motion_stance": "motion-cut",
+  "spacing": "Tailwind defaults; no custom scale",
+  "framework": "React 19 + Vite + Tailwind v4",
+  "preserved": ["--color-panel ramp", ".app-container", ".app-scroll", ".no-scrollbar", "reduced-motion block", "all section components"],
+  "introduced": ["OKLCH token system (tokens.css)", "Space Grotesk + Inter + JetBrains Mono", "4pt space scale", "N5 floating pill", "Ft1 mast-headed footer"]
+}

@@ -33,6 +33,12 @@ import {
   FileText,
   Network,
   ExternalLink,
+  Bot,
+  Loader2,
+  TrendingUp,
+  ArrowLeft,
+  ArrowRight,
+  type LucideIcon,
 } from 'lucide-react';
 
 interface SearchSandboxCardProps {
@@ -41,12 +47,21 @@ interface SearchSandboxCardProps {
   onTaskCompleted?: () => void;
 }
 
-const UI_BREAKDOWN_ITEMS_SEARCH = [
+interface UiBreakdownItem {
+  id: number;
+  title: string;
+  subtitle: string;
+  icon: LucideIcon;
+  description: string;
+  benefits: string[];
+}
+
+const UI_BREAKDOWN_ITEMS_SEARCH: UiBreakdownItem[] = [
   {
     id: 1,
     title: 'Search Query Input',
     subtitle: 'Multi-Term & Requirement Pinpointing',
-    icon: '🔍',
+    icon: Search,
     description:
       'Main search bar supporting natural language questions (e.g., "what is foyer?"), Porter Stemming keyword lookups, and `@spec` requirement tags.',
     benefits: ['Sub-20ms query execution', 'Direct requirement tag lookup'],
@@ -55,7 +70,7 @@ const UI_BREAKDOWN_ITEMS_SEARCH = [
     id: 2,
     title: 'Target Repositories Checklist',
     subtitle: 'Multi-Repo Corpus Granularity',
-    icon: '📁',
+    icon: Folder,
     description:
       'Filter target repositories (`Repo foyer-platform (local directory)`, `Repo squirrel (local directory)`, `Repo team-os-example-repo (local directory)`, `Repo uncle-os (local directory)`) with graph centrality indicators.',
     benefits: ['Cross-repo workspace scoping', 'Graph availability badges'],
@@ -64,7 +79,7 @@ const UI_BREAKDOWN_ITEMS_SEARCH = [
     id: 3,
     title: 'File Typology Filters',
     subtitle: 'Format & Extension Isolation',
-    icon: '📄',
+    icon: FileText,
     description:
       'Filter candidate specs by typology (`All`, `MD` markdown, `Sidecar PNG` media diagrams).',
     benefits: ['Format-specific candidate filtering', 'Instant corpus narrowing'],
@@ -73,7 +88,7 @@ const UI_BREAKDOWN_ITEMS_SEARCH = [
     id: 4,
     title: 'Search Mode Selector',
     subtitle: 'Graph Fast vs Grounded AI Answer',
-    icon: '⚡',
+    icon: Zap,
     description:
       'Toggle between instant Graph-aware retrieval (<15ms) and full LLM answer synthesis grounded over retrieved local files.',
     benefits: ['Choose speed vs generative depth', 'Zero-hallucination local context'],
@@ -82,7 +97,7 @@ const UI_BREAKDOWN_ITEMS_SEARCH = [
     id: 5,
     title: 'Candidate Sources Panel',
     subtitle: 'Ranked Source Documents',
-    icon: '📑',
+    icon: Layers,
     description:
       'Left column list of top retrieved candidate files with composite similarity scores, file paths, and repository tags.',
     benefits: ['Raw score provenance', 'Direct click-to-preview document'],
@@ -91,7 +106,7 @@ const UI_BREAKDOWN_ITEMS_SEARCH = [
     id: 6,
     title: 'Grounded AI Answer Synthesis',
     subtitle: 'LLM RAG with Direct Citations',
-    icon: '🤖',
+    icon: Bot,
     description:
       'Generates markdown answers strictly grounded in retrieved spec files with zero external API key requirements or hallucinated links.',
     benefits: ['Copyable markdown output', 'Direct file path provenance'],
@@ -100,7 +115,7 @@ const UI_BREAKDOWN_ITEMS_SEARCH = [
     id: 7,
     title: 'Neighborhood Map (Knowledge Graph)',
     subtitle: 'Radial Graph Topology',
-    icon: '🕸️',
+    icon: Network,
     description:
       'Interactive vector map connecting the search query anchor to surrounding specification nodes and dependent modules.',
     benefits: ['Visual node dependency map', 'Interactive graph inspection'],
@@ -109,7 +124,7 @@ const UI_BREAKDOWN_ITEMS_SEARCH = [
     id: 8,
     title: 'Retrieval Provenance Audit',
     subtitle: 'Deterministic RRF Audit',
-    icon: '⚙️',
+    icon: SlidersHorizontal,
     description:
       'Detailed audit view showing Query -> Feature Hashing -> Cosine Sim -> Reciprocal Rank Fusion -> Grounding pipeline steps.',
     benefits: ['Audit deterministic retrieval flow', 'Zero-hallucination verification'],
@@ -121,6 +136,16 @@ const AVAILABLE_REPOS = [
   { name: 'Repo squirrel (local directory)', count: 361, hasGraph: true, selected: false },
   { name: 'Repo team-os-example-repo (local directory)', count: 195, hasGraph: false, selected: false },
   { name: 'Repo uncle-os (local directory)', count: 128, hasGraph: false, selected: false },
+];
+
+// Cycle through the five categorical tokens for the graph's source nodes —
+// unordered document classes, so hue is the sanctioned encoding here.
+const NODE_CAT_VARS = [
+  'var(--color-cat-1)',
+  'var(--color-cat-2)',
+  'var(--color-cat-3)',
+  'var(--color-cat-4)',
+  'var(--color-cat-5)',
 ];
 
 export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
@@ -292,77 +317,82 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
     if (position === 'top-left') posClasses = 'bottom-full mb-2 left-0 top-auto';
     if (position === 'top-right') posClasses = 'bottom-full mb-2 right-0 left-auto';
 
+    const ItemIcon = item.icon;
+
     return (
       <div
-        className={`absolute ${posClasses} z-[100] w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] bg-white text-slate-900 backdrop-blur-md rounded-2xl border border-blue-300 shadow-2xl p-4 text-xs space-y-3 animate-fadeIn ring-2 ring-blue-400/30`}
+        className={`absolute ${posClasses} z-[100] w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] bg-panel/95 text-panel-ink backdrop-blur-md rounded-card border border-panel-edge shadow-2xs p-4 text-xs space-y-3 animate-fadeIn ring-2 ring-focus/50`}
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className={`absolute w-3 h-3 bg-white border-blue-300 rotate-45 ${
+          className={`absolute w-3 h-3 bg-panel border-panel-edge rotate-45 ${
             position.startsWith('top')
               ? 'bottom-[-6px] border-b border-r'
               : 'top-[-6px] border-t border-l'
           } ${position.endsWith('right') ? 'right-4' : 'left-4'}`}
         />
 
-        <div className="flex items-start justify-between border-b border-slate-200 pb-2">
+        <div className="flex items-start justify-between border-b border-panel-edge pb-2">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-mono font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
+            <span className="w-6 h-6 rounded-pill bg-accent text-accent-contrast font-mono font-bold text-xs flex items-center justify-center shadow-2xs shrink-0">
               {item.id}
             </span>
             <div>
-              <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm leading-tight flex items-center gap-1.5">
+              <h4 className="font-display font-semibold text-panel-ink text-sm leading-tight flex items-center gap-1.5">
                 <span>{item.title}</span>
-                <span className="text-base">{item.icon}</span>
+                <ItemIcon className="w-4 h-4" aria-hidden="true" />
               </h4>
-              <p className="text-[10px] text-blue-600 font-mono font-semibold">{item.subtitle}</p>
+              <p className="text-[10px] text-panel-ink-3 font-mono font-semibold">{item.subtitle}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setActiveUiBadge(null)}
-            className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+            aria-label="Close item details"
+            className="text-panel-ink-3 hover:text-panel-ink p-1 rounded-input hover:bg-panel-raised transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
 
-        <p className="text-[11px] text-slate-700 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+        <p className="text-sm text-panel-ink-2 leading-relaxed bg-panel-inset p-2.5 rounded-card border border-panel-edge">
           {item.description}
         </p>
 
         <div className="space-y-1">
-          <span className="text-[10px] font-mono font-bold text-emerald-700 uppercase tracking-wider">
+          <span className="text-[10px] font-mono font-bold text-syntax-string uppercase tracking-wider">
             Key Benefits:
           </span>
-          <ul className="space-y-1 text-[10px] text-slate-600">
+          <ul className="space-y-1 text-[10px] text-panel-ink-2">
             {item.benefits.map((b, idx) => (
               <li key={idx} className="flex items-center gap-1.5">
-                <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                <Check className="w-3 h-3 text-syntax-string shrink-0" aria-hidden="true" />
                 <span>{b}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
-          <span className="text-[10px] text-slate-500 font-mono">
+        <div className="pt-2 border-t border-panel-edge flex items-center justify-between text-[11px]">
+          <span className="text-[10px] text-panel-ink-3 font-mono">
             Item {id} of 8
           </span>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => handleBadgeClick(prevId)}
-              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
+              className="px-2.5 py-1 bg-panel-raised hover:bg-panel-edge text-panel-ink-2 rounded-input text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
-              <span>← Prev</span>
+              <ArrowLeft className="w-3 h-3" aria-hidden="true" />
+              <span>Prev</span>
             </button>
             <button
               type="button"
               onClick={() => handleBadgeClick(nextId)}
-              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+              className="px-2.5 py-1 bg-accent hover:bg-accent-ink text-accent-contrast rounded-input text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
-              <span>Next →</span>
+              <span>Next</span>
+              <ArrowRight className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -371,19 +401,20 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4 h-full text-slate-900 bg-slate-100/60 p-2 sm:p-4 rounded-2xl border border-slate-200">
+    <div className="flex flex-col gap-4 h-full text-ink bg-paper-3 p-2 sm:p-4 rounded-card border border-rule">
       {/* Top Application Bar */}
-      <div className="bg-white text-slate-900 px-4 py-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+      <div className="bg-paper text-ink px-4 py-3 rounded-card border border-rule flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="px-2.5 py-1 bg-blue-600 text-white font-mono text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5">
-            <Search className="w-3.5 h-3.5" />
+          <div className="px-2.5 py-1 bg-ink text-paper font-mono text-xs font-bold rounded-input flex items-center gap-1.5">
+            <Search className="w-3.5 h-3.5" aria-hidden="true" />
             <span>local-search</span>
           </div>
           <div>
-            <h2 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-800 flex items-center gap-2">
-              <span>EXPLAINABLE RETRIEVAL ENGINE</span>
-              <span className="text-[10px] text-teal-700 font-mono font-semibold lowercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                Local Directory Graph &rarr;
+            <h2 className="font-display font-semibold text-sm text-ink-2 flex items-center gap-2">
+              <span>Explainable retrieval engine</span>
+              <span className="text-[10px] text-ink-2 font-mono font-semibold lowercase bg-paper-3 px-2 py-0.5 rounded-pill border border-rule flex items-center gap-1">
+                <span>Local Directory Graph</span>
+                <ArrowRight className="w-2.5 h-2.5" aria-hidden="true" />
               </span>
             </h2>
           </div>
@@ -396,52 +427,54 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
               setQuery('');
               setAiAnswer(null);
             }}
-            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer border border-slate-200"
+            className="px-2.5 py-1 bg-paper-3 hover:bg-rule text-ink-2 rounded-input text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer border border-rule focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <span>+ New search</span>
           </button>
-          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-mono text-[10px] font-bold rounded-full border border-emerald-300 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="px-2 py-0.5 bg-accent-soft text-accent-ink font-mono text-[10px] font-bold rounded-pill border border-accent/25 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-pill bg-accent animate-pulse motion-reduce:animate-none"></span>
             <span>DONE</span>
           </span>
           <button
             type="button"
             onClick={() => setShowGuide(!showGuide)}
-            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg border border-slate-200 transition-all cursor-pointer"
+            aria-label="Toggle guide"
+            className="p-1.5 bg-paper-3 hover:bg-rule text-ink-2 rounded-input border border-rule transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             title="Toggle Guide"
           >
-            <HelpCircle className="w-4 h-4" />
+            <HelpCircle className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       </div>
 
       {/* Optional Explainer Banner */}
       {showGuide && (
-        <div className="bg-gradient-to-r from-teal-50 via-slate-50 to-emerald-50 text-slate-900 p-4 rounded-xl border border-teal-200/90 relative animate-fadeIn shadow-xs shrink-0">
+        <div className="bg-paper-2 text-ink p-4 rounded-card border border-rule relative animate-fadeIn shadow-2xs shrink-0">
           <button
             onClick={() => setShowGuide(false)}
-            className="absolute top-2.5 right-2.5 text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/60 transition-all cursor-pointer"
+            aria-label="Dismiss guide"
+            className="absolute top-2.5 right-2.5 text-ink-3 hover:text-ink p-1 rounded-input hover:bg-rule transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
 
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-200/80 pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule pb-2">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 border border-blue-200 font-mono text-[10px] font-bold uppercase rounded">
+                <span className="px-2 py-0.5 bg-info-soft text-info-ink border border-info/25 font-mono text-[10px] font-bold uppercase rounded-input">
                   Local Search Guide
                 </span>
-                <h3 className="font-extrabold text-xs sm:text-sm text-slate-900">
-                  Local Search 2-Column Mock &amp; RAG Guide
+                <h3 className="font-display font-semibold text-sm text-ink">
+                  Local search 2-column mock &amp; RAG guide
                 </h3>
               </div>
 
-              <div className="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg border border-slate-300">
+              <div className="flex items-center gap-1 bg-paper-3 p-0.5 rounded-card border border-rule-strong">
                 <button
                   type="button"
                   onClick={() => setGuideTab('concept')}
-                  className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-                    guideTab === 'concept' ? 'bg-blue-700 text-white font-bold' : 'text-slate-600'
+                  className={`px-2.5 py-0.5 rounded-input text-[11px] font-semibold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                    guideTab === 'concept' ? 'bg-ink text-paper font-bold' : 'text-ink-2'
                   }`}
                 >
                   Concept
@@ -449,8 +482,8 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                 <button
                   type="button"
                   onClick={() => setGuideTab('ui_breakdown')}
-                  className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-                    guideTab === 'ui_breakdown' ? 'bg-blue-700 text-white font-bold' : 'text-slate-600'
+                  className={`px-2.5 py-0.5 rounded-input text-[11px] font-semibold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                    guideTab === 'ui_breakdown' ? 'bg-ink text-paper font-bold' : 'text-ink-2'
                   }`}
                 >
                   UI Element Breakdown (1–8)
@@ -459,7 +492,7 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
             </div>
 
             {guideTab === 'concept' ? (
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm text-ink-2 leading-relaxed">
                 An offline, sub-20ms hybrid search engine combining SQLite FTS5 BM25 keyword matching with local 256-d feature hashing vectors and graph centrality boosts.
               </p>
             ) : (
@@ -468,13 +501,13 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                   <button
                     key={item.id}
                     onClick={() => handleBadgeClick(item.id)}
-                    className={`px-2 py-1.5 rounded-lg border text-left transition-all cursor-pointer flex items-center gap-1.5 text-xs ${
+                    className={`px-2 py-1.5 rounded-input border text-left transition-all cursor-pointer flex items-center gap-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                       activeUiBadge === item.id
-                        ? 'bg-amber-400 text-slate-950 font-bold border-amber-500'
-                        : 'bg-white hover:bg-blue-50 border-slate-200 text-slate-800'
+                        ? 'bg-warn-soft text-ink font-bold border-warn'
+                        : 'bg-paper hover:bg-paper-3 border-rule text-ink-2'
                     }`}
                   >
-                    <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
+                    <span className="w-4 h-4 rounded-pill bg-info-soft text-info-ink text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
                       {item.id}
                     </span>
                     <span className="line-clamp-1 flex-1 text-[11px]">{item.title}</span>
@@ -489,22 +522,22 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
       {/* Main 2-Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 items-start">
         {/* LEFT COLUMN (Control & Search Panel) */}
-        <div className="lg:col-span-5 space-y-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="lg:col-span-5 space-y-4 bg-paper p-4 rounded-card border border-rule shadow-2xs">
           {/* Query Bar (#1 Query) */}
           <div
-            className={`space-y-1.5 relative p-2 rounded-xl transition-all ${
-              activeUiBadge === 1 ? 'ring-2 ring-amber-400 bg-amber-50/50 border border-amber-300' : ''
+            className={`space-y-1.5 relative p-2 rounded-card transition-all ${
+              activeUiBadge === 1 ? 'ring-2 ring-warn bg-warn-soft border border-warn/40' : ''
             }`}
           >
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-mono">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-ink-3 font-mono">
                 Query Input
               </label>
               <button
                 type="button"
                 onClick={() => handleBadgeClick(1)}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer ${
-                  activeUiBadge === 1 ? 'bg-amber-400 text-slate-950' : 'bg-blue-700 text-white'
+                className={`px-2 py-0.5 rounded-pill text-[10px] font-mono font-bold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                  activeUiBadge === 1 ? 'bg-warn-soft text-warn-ink border border-warn/40' : 'bg-accent-soft text-accent-ink border border-accent/25'
                 }`}
               >
                 #1 Input
@@ -512,21 +545,22 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
             </div>
 
             <div className="relative">
-              <span className="absolute left-3 top-2.5 font-mono font-bold text-slate-400 text-xs">q</span>
+              <span className="absolute left-3 top-2.5 font-mono font-bold text-ink-3 text-xs">q</span>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && executeSearch()}
                 placeholder="what is foyer?"
-                className="w-full pl-8 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-8 pr-8 py-2 bg-paper-2 border border-rule rounded-input text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-focus focus:border-accent"
               />
               {query && (
                 <button
                   onClick={() => setQuery('')}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  aria-label="Clear query"
+                  className="absolute right-2.5 top-2.5 text-ink-3 hover:text-ink-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded-input"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -536,16 +570,16 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
 
           {/* Target Repositories (#2 Repos) */}
           <div
-            className={`space-y-2 relative p-2 rounded-xl border border-slate-100 bg-slate-50/50 transition-all ${
-              activeUiBadge === 2 ? 'ring-2 ring-amber-400 bg-amber-50/80 border-amber-300' : ''
+            className={`space-y-2 relative p-2 rounded-card border border-rule bg-paper-2 transition-all ${
+              activeUiBadge === 2 ? 'ring-2 ring-warn bg-warn-soft border-warn/40' : ''
             }`}
           >
-            <div className="flex items-center justify-between border-b border-slate-200/80 pb-1.5">
+            <div className="flex items-center justify-between border-b border-rule pb-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 font-mono">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-ink-2 font-mono">
                   TARGET REPOSITORIES
                 </span>
-                <span className="text-[10px] text-slate-500 font-mono">
+                <span className="text-[10px] text-ink-3 font-mono">
                   {selectedRepos.length}/{AVAILABLE_REPOS.length} selected
                 </span>
               </div>
@@ -560,16 +594,16 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                       'Repo uncle-os (local directory)',
                     ])
                   }
-                  className="text-[10px] text-blue-600 hover:underline font-mono flex items-center gap-1 cursor-pointer"
+                  className="text-[10px] text-info-ink hover:underline font-mono flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded-input"
                 >
-                  <RefreshCw className="w-2.5 h-2.5" />
+                  <RefreshCw className="w-2.5 h-2.5" aria-hidden="true" />
                   <span>Refresh</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleBadgeClick(2)}
-                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer ${
-                    activeUiBadge === 2 ? 'bg-amber-400 text-slate-950' : 'bg-blue-700 text-white'
+                  className={`px-1.5 py-0.5 rounded-pill text-[10px] font-mono font-bold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                    activeUiBadge === 2 ? 'bg-warn-soft text-warn-ink border border-warn/40' : 'bg-accent-soft text-accent-ink border border-accent/25'
                   }`}
                 >
                   #2 Repos
@@ -582,11 +616,15 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
               {selectedRepos.map((r) => (
                 <span
                   key={r}
-                  className="px-2 py-0.5 bg-blue-50 text-blue-900 border border-blue-200 rounded-md text-[10px] font-mono font-medium flex items-center gap-1"
+                  className="px-2 py-0.5 bg-info-soft text-info-ink border border-info/25 rounded-input text-[10px] font-mono font-medium flex items-center gap-1"
                 >
                   <span>{r}</span>
-                  <button onClick={() => toggleRepo(r)} className="text-blue-500 hover:text-blue-800 cursor-pointer">
-                    <X className="w-3 h-3" />
+                  <button
+                    onClick={() => toggleRepo(r)}
+                    aria-label={`Remove ${r}`}
+                    className="text-info-ink hover:opacity-70 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded-input"
+                  >
+                    <X className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -600,23 +638,23 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                   <label
                     key={repo.name}
                     onClick={() => toggleRepo(repo.name)}
-                    className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer transition-all text-xs"
+                    className="flex items-center justify-between p-1.5 rounded-input hover:bg-paper-3 cursor-pointer transition-all text-xs"
                   >
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {}}
-                        className="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                        className="rounded-input text-accent focus:ring-2 focus:ring-focus w-3.5 h-3.5"
                       />
-                      <span className={`font-mono ${isChecked ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
+                      <span className={`font-mono ${isChecked ? 'font-bold text-ink' : 'text-ink-2'}`}>
                         {repo.name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-ink-3">
                       <span>{repo.count} specs</span>
                       {repo.hasGraph && (
-                        <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded font-semibold text-[9px]">
+                        <span className="px-1.5 py-0.2 bg-accent-soft text-accent-ink rounded-input font-semibold text-[9px]">
                           has graph
                         </span>
                       )}
@@ -631,19 +669,19 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
 
           {/* File Typologies (#3 Typologies) */}
           <div
-            className={`space-y-1.5 relative p-2 rounded-xl transition-all ${
-              activeUiBadge === 3 ? 'ring-2 ring-amber-400 bg-amber-50/50 border border-amber-300' : ''
+            className={`space-y-1.5 relative p-2 rounded-card transition-all ${
+              activeUiBadge === 3 ? 'ring-2 ring-warn bg-warn-soft border border-warn/40' : ''
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-mono">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-3 font-mono">
                 FILE TYPOLOGIES
               </span>
               <button
                 type="button"
                 onClick={() => handleBadgeClick(3)}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer ${
-                  activeUiBadge === 3 ? 'bg-amber-400 text-slate-950' : 'bg-blue-700 text-white'
+                className={`px-2 py-0.5 rounded-pill text-[10px] font-mono font-bold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                  activeUiBadge === 3 ? 'bg-warn-soft text-warn-ink border border-warn/40' : 'bg-accent-soft text-accent-ink border border-accent/25'
                 }`}
               >
                 #3 Format
@@ -653,20 +691,20 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setSelectedTypology('all')}
-                className={`px-3 py-1 rounded-lg text-xs font-mono font-semibold border transition-all cursor-pointer ${
+                className={`px-3 py-1 rounded-input text-xs font-mono font-semibold border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                   selectedTypology === 'all'
-                    ? 'bg-blue-700 text-white border-blue-700 shadow-2xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-ink text-paper border-ink shadow-2xs'
+                    : 'bg-paper text-ink-2 border-rule hover:bg-paper-3'
                 }`}
               >
                 All ({resultsList.length})
               </button>
               <button
                 onClick={() => setSelectedTypology('md')}
-                className={`px-3 py-1 rounded-lg text-xs font-mono font-semibold border transition-all cursor-pointer ${
+                className={`px-3 py-1 rounded-input text-xs font-mono font-semibold border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                   selectedTypology === 'md'
-                    ? 'bg-blue-700 text-white border-blue-700 shadow-2xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-ink text-paper border-ink shadow-2xs'
+                    : 'bg-paper text-ink-2 border-rule hover:bg-paper-3'
                 }`}
               >
                 MD ({resultsList.length})
@@ -678,57 +716,57 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
 
           {/* Search Mode (#4 Mode) */}
           <div
-            className={`space-y-2 relative p-2 rounded-xl transition-all ${
-              activeUiBadge === 4 ? 'ring-2 ring-amber-400 bg-amber-50/50 border border-amber-300' : ''
+            className={`space-y-2 relative p-2 rounded-card transition-all ${
+              activeUiBadge === 4 ? 'ring-2 ring-warn bg-warn-soft border border-warn/40' : ''
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-mono">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-3 font-mono">
                 SEARCH MODE
               </span>
               <button
                 type="button"
                 onClick={() => handleBadgeClick(4)}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer ${
-                  activeUiBadge === 4 ? 'bg-amber-400 text-slate-950' : 'bg-blue-700 text-white'
+                className={`px-2 py-0.5 rounded-pill text-[10px] font-mono font-bold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                  activeUiBadge === 4 ? 'bg-warn-soft text-warn-ink border border-warn/40' : 'bg-accent-soft text-accent-ink border border-accent/25'
                 }`}
               >
                 #4 Mode
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+            <div className="grid grid-cols-2 gap-1.5 bg-paper-3 p-1 rounded-card border border-rule text-xs font-semibold">
               <button
                 onClick={() => {
                   setMode('ai');
                   executeSearch(query, 'ai');
                 }}
-                className={`py-2 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-input transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                   mode === 'ai'
-                    ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                    : 'text-slate-600 hover:bg-slate-200'
+                    ? 'bg-accent text-accent-contrast shadow-2xs font-bold'
+                    : 'text-ink-2 hover:bg-rule'
                 }`}
               >
-                <Zap className="w-3.5 h-3.5 text-amber-300" />
-                <span>⚡ AI Answer</span>
+                <Zap className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>AI Answer</span>
               </button>
               <button
                 onClick={() => {
                   setMode('graph');
                   executeSearch(query, 'graph');
                 }}
-                className={`py-2 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-2 rounded-input transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                   mode === 'graph'
-                    ? 'bg-blue-800 text-white shadow-xs font-bold'
-                    : 'text-slate-600 hover:bg-slate-200'
+                    ? 'bg-info text-accent-contrast shadow-2xs font-bold'
+                    : 'text-ink-2 hover:bg-rule'
                 }`}
               >
-                <Zap className="w-3.5 h-3.5 text-amber-300" />
-                <span>⚡ Graph only · fast</span>
+                <Zap className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Graph only · fast</span>
               </button>
             </div>
 
-            <p className="text-[10px] text-slate-500 font-mono">
+            <p className="text-sm text-ink-3 font-mono">
               Full AI synthesis over retrieved sources (slower — spawns the model).
             </p>
 
@@ -739,28 +777,31 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
           <button
             onClick={() => executeSearch()}
             disabled={isSearching}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer uppercase tracking-wider"
+            className="w-full min-h-11 py-3 bg-accent hover:bg-accent-ink text-accent-contrast text-sm font-extrabold rounded-input shadow-2xs flex items-center justify-center gap-2 transition-all cursor-pointer uppercase tracking-wider focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             {isSearching ? (
-              <span className="animate-spin">⏳ Searching...</span>
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                <span>Searching...</span>
+              </span>
             ) : (
               <>
-                <Search className="w-4 h-4" />
-                <span>Q Search</span>
+                <Search className="w-4 h-4" aria-hidden="true" />
+                <span>Search</span>
               </>
             )}
           </button>
 
           {/* Active Filters Bar */}
-          <div className="p-2.5 bg-slate-100 rounded-xl border border-slate-200 text-[11px] font-mono text-slate-600 flex items-center justify-between">
+          <div className="p-2.5 bg-paper-3 rounded-card border border-rule text-[11px] font-mono text-ink-2 flex items-center justify-between">
             <span>Active Filters: {selectedRepos.length} repo(s)</span>
-            <span className="font-bold text-slate-900">Found {resultsList.length} sources</span>
+            <span className="font-bold text-ink">Found {resultsList.length} sources</span>
           </div>
 
           {/* Recent Searches */}
           <div className="text-xs space-y-1">
-            <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-              <RefreshCw className="w-3 h-3 text-slate-400" />
+            <div className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider flex items-center gap-1">
+              <Clock className="w-3 h-3 text-ink-3" aria-hidden="true" />
               <span>Recent searches ({recentSearches.length})</span>
             </div>
             <div className="flex flex-wrap gap-1">
@@ -771,7 +812,7 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                     setQuery(s);
                     executeSearch(s);
                   }}
-                  className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] font-mono cursor-pointer"
+                  className="px-2 py-0.5 bg-paper-3 hover:bg-rule text-ink-2 rounded-input text-[11px] font-mono cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                 >
                   {s}
                 </button>
@@ -781,19 +822,19 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
 
           {/* Candidate Sources List (#5 Sources List) */}
           <div
-            className={`space-y-2 pt-2 border-t border-slate-200 relative p-2 rounded-xl transition-all ${
-              activeUiBadge === 5 ? 'ring-2 ring-amber-400 bg-amber-50/50 border border-amber-300' : ''
+            className={`space-y-2 pt-2 border-t border-rule relative p-2 rounded-card transition-all ${
+              activeUiBadge === 5 ? 'ring-2 ring-warn bg-warn-soft border border-warn/40' : ''
             }`}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 font-mono">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-2 font-mono">
                 RETRIEVED SOURCES ({resultsList.length})
               </span>
               <button
                 type="button"
                 onClick={() => handleBadgeClick(5)}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer ${
-                  activeUiBadge === 5 ? 'bg-amber-400 text-slate-950' : 'bg-blue-700 text-white'
+                className={`px-2 py-0.5 rounded-pill text-[10px] font-mono font-bold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                  activeUiBadge === 5 ? 'bg-warn-soft text-warn-ink border border-warn/40' : 'bg-accent-soft text-accent-ink border border-accent/25'
                 }`}
               >
                 #5 Sources
@@ -805,26 +846,27 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                 <div
                   key={item.spec.id}
                   onClick={() => onSpecSelect(item.spec)}
-                  className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group space-y-1"
+                  className="p-3 rounded-card border border-rule bg-paper-2 hover:bg-paper hover:border-rule-strong hover:shadow-2xs transition-all cursor-pointer group space-y-1"
                 >
                   <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-mono">
-                    <span className="px-1.5 py-0.2 bg-slate-200 text-slate-800 font-bold rounded">
+                    <span className="px-1.5 py-0.2 bg-paper-3 text-ink-2 font-bold rounded-input">
                       MD
                     </span>
-                    <span className="text-slate-600 font-semibold">{item.spec.path}</span>
-                    <span className="px-1.5 py-0.2 bg-blue-100 text-blue-800 rounded">
+                    <span className="text-ink-2 font-semibold font-mono">{item.spec.path}</span>
+                    <span className="px-1.5 py-0.2 bg-info-soft text-info-ink rounded-input">
                       [{item.spec.repo}]
                     </span>
-                    <Folder className="w-3 h-3 text-slate-400 ml-auto" />
+                    <Folder className="w-3 h-3 text-ink-3 ml-auto" aria-hidden="true" />
                   </div>
 
-                  <h4 className="font-bold text-xs text-slate-900 group-hover:text-blue-600 transition-colors leading-tight">
+                  <h4 className="font-display font-semibold text-sm text-ink group-hover:text-accent-ink transition-colors leading-tight">
                     {item.spec.title}
                   </h4>
 
-                  <div className="flex items-center gap-1 text-[10px] font-mono text-slate-500">
-                    <span>📈 Score:</span>
-                    <span className="font-bold text-blue-700">{item.scoreDisplay}</span>
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-ink-3">
+                    <TrendingUp className="w-3 h-3" aria-hidden="true" />
+                    <span>Score:</span>
+                    <span className="font-bold text-info-ink">{item.scoreDisplay}</span>
                   </div>
                 </div>
               ))}
@@ -835,77 +877,77 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
         </div>
 
         {/* RIGHT COLUMN (Inspector & Synthesized AI Results) */}
-        <div className="lg:col-span-7 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-4 flex flex-col h-full">
+        <div className="lg:col-span-7 bg-paper p-4 rounded-card border border-rule shadow-2xs space-y-4 flex flex-col h-full">
           {/* Tabs Navigation Header */}
-          <div className="flex items-center border-b border-slate-200 text-xs font-semibold overflow-x-auto pb-1 gap-1">
+          <div className="flex items-center border-b border-rule text-xs font-semibold overflow-x-auto pb-1 gap-1">
             <button
               onClick={() => setActiveTab('ai')}
-              className={`py-2 px-3 border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`py-2 px-3 border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                 activeTab === 'ai'
-                  ? 'border-emerald-600 text-emerald-700 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  ? 'border-ink text-ink font-bold'
+                  : 'border-transparent text-ink-3 hover:text-ink-2'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>⚡ AI Answer</span>
+              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>AI Answer</span>
             </button>
 
             <button
               onClick={() => setActiveTab('sources')}
-              className={`py-2 px-3 border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`py-2 px-3 border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                 activeTab === 'sources'
-                  ? 'border-blue-600 text-blue-600 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  ? 'border-ink text-ink font-bold'
+                  : 'border-transparent text-ink-3 hover:text-ink-2'
               }`}
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>📄 Sources &amp; Provenance</span>
+              <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Sources &amp; Provenance</span>
             </button>
 
             <button
               onClick={() => setActiveTab('graph')}
-              className={`py-2 px-3 border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`py-2 px-3 border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                 activeTab === 'graph'
-                  ? 'border-purple-600 text-purple-600 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  ? 'border-ink text-ink font-bold'
+                  : 'border-transparent text-ink-3 hover:text-ink-2'
               }`}
             >
-              <Network className="w-3.5 h-3.5 text-purple-500" />
-              <span>🕸️ Neighborhood Map</span>
+              <Network className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Neighborhood Map</span>
             </button>
 
             <button
               onClick={() => setActiveTab('tags')}
-              className={`py-2 px-3 border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`py-2 px-3 border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                 activeTab === 'tags'
-                  ? 'border-amber-600 text-amber-600 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
+                  ? 'border-ink text-ink font-bold'
+                  : 'border-transparent text-ink-3 hover:text-ink-2'
               }`}
             >
-              <Tag className="w-3.5 h-3.5 text-amber-500" />
-              <span>🏷️ Top Tags</span>
+              <Tag className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Top Tags</span>
             </button>
           </div>
 
           {/* TAB 1: AI ANSWER SYNTHESIS (#6 AI Answer) */}
           {activeTab === 'ai' && (
             <div
-              className={`space-y-3 relative p-2 rounded-xl transition-all ${
-                activeUiBadge === 6 ? 'ring-2 ring-amber-400 bg-amber-50/50 border border-amber-300' : ''
+              className={`space-y-3 relative p-2 rounded-card transition-all ${
+                activeUiBadge === 6 ? 'ring-2 ring-warn bg-warn-soft border border-warn/40' : ''
               }`}
             >
               <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-blue-50/80 rounded-xl border border-blue-200/80 text-xs text-blue-900 leading-relaxed flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                <div className="p-2.5 bg-info-soft border border-info/25 rounded-card text-sm text-info-ink leading-relaxed flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
                   <span>
-                    <strong>🤖 Answer synthesis</strong> - Grounded over the sources retrieved for your query across the selected repositories.
+                    <strong>Answer synthesis</strong> — Grounded over the sources retrieved for your query across the selected repositories.
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleBadgeClick(6)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer shrink-0 ml-2 ${
-                    activeUiBadge === 6 ? 'bg-amber-400 text-slate-950' : 'bg-blue-700 text-white'
+                  className={`px-2 py-0.5 rounded-pill text-[10px] font-mono font-bold cursor-pointer shrink-0 ml-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                    activeUiBadge === 6 ? 'bg-warn-soft text-warn-ink border border-warn/40' : 'bg-accent-soft text-accent-ink border border-accent/25'
                   }`}
                 >
                   #6 Synthesis
@@ -913,21 +955,22 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
               </div>
 
               {/* Model Action Toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-100 text-slate-800 rounded-xl text-xs border border-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-paper-3 text-ink-2 rounded-card text-xs border border-rule">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 font-bold font-mono rounded text-[10px]">
-                    ⚡ AI Agent
+                  <span className="px-2 py-0.5 bg-paper text-ink-2 border border-rule-strong font-bold font-mono rounded-input text-[10px] flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5" aria-hidden="true" />
+                    <span>AI Agent</span>
                   </span>
-                  <span className="text-[10px] text-slate-500 font-mono">v1.2 grounded</span>
+                  <span className="text-[10px] text-ink-3 font-mono">v1.2 grounded</span>
                 </div>
 
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={copyAnswer}
-                    className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-mono flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="px-2.5 py-1 bg-paper hover:bg-paper-2 text-ink-2 border border-rule rounded-input text-sm font-mono flex items-center gap-1 transition-all cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                   >
-                    {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-500" />}
-                    <span>{copied ? 'Copied' : '📋 Copy Markdown'}</span>
+                    {copied ? <Check className="w-3 h-3 text-accent-ink" aria-hidden="true" /> : <Copy className="w-3 h-3 text-ink-3" aria-hidden="true" />}
+                    <span>{copied ? 'Copied' : 'Copy Markdown'}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -938,26 +981,26 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                       document.body.appendChild(element);
                       element.click();
                     }}
-                    className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-mono flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="px-2.5 py-1 bg-paper hover:bg-paper-2 text-ink-2 border border-rule rounded-input text-sm font-mono flex items-center gap-1 transition-all cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                   >
-                    <Download className="w-3 h-3 text-slate-500" />
-                    <span>📥 Save .md</span>
+                    <Download className="w-3 h-3 text-ink-3" aria-hidden="true" />
+                    <span>Save .md</span>
                   </button>
                 </div>
               </div>
 
               {/* Main Content Area */}
-              <div className="p-4 rounded-xl bg-slate-50/90 text-slate-800 text-xs leading-relaxed space-y-3 font-sans max-h-[480px] overflow-y-auto border border-slate-200/90 shadow-2xs">
+              <div className="p-4 rounded-card bg-paper-2 text-ink-2 text-sm leading-relaxed space-y-3 font-sans max-h-[480px] overflow-y-auto border border-rule shadow-2xs">
                 {aiAnswer ? (
-                  <div className="prose prose-slate prose-xs max-w-none space-y-3">
-                    <div className="whitespace-pre-wrap leading-relaxed font-sans text-slate-800">{aiAnswer}</div>
+                  <div className="prose prose-slate prose-sm max-w-none space-y-3">
+                    <div className="whitespace-pre-wrap leading-relaxed font-sans text-ink-2">{aiAnswer}</div>
                   </div>
                 ) : (
-                  <div className="py-8 text-center text-slate-500 space-y-3">
-                    <p>Click &quot;Q Search&quot; to synthesize a grounded natural language answer from indexed specs.</p>
+                  <div className="py-8 text-center text-ink-2 space-y-3">
+                    <p>Click &quot;Search&quot; to synthesize a grounded natural language answer from indexed specs.</p>
                     <button
                       onClick={() => executeSearch(query, 'ai')}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs"
+                      className="px-4 py-2 bg-accent hover:bg-accent-ink text-accent-contrast rounded-input font-bold text-xs transition-all cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                     >
                       Synthesize Grounded Answer
                     </button>
@@ -972,11 +1015,11 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
           {/* TAB 2: SOURCES & PROVENANCE */}
           {activeTab === 'sources' && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700 font-mono">
-                  RETRIEVED SOURCES ({resultsList.length})
+              <div className="flex items-center justify-between border-b border-rule pb-2">
+                <h3 className="font-display font-semibold text-sm text-ink-2">
+                  Retrieved sources ({resultsList.length})
                 </h3>
-                <span className="text-[10px] text-slate-500 font-mono">
+                <span className="text-[10px] text-ink-3 font-mono">
                   Ranked by SQLite FTS5 BM25 + Graph centrality
                 </span>
               </div>
@@ -986,27 +1029,28 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                   <div
                     key={item.spec.id}
                     onClick={() => onSpecSelect(item.spec)}
-                    className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:shadow-xs transition-all cursor-pointer space-y-2"
+                    className="p-3.5 rounded-card border border-rule bg-paper hover:border-rule-strong hover:shadow-2xs transition-all cursor-pointer space-y-2"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
+                        <span className="w-5 h-5 rounded-pill bg-paper-3 text-ink-2 text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
-                        <h4 className="font-bold text-xs text-slate-900 leading-tight">{item.spec.title}</h4>
+                        <h4 className="font-display font-semibold text-sm text-ink leading-tight">{item.spec.title}</h4>
                       </div>
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-mono font-bold rounded">
-                        Score: {item.scoreDisplay}
+                      <span className="px-2 py-0.5 bg-info-soft text-info-ink border border-info/25 text-[10px] font-mono font-bold rounded-input flex items-center gap-1 shrink-0">
+                        <TrendingUp className="w-2.5 h-2.5" aria-hidden="true" />
+                        <span>Score: {item.scoreDisplay}</span>
                       </span>
                     </div>
 
-                    <div className="text-[11px] font-mono text-slate-500 flex items-center gap-2">
-                      <span className="text-slate-800 font-semibold">{item.spec.repo}</span>
+                    <div className="text-[11px] font-mono text-ink-3 flex items-center gap-2">
+                      <span className="text-ink-2 font-semibold">{item.spec.repo}</span>
                       <span>/</span>
                       <span>{item.spec.path}</span>
                     </div>
 
-                    <p className="text-xs text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <p className="text-sm text-ink-2 line-clamp-2 bg-paper-2 p-2 rounded-input border border-rule">
                       {item.spec.content.substring(0, 180)}...
                     </p>
 
@@ -1018,7 +1062,7 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                             e.stopPropagation();
                             onTagSelect(tag);
                           }}
-                          className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-mono rounded hover:bg-slate-200"
+                          className="px-1.5 py-0.5 bg-paper-3 text-ink-2 text-[10px] font-mono rounded-input hover:bg-rule focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                         >
                           {tag}
                         </button>
@@ -1033,22 +1077,22 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
           {/* TAB 3: NEIGHBORHOOD MAP (KNOWLEDGE GRAPH) (#7 Graph) */}
           {activeTab === 'graph' && (
             <div
-              className={`space-y-3 relative p-2 rounded-xl transition-all ${
-                activeUiBadge === 7 ? 'ring-2 ring-amber-400 bg-amber-50/50 border border-amber-300' : ''
+              className={`space-y-3 relative p-2 rounded-card transition-all ${
+                activeUiBadge === 7 ? 'ring-2 ring-warn bg-warn-soft border border-warn/40' : ''
               }`}
             >
-              <div className="flex items-center justify-between border-b pb-2">
+              <div className="flex items-center justify-between border-b border-rule pb-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-800 font-mono flex items-center gap-1.5">
-                    <Network className="w-4 h-4 text-purple-600" />
+                  <h3 className="font-display font-semibold text-sm text-ink-2 flex items-center gap-1.5">
+                    <Network className="w-4 h-4" aria-hidden="true" />
                     <span>Knowledge graph</span>
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleBadgeClick(7)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold cursor-pointer ${
-                    activeUiBadge === 7 ? 'bg-amber-400 text-slate-950' : 'bg-blue-700 text-white'
+                  className={`px-2 py-0.5 rounded-pill text-[10px] font-mono font-bold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                    activeUiBadge === 7 ? 'bg-warn-soft text-warn-ink border border-warn/40' : 'bg-accent-soft text-accent-ink border border-accent/25'
                   }`}
                 >
                   #7 Graph
@@ -1056,15 +1100,15 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
               </div>
 
               {/* Graph Toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-100 rounded-xl border border-slate-200 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-paper-3 rounded-card border border-rule text-xs">
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-slate-500 font-mono mr-1">Sources filter:</span>
+                  <span className="text-[10px] text-ink-3 font-mono mr-1">Sources filter:</span>
                   {(['sources', 'all', 'none'] as const).map((f) => (
                     <button
                       key={f}
                       onClick={() => setGraphFilter(f)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold capitalize cursor-pointer ${
-                        graphFilter === f ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                      className={`px-2 py-0.5 rounded-input text-[10px] font-semibold capitalize cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                        graphFilter === f ? 'bg-ink text-paper' : 'bg-paper text-ink-2 border border-rule'
                       }`}
                     >
                       {f}
@@ -1075,27 +1119,30 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setZoomLevel(Math.min(zoomLevel + 0.2, 1.8))}
-                    className="p-1 bg-white hover:bg-slate-200 rounded border border-slate-200 text-slate-700 cursor-pointer"
+                    aria-label="Zoom in"
+                    className="p-1 bg-paper hover:bg-paper-3 rounded-input border border-rule text-ink-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                   >
-                    <ZoomIn className="w-3.5 h-3.5" />
+                    <ZoomIn className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                   <button
                     onClick={() => setZoomLevel(Math.max(zoomLevel - 0.2, 0.6))}
-                    className="p-1 bg-white hover:bg-slate-200 rounded border border-slate-200 text-slate-700 cursor-pointer"
+                    aria-label="Zoom out"
+                    className="p-1 bg-paper hover:bg-paper-3 rounded-input border border-rule text-ink-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                   >
-                    <ZoomOut className="w-3.5 h-3.5" />
+                    <ZoomOut className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                   <button
                     onClick={() => setZoomLevel(1)}
-                    className="p-1 bg-white hover:bg-slate-200 rounded border border-slate-200 text-slate-700 cursor-pointer"
+                    aria-label="Reset zoom"
+                    className="p-1 bg-paper hover:bg-paper-3 rounded-input border border-rule text-ink-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                   >
-                    <Target className="w-3.5 h-3.5" />
+                    <Target className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                 </div>
               </div>
 
               {/* Radial Force Interactive SVG Canvas */}
-              <div className="relative bg-slate-50 rounded-2xl p-4 border border-slate-200 h-80 flex items-center justify-center overflow-hidden">
+              <div className="relative bg-paper-2 rounded-card p-4 border border-rule h-80 flex items-center justify-center overflow-hidden">
                 <svg
                   className="w-full h-full"
                   viewBox="0 0 500 300"
@@ -1116,34 +1163,34 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                       y1="150"
                       x2={pos.x}
                       y2={pos.y}
-                      stroke="#8b5cf6"
+                      stroke="var(--color-rule-strong)"
                       strokeWidth="1.5"
                       strokeDasharray="4 2"
-                      opacity="0.6"
+                      opacity="0.8"
                     />
                   ))}
 
                   {/* Central Anchor Node */}
                   <g transform="translate(250, 150)">
-                    <circle r="22" fill="#f59e0b" className="animate-pulse" />
-                    <circle r="16" fill="#d97706" />
-                    <text textAnchor="middle" y="4" fill="#ffffff" fontSize="9" fontWeight="bold">
+                    <circle r="22" fill="var(--color-accent)" className="animate-pulse motion-reduce:animate-none" />
+                    <circle r="16" fill="var(--color-accent-ink)" />
+                    <text textAnchor="middle" y="4" fill="var(--color-accent-contrast)" fontSize="9" fontWeight="bold">
                       Query Anchor
                     </text>
                   </g>
 
-                  {/* Surrounding Source Nodes */}
+                  {/* Surrounding Source Nodes — categorical: one hue per node type (cat-1..cat-5) */}
                   {[
-                    { label: 'mobile-app-features.md', x: 140, y: 80, color: '#3b82f6' },
-                    { label: 'care-rules.md', x: 360, y: 70, color: '#10b981' },
-                    { label: 'architecture.md', x: 110, y: 220, color: '#ec4899' },
-                    { label: 'stripe-invoice.md', x: 380, y: 210, color: '#8b5cf6' },
-                    { label: 'product-page.md', x: 250, y: 60, color: '#06b6d4' },
-                    { label: 'refund-policy.md', x: 250, y: 240, color: '#f97316' },
+                    { label: 'mobile-app-features.md', x: 140, y: 80 },
+                    { label: 'care-rules.md', x: 360, y: 70 },
+                    { label: 'architecture.md', x: 110, y: 220 },
+                    { label: 'stripe-invoice.md', x: 380, y: 210 },
+                    { label: 'product-page.md', x: 250, y: 60 },
+                    { label: 'refund-policy.md', x: 250, y: 240 },
                   ].map((node, idx) => (
                     <g key={idx} transform={`translate(${node.x}, ${node.y})`} className="cursor-pointer hover:scale-110 transition-all">
-                      <circle r="12" fill={node.color} opacity="0.9" />
-                      <text textAnchor="middle" y="18" fill="#334155" fontSize="8" fontWeight="600">
+                      <circle r="12" fill={NODE_CAT_VARS[idx % NODE_CAT_VARS.length]} opacity="0.9" />
+                      <text textAnchor="middle" y="18" fill="var(--color-ink-2)" fontSize="8" fontWeight="600">
                         {node.label}
                       </text>
                     </g>
@@ -1151,14 +1198,14 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                 </svg>
 
                 {/* Graph Legend */}
-                <div className="absolute bottom-2 left-3 flex items-center gap-3 text-[10px] font-mono text-slate-700 bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                <div className="absolute bottom-2 left-3 flex items-center gap-3 text-[10px] font-mono text-ink-2 bg-paper/90 px-2.5 py-1 rounded-input border border-rule shadow-2xs">
                   <div className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <span className="w-2.5 h-2.5 rounded-pill bg-accent"></span>
                     <span>Your query / anchor</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                    <span>retrieved source</span>
+                    <span className="w-2.5 h-2.5 rounded-pill bg-cat-2"></span>
+                    <span>retrieved source (colour by type)</span>
                   </div>
                 </div>
               </div>
@@ -1170,7 +1217,7 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
           {/* TAB 4: TOP TAGS */}
           {activeTab === 'tags' && (
             <div className="space-y-3">
-              <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700 font-mono">
+              <h3 className="font-display font-semibold text-sm text-ink-2">
                 Top tags — The 10 most frequent tags across the retrieved sources
               </h3>
 
@@ -1191,15 +1238,15 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
                       executeSearch(t.name);
                       onTagSelect(t.name);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-mono font-medium flex items-center gap-2 transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-input text-xs font-mono font-medium flex items-center gap-2 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                       t.isReq
-                        ? 'bg-amber-100 text-amber-900 border border-amber-300 font-bold hover:bg-amber-200'
-                        : 'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200'
+                        ? 'bg-warn-soft text-warn-ink border border-warn/25 font-bold hover:bg-warn-soft/70'
+                        : 'bg-paper-3 text-ink-2 border border-rule hover:bg-rule'
                     }`}
                   >
-                    <Tag className="w-3.5 h-3.5 text-slate-400" />
+                    <Tag className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>{t.name}</span>
-                    <span className="px-1.5 py-0.2 bg-slate-200 rounded-full text-[10px]">
+                    <span className="px-1.5 py-0.2 bg-paper text-ink-2 rounded-pill text-[10px]">
                       {t.count}
                     </span>
                   </button>
@@ -1209,9 +1256,9 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
           )}
 
           {/* Bottom Console Status Bar */}
-          <div className="pt-2 border-t border-slate-200 text-[10px] font-mono text-slate-400 flex items-center justify-between">
+          <div className="pt-2 border-t border-rule text-[10px] font-mono text-ink-3 flex items-center justify-between">
             <span>local-search client console</span>
-            <span className="text-emerald-600 font-semibold">grounded retrieval</span>
+            <span className="text-accent-ink font-semibold">grounded retrieval</span>
           </div>
         </div>
       </div>
