@@ -107,7 +107,7 @@ mkdir -p "$STAGE/web"
 # not honour .gitignore, so exclude it explicitly — otherwise the build machine's
 # own cached graph leaks into every published bundle.
 #
-# .agent/ is excluded for the same class of reason: the web server runs
+# .agents/ is excluded for the same class of reason: the web server runs
 # `local-search init --json` from its own cwd, which used to create a config
 # there. Shipping one would make it a walk-up ancestor for every project
 # created under the install directory, silently forcing an empty scope.

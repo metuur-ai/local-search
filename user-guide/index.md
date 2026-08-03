@@ -57,7 +57,7 @@ Background reading for the curious. No steps, just understanding.
 - [The disposable index](explanation/the-disposable-index.md) — why deleting
   `specs.db` is always safe.
 - [One config file](explanation/two-config-files.md) —
-  `.agent/local-search-config.yaml`, its schema, how it's found, and what
+  `.agents/local-search-config.yaml`, its schema, how it's found, and what
   changed in v0.4.0.
 - [CLI and web, together](explanation/cli-and-web-together.md) — how the
   console is a thin, private layer over the same binary.

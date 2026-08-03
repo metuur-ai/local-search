@@ -1,7 +1,7 @@
 // Package config owns the on-disk LocalSearch configuration: one schema, one
 // format (YAML), two locations.
 //
-//	<project>/.agent/local-search-config.yaml   project config (found by walking up)
+//	<project>/.agents/local-search-config.yaml   project config (found by walking up)
 //	~/.local-search-config.yaml                 global fallback
 //
 // Both the search engine (local-search/scope, driving `find`/`code`) and the
@@ -23,7 +23,7 @@ const (
 	// FileName is the config's basename, identical at both locations.
 	FileName = "local-search-config.yaml"
 
-	// AgentDir is the per-project directory holding it: <project>/.agent/.
+	// AgentDir is the per-project directory holding it: <project>/.agents/.
 	AgentDir = ".agent"
 
 	// GlobalRel is the global config relative to $HOME. Note it sits BESIDE

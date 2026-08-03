@@ -41,7 +41,7 @@ func runLS(t *testing.T, bin, home, cwd string, extraEnv []string, args ...strin
 
 // P0-1. The regression guard for the ordering bug.
 //
-// A legacy TOML naming "fixture" sits in cwd, there is no .agent/ config, and
+// A legacy TOML naming "fixture" sits in cwd, there is no .agents/ config, and
 // cwd is ALSO inside a different registered repo. If auto-create runs before
 // migration, the config is seeded from the enclosing repo and the user's
 // explicit scope is silently replaced by a plausible-looking wrong one.

@@ -10,7 +10,7 @@ description: >
   index). Also trigger when the user wants to configure, initialize, or set up which
   repositories this project searches ('set up local search', 'init local search scope',
   'which repos does this project search', 'add/remove a repo from my search scope') —
-  managed via `local-search init`/`setup` and the `.agent/local-search-config.yaml` file.
+  managed via `local-search init`/`setup` and the `.agents/local-search-config.yaml` file.
   Trigger this skill even if the user doesn't say "spec" explicitly — if their
   question touches a domain that might be documented in spec files (.md, .mdx, .txt),
   search first. Also use when the user says 'what do our docs say about', 'is there
@@ -36,10 +36,10 @@ cp local-search /usr/local/bin/local-search
 
 Requires Go 1.21+ to build. No runtime dependencies — SQLite is compiled in.
 
-## Project config (`.agent/local-search-config.yaml`)
+## Project config (`.agents/local-search-config.yaml`)
 
 Each project declares which registered repositories LocalSearch includes, via
-`<project>/.agent/local-search-config.yaml`. Since v0.4.0 this is **the** config
+`<project>/.agents/local-search-config.yaml`. Since v0.4.0 this is **the** config
 file: the same file and the same `repositories:` key are read by the search
 engine (`find`, `code`) and by this skill. A global fallback lives at
 `~/.local-search-config.yaml`. Both are validated against a published JSON
@@ -96,7 +96,7 @@ When a user asks ANY question that might be answered by specs, follow this pipel
 ### Step 0: Resolve project scope (required)
 
 Before running any search, read the project's configured repositories from
-`.agent/local-search-config.yaml` and pass them to **every** `local-search search`
+`.agents/local-search-config.yaml` and pass them to **every** `local-search search`
 via `--repos`:
 
 1. `local-search init --json` → read `repositories` (a pure read; writes nothing).
@@ -163,7 +163,7 @@ Answer the user's question using what you found.
 
 User: "What's the impact of adding a new rule to the payment eligibility?"
 
-**You run** (scope `platform,docs`, read from `.agent/local-search-config.yaml`):
+**You run** (scope `platform,docs`, read from `.agents/local-search-config.yaml`):
 1. `local-search search "payment eligibility" --repos platform,docs`
 2. `local-search search "refund" --repos platform,docs`
 3. `local-search read refund`

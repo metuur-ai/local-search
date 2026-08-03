@@ -45,9 +45,9 @@ export const WorkflowSimulator: React.FC = () => {
         {
           stepNumber: 3,
           title: 'Inspect CLI Scope Configuration',
-          description: 'Check active repository boundaries defined in .agent/local-search-config.yaml.',
+          description: 'Check active repository boundaries defined in .agents/local-search-config.yaml.',
           command: 'local-search scope show',
-          output: `Scope: product-specs, platform-docs, billing-service\nSource: /Users/you/work/.agent/local-search-config.yaml\nWeights: specs=1.00 graphify=0.70 codegraph=0.80`,
+          output: `Scope: product-specs, platform-docs, billing-service\nSource: /Users/you/work/.agents/local-search-config.yaml\nWeights: specs=1.00 graphify=0.70 codegraph=0.80`,
         },
       ],
     },

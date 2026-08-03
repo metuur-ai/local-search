@@ -54,7 +54,7 @@ the one answer you wanted.
 `local-search init` (alias `setup`) manages one file:
 
 ```
-<project>/.agent/local-search-config.yaml
+<project>/.agents/local-search-config.yaml
 ```
 
 It declares which registered repos the skill searches when you're working in
@@ -63,7 +63,7 @@ scriptable primitives only. The *conversation* is run by the skill, which calls
 these primitives on your behalf.
 
 > **`init` and `scope` are two doors to the same file.** As of v0.4.0 there is
-> one config — `.agent/local-search-config.yaml`, with `~/.local-search-config.yaml`
+> one config — `.agents/local-search-config.yaml`, with `~/.local-search-config.yaml`
 > as a global fallback — and its `repositories:` list is read by both the skill
 > and the CLI engine (`find`, `code`). `init --set a,b` and `scope set a,b` do
 > the same thing in different phrasing.
@@ -84,7 +84,7 @@ Prints current scope plus everything available.
 
 ```bash
 $ local-search init
-Project config: /Users/you/work/api/.agent/local-search-config.yaml
+Project config: /Users/you/work/api/.agents/local-search-config.yaml
 
 Included repositories:
   - squirrel
@@ -110,7 +110,7 @@ The contract the skill consumes. Always valid JSON, never partial.
 ```bash
 $ local-search init --json
 {
-  "path": "/Users/you/work/api/.agent/local-search-config.yaml",
+  "path": "/Users/you/work/api/.agents/local-search-config.yaml",
   "exists": true,
   "empty": true,
   "repositories": [],
@@ -320,7 +320,7 @@ $ local-search init --json          # 1. what's the state?
 $ local-search init --set platform,docs   # 2. pick the two that matter
 $ local-search init --add graph:legacy    # 3. add an external graph
 
-$ cat .agent/local-search-config.yaml
+$ cat .agents/local-search-config.yaml
 # LocalSearch project scope — repositories searched when running from this project.
 # Names must match `local-search repo list`. Managed by `local-search init`.
 repositories:

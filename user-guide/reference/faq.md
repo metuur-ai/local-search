@@ -42,7 +42,7 @@ ever registered. Set a scope for the project and searches resolve to it. See
 [One config file](../explanation/two-config-files.md).
 
 **Which config file controls what gets searched?**
-One file, in one of two places: `<project>/.agent/local-search-config.yaml`
+One file, in one of two places: `<project>/.agents/local-search-config.yaml`
 (found by walking up) or `~/.local-search-config.yaml` as a global fallback. Its
 `repositories:` list is read by **both** the CLI engine and the Claude Code
 skill. Note that `local-search search` reads neither — it takes `--repos`,
