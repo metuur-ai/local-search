@@ -1,4 +1,15 @@
+/* Hallmark · macrostructure: Workbench · tone: technical · anchor hue: green
+ * theme: custom (vibe: "cool paper, ruler hairlines, one emerald signal")
+ *   paper  oklch(98.4% 0.004 250)   accent oklch(60% 0.14 163)
+ *   display Space Grotesk · body Inter · shell JetBrains Mono
+ *   axes: light paper / grotesk-sans / chromatic-other (green)
+ * genre: modern-minimal · nav: N5 floating pill · footer: Ft1 mast-headed
+ * enrichment: none (typography + live product surface)
+ * pre-emit critique: P5 H4 E4 S5 R5 V4
+ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import "tailwindcss";
+@import "../tokens.css";
 
 /* ---------------------------------------------------------------------------
    Dark surfaces.
@@ -103,15 +114,281 @@
     pointer-events: none;
     background: linear-gradient(
       to left,
-      var(--color-slate-50) 20%,
+      var(--color-paper) 20%,
       transparent 100%
     );
   }
 }
 
+/* ===========================================================================
+   HALLMARK LAYER
+   Workbench macrostructure · N5 floating pill · Ft1 mast-headed footer.
+   Everything below references tokens by name from ../tokens.css.
+   =========================================================================== */
+
+:root {
+  --mast-h: 3.75rem;
+  --pill-h: 2.75rem;
+}
+
+/* Root safety: clip, never hidden — hidden on <html> kills position:sticky
+   in some engines and silently breaks scroll anchoring. */
+html,
+body {
+  overflow-x: clip;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-root {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+/* ---------------------------------------------------------------------------
+   Mast — quiet app chrome. A hairline, not a shadow: the theme's structural
+   signature is a drawn rule, and a blurred shadow here would compete with the
+   pill floating just beneath it.
+--------------------------------------------------------------------------- */
+.mast {
+  min-height: var(--mast-h);
+  display: flex;
+  align-items: center;
+  background: var(--color-paper);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  position: relative;
+  z-index: 30;
+}
+
+.mast__wordmark {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-style: normal;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  font-size: var(--text-lg);
+  line-height: 1.1;
+}
+
+.mast__tagline {
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+  line-height: 1.4;
+}
+
+.mast__badge {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent-ink);
+  background: var(--color-accent-soft);
+  border: var(--rule-hair) solid color-mix(in oklch, var(--color-accent) 22%, transparent);
+  border-radius: var(--radius-input);
+  padding: 0.1rem var(--space-2xs);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   N5 · Floating pill.
+   Visibly detached, content-sized, blurred over the scrolling workbench.
+   Labels are short by design — a pill that spans the viewport is just a
+   full-width bar with rounded ends.
+--------------------------------------------------------------------------- */
+.nav-pill {
+  position: fixed;
+  top: calc(var(--mast-h) + var(--space-2xs));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
+  max-width: min(720px, calc(100vw - var(--space-lg)));
+  padding: var(--space-3xs);
+  background: color-mix(in oklch, var(--color-paper) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 8px 24px -14px oklch(21% 0.02 255 / 0.28);
+}
+
+.nav-pill__track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3xs);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nav-pill__track::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-pill__link {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-ink-2);
+  text-decoration: none;
+  transition:
+    background-color var(--dur-short) var(--ease-out),
+    color var(--dur-short) var(--ease-out);
+}
+
+.nav-pill__link:hover {
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+}
+
+/* Focus ring appears instantly — never transitioned, never animated. */
+.nav-pill__link:focus-visible {
+  outline: var(--rule-thick) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.nav-pill__link[aria-current='page'] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
+  font-weight: 600;
+}
+
+.nav-pill__link:active {
+  transform: translateY(1px);
+}
+
+/* Mobile: the pill docks to the bottom, in thumb reach. Still a pill, still
+   detached, still content-scrolling — it just stops pretending it can float
+   eight destinations across a 320px viewport. */
+@media (max-width: 639px) {
+  .nav-pill {
+    top: auto;
+    bottom: var(--space-2xs);
+    left: var(--space-2xs);
+    right: var(--space-2xs);
+    transform: none;
+    max-width: none;
+    display: flex;
+  }
+
+  .nav-pill__track {
+    width: 100%;
+  }
+}
+
+/* Content clearance for the fixed pill. */
+.workbench-scroll {
+  padding-top: calc(var(--pill-h) + var(--space-md));
+}
+
+@media (max-width: 639px) {
+  .workbench-scroll {
+    padding-top: var(--space-sm);
+    padding-bottom: calc(var(--pill-h) + var(--space-md));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Ft1 · Mast-headed footer.
+   Wordmark and tagline anchor a single band; links sit beside, licence below.
+--------------------------------------------------------------------------- */
+.foot-mast {
+  background: var(--color-panel);
+  border-top: var(--rule-hair) solid var(--color-panel-edge);
+  color: oklch(78% 0.015 255);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2xs) var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+@media (min-width: 640px) {
+  .foot-mast {
+    padding-inline: var(--space-lg);
+  }
+}
+
+/* The docked pill is fixed, so it sits over the footer rather than pushing it.
+   Buy back the height it steals. */
+@media (max-width: 639px) {
+  .foot-mast {
+    padding-bottom: calc(var(--pill-h) + var(--space-sm));
+  }
+}
+
+.foot-mast__wordmark {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-style: normal;
+  letter-spacing: -0.02em;
+  font-size: var(--text-md);
+  color: var(--color-paper);
+}
+
+.foot-mast__tagline {
+  font-size: var(--text-xs);
+  color: oklch(70% 0.015 255);
+}
+
+.foot-mast__links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-inline-start: auto;
+}
+
+.foot-mast__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: oklch(78% 0.015 255);
+  text-decoration: none;
+  border-radius: var(--radius-input);
+  transition: color var(--dur-short) var(--ease-out);
+}
+
+.foot-mast__link:hover {
+  color: var(--color-paper);
+}
+
+.foot-mast__link:focus-visible {
+  outline: var(--rule-thick) solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.foot-mast__licence {
+  flex-basis: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: oklch(70% 0.015 255);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fadeIn {
     animation: none;
+  }
+
+  .nav-pill__link:active {
+    transform: none;
   }
 
   *,

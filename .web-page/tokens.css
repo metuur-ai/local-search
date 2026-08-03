@@ -1,0 +1,80 @@
+/* Hallmark · tokens · custom theme "cool paper, ruler hairlines, one emerald signal"
+ * paper oklch(98.4% 0.004 250) · accent oklch(60% 0.14 163) green
+ * Space Grotesk (display) + Inter (body) + JetBrains Mono (shell)
+ *
+ * Portable token set for local-search. Every colour, font, space, radius and
+ * easing used by the Hallmark layer is declared here and referenced by name.
+ * The dark blue-slate ramp (--color-panel*) is declared in src/index.css's
+ * Tailwind @theme block and is mirrored here so this file stands alone.
+ */
+
+:root {
+  /* --- Paper: cool near-white, three steps of recession ------------------ */
+  --color-paper: oklch(98.4% 0.004 250);
+  --color-paper-2: oklch(96.2% 0.006 250);
+  --color-paper-3: oklch(93.5% 0.008 250);
+
+  /* --- Ink: text on paper ------------------------------------------------ */
+  --color-ink: oklch(21% 0.02 255);
+  --color-ink-2: oklch(44% 0.018 255);
+  /* 55%, not 60%: at 60% this clears 3.8:1 on paper and fails body text.
+     The quietest ink in the system still has to be readable. */
+  --color-ink-3: oklch(55% 0.015 255);
+
+  /* --- Rules: hairlines, the theme's structural signature ---------------- */
+  --color-rule: oklch(89% 0.008 250);
+  --color-rule-strong: oklch(82% 0.01 250);
+
+  /* --- Accent: one emerald signal, used sparingly ------------------------ */
+  --color-accent: oklch(60% 0.14 163);
+  --color-accent-ink: oklch(38% 0.1 163);
+  --color-accent-soft: oklch(94% 0.04 163);
+  --color-accent-contrast: oklch(99% 0.01 163);
+  --color-focus: oklch(60% 0.14 163);
+
+  /* --- Dark panel ramp (mirrors the Tailwind @theme block) --------------- */
+  --color-panel: #26324a;
+  --color-panel-inset: #1e2839;
+  --color-panel-raised: #33415e;
+  --color-panel-edge: #3d4d70;
+
+  /* --- Type -------------------------------------------------------------- */
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-display-s: 2.75rem;
+  --text-display: 3.75rem;
+
+  /* --- Space: 4pt scale --------------------------------------------------- */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+
+  /* --- Rules & radii: tight, drawn, never pill-soft except the nav ------- */
+  --rule-hair: 1px;
+  --rule-thick: 2px;
+  --radius-input: 6px;
+  --radius-card: 8px;
+  --radius-pill: 999px;
+
+  /* --- Motion ------------------------------------------------------------ */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-instant: 90ms;
+  --dur-short: 160ms;
+  --dur-med: 260ms;
+}

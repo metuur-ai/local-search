@@ -42,7 +42,7 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-screen bg-slate-50 text-slate-900 font-sans flex flex-col overflow-hidden">
+    <div className="app-root w-full h-screen flex flex-col overflow-hidden">
       {/* Top Header Navigation matching example layout */}
       <Navigation
         activeTab={activeTab}
@@ -55,7 +55,7 @@ export default function App() {
       />
 
       {/* Main Content Area with Tab Switching */}
-      <main className="app-scroll flex-1 py-4 sm:py-6 overflow-y-auto">
+      <main className="app-scroll workbench-scroll flex-1 pb-4 sm:pb-6 overflow-y-auto">
         {activeTab === 'overview' && (
           <OverviewSection
             audienceLevel={audienceLevel}

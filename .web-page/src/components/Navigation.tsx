@@ -1,17 +1,8 @@
 import React from 'react';
-import { ActiveTab, AudienceLevel, ViewMode } from '../types';
+import { ActiveTab, AudienceLevel } from '../types';
 import { tabHref } from '../hooks/useHashRoute';
 import { HeaderSearch } from './HeaderSearch';
-import {
-  BookOpen,
-  Search,
-  Terminal,
-  Share2,
-  PlayCircle,
-  Settings,
-  Bot,
-  Layers,
-} from 'lucide-react';
+import { Search } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: ActiveTab;
@@ -23,102 +14,65 @@ interface NavigationProps {
   onResetProgress: () => void;
 }
 
-export const Navigation: React.FC<NavigationProps> = ({
-  activeTab,
-  setActiveTab,
-  audienceLevel,
-  setAudienceLevel,
-  completedCount,
-  totalSteps,
-  onResetProgress,
-}) => {
-  const tabs: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: string }[] = [
-    {
-      id: 'overview',
-      label: 'Index & Overview',
-      icon: <BookOpen className="w-4 h-4" />,
-      badge: 'WHY·WHAT·HOW',
-    },
-    {
-      id: 'search',
-      label: 'Local Search & BM25',
-      icon: <Search className="w-4 h-4" />,
-      badge: 'Sandbox',
-    },
-    {
-      id: 'indexing',
-      label: 'How we Index',
-      icon: <Layers className="w-4 h-4" />,
-      badge: 'Internals',
-    },
-    {
-      id: 'cli',
-      label: 'CLI Terminal Explorer',
-      icon: <Terminal className="w-4 h-4" />,
-      badge: 'Interactive',
-    },
-    {
-      id: 'aiskill',
-      label: 'AI Skill',
-      icon: <Bot className="w-4 h-4" />,
-      badge: 'Claude Code',
-    },
-    {
-      id: 'graph',
-      label: 'Knowledge Graph',
-      icon: <Share2 className="w-4 h-4" />,
-      badge: '1-Hop Map',
-    },
-    {
-      id: 'workflows',
-      label: 'Interactive Workflows',
-      icon: <PlayCircle className="w-4 h-4" />,
-      badge: 'Scenarios',
-    },
-    {
-      id: 'config',
-      label: 'Config & Matrix',
-      icon: <Settings className="w-4 h-4" />,
-      badge: '',
-    },
-  ];
+/**
+ * `label` is what the pill shows; `name` is the full section title, kept for
+ * the accessible name. N5 only works while the pill stays content-sized — a
+ * pill wide enough for "CLI Terminal Explorer" eight times over is just a
+ * full-width bar with rounded ends, which is the archetype's stated failure.
+ */
+const TABS: { id: ActiveTab; label: string; name: string }[] = [
+  { id: 'overview', label: 'Overview', name: 'Index & Overview' },
+  { id: 'search', label: 'Search', name: 'Local Search & BM25' },
+  { id: 'indexing', label: 'Indexing', name: 'How we Index' },
+  { id: 'cli', label: 'CLI', name: 'CLI Terminal Explorer' },
+  { id: 'aiskill', label: 'AI Skill', name: 'AI Skill for Claude Code' },
+  { id: 'graph', label: 'Graph', name: 'Knowledge Graph' },
+  { id: 'workflows', label: 'Workflows', name: 'Interactive Workflows' },
+  { id: 'config', label: 'Config', name: 'Config & Matrix' },
+];
 
+export const Navigation: React.FC<NavigationProps> = ({ activeTab }) => {
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
-      {/* Top Banner Header */}
-      <div className="app-container py-2.5 flex items-center justify-between gap-4">
-        {/* Brand identity */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
-            <Search className="w-4 h-4 text-emerald-100" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-slate-900 tracking-tight text-base font-mono">
-                local-search
-              </span>
-              <span className="hidden sm:inline-block px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase rounded-md tracking-wider">
-                EXPLAINABLE RETRIEVAL ENGINE
-              </span>
-              <span className="hidden md:inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-mono rounded">
-                Local Directory Graph →
-              </span>
+    <>
+      <header className="mast">
+        <div className="app-container flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <span
+              aria-hidden="true"
+              className="w-8 h-8 shrink-0 flex items-center justify-center"
+              style={{
+                background: 'var(--color-accent)',
+                borderRadius: 'var(--radius-card)',
+                color: 'var(--color-accent-contrast)',
+              }}
+            >
+              <Search className="w-4 h-4" />
+            </span>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="mast__wordmark">local-search</span>
+                <span className="mast__badge hidden sm:inline-block">
+                  Explainable retrieval
+                </span>
+              </div>
+              <p className="mast__tagline hidden sm:block">
+                Zero-cloud search and knowledge graph over your local specs.
+              </p>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
-              Fast, zero-cloud search engine &amp; knowledge graph for local codebase specifications
-            </p>
+          </div>
+
+          <div className="flex items-center justify-end shrink-0">
+            <HeaderSearch />
           </div>
         </div>
+      </header>
 
-        <div className="flex items-center justify-end shrink-0">
-          <HeaderSearch />
-        </div>
-      </div>
-
-      {/* Navigation Pills Bar */}
-      <nav aria-label="Sections" className="nav-scroller bg-slate-50 border-t border-slate-200">
-        <div className="app-container py-1.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
-          {tabs.map((tab) => {
+      {/* N5 · Floating pill. Detached from the mast, blurred over the
+          workbench beneath it. Docks to the bottom edge below 640px. */}
+      <nav className="nav-pill" aria-label="Sections">
+        <div className="nav-pill__track">
+          {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               // A real href, so the section is linkable, opens in a new tab on
@@ -127,28 +81,16 @@ export const Navigation: React.FC<NavigationProps> = ({
               <a
                 key={tab.id}
                 href={tabHref(tab.id)}
+                aria-label={tab.name}
                 aria-current={isActive ? 'page' : undefined}
-                className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80 hover:border-slate-300'
-                }`}
+                className="nav-pill__link"
               >
-                <span className={isActive ? 'text-white' : 'text-slate-500'}>{tab.icon}</span>
-                <span>{tab.label}</span>
-                {/* The badge is context for the section you are in, so only the
-                    active pill carries one. Showing all seven at once doubled the
-                    bar's width past the container and pushed tabs out of reach. */}
-                {tab.badge && isActive && (
-                  <span className="hidden sm:inline px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/80 text-blue-50">
-                    {tab.badge}
-                  </span>
-                )}
+                {tab.label}
               </a>
             );
           })}
         </div>
       </nav>
-    </header>
+    </>
   );
 };
