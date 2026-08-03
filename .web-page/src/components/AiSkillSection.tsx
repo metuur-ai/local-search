@@ -72,7 +72,7 @@ export const AiSkillSection: React.FC = () => {
       num: 'Option 1',
       title: 'Configure Project Scope (init)',
       command: 'local-search init --json',
-      desc: 'Declares allowed repos in .agent/local-search-config.yaml to prevent cross-project context bloat during searches.',
+      desc: 'Declares allowed repos in .agents/local-search-config.yaml to prevent cross-project context bloat during searches.',
       why: 'Stops Claude from searching irrelevant repositories or drowning in unrelated markdown files.',
     },
     {
@@ -182,7 +182,7 @@ export const AiSkillSection: React.FC = () => {
             }`}
           >
             <Settings className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Project Scope (.agent/config)</span>
+            <span>Project Scope (.agents/config)</span>
           </button>
 
           <button
@@ -348,14 +348,14 @@ export const AiSkillSection: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 2: Project Scope (.agent/local-search-config.yaml) */}
+      {/* Tab 2: Project Scope (.agents/local-search-config.yaml) */}
       {activeTab === 'init' && (
         <div className="space-y-6 animate-fadeIn">
           <div className="bg-white border border-rule rounded-card p-6 space-y-4 shadow-2xs">
             <div className="flex items-center justify-between border-b border-rule pb-3">
               <div>
                 <h3 className="font-display font-semibold text-ink text-base">Project Scope Config: local-search init</h3>
-                <p className="text-sm text-ink-3">Manages <code className="font-mono text-ink">.agent/local-search-config.yaml</code> to restrict AI searches to relevant project repos.</p>
+                <p className="text-sm text-ink-3">Manages <code className="font-mono text-ink">.agents/local-search-config.yaml</code> to restrict AI searches to relevant project repos.</p>
               </div>
               <span className="font-mono text-[11px] bg-paper-3 px-2.5 py-1 rounded-input border border-rule text-ink-2">
                 Non-Interactive Contract
@@ -365,7 +365,7 @@ export const AiSkillSection: React.FC = () => {
             {/* Code YAML Block */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-mono text-ink-2">
-                <span>Sample <code className="text-ink">.agent/local-search-config.yaml</code></span>
+                <span>Sample <code className="text-ink">.agents/local-search-config.yaml</code></span>
                 <button
                   onClick={() => handleCopy(`repositories:\n  - product-specs\n  - platform-docs\n  - graph:legacy-ontology`, 103)}
                   className={`text-accent-ink hover:opacity-80 flex items-center gap-1 p-1.5 rounded-input transition-colors ${focusRing}`}
@@ -405,7 +405,7 @@ repositories:
                 <div className="p-3 bg-paper-2 rounded-card border border-rule space-y-1">
                   <div className="font-bold text-ink">3. File Auto-Creation</div>
                   <p className="text-ink-2 text-[13px]">
-                    Running <code className="font-mono">local-search init --json</code> creates <code className="font-mono">.agent/local-search-config.yaml</code> automatically if missing.
+                    Running <code className="font-mono">local-search init --json</code> creates <code className="font-mono">.agents/local-search-config.yaml</code> automatically if missing.
                   </p>
                 </div>
 

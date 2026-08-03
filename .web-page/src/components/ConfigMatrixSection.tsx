@@ -37,7 +37,7 @@ export const ConfigMatrixSection: React.FC = () => {
               Configuration File Matrix &amp; EARS Syntax
             </h2>
             <p className="text-sm text-panel-ink-2">
-              Technical reference for <code className="font-mono text-panel-ink">.agent/local-search-config.yaml</code>, storage paths, and EARS requirements annotations.
+              Technical reference for <code className="font-mono text-panel-ink">.agents/local-search-config.yaml</code>, storage paths, and EARS requirements annotations.
             </p>
           </div>
 
@@ -95,7 +95,7 @@ export const ConfigMatrixSection: React.FC = () => {
             <div className="flex items-start justify-between gap-4 border-b border-rule pb-3">
               <div>
                 <h3 className="font-display font-semibold text-ink text-base">
-                  Local Workspace Config (.agent/local-search-config.yaml)
+                  Local Workspace Config (.agents/local-search-config.yaml)
                 </h3>
                 <p className="text-sm text-ink-3">
                   One file, read by both the CLI engine and the Claude Code skill. Pins which repos a bare <code className="font-mono text-ink-2">find</code> or <code className="font-mono text-ink-2">code</code> considers, and tunes ranking weights and result limits.
@@ -109,7 +109,7 @@ export const ConfigMatrixSection: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div className="space-y-2">
                 <span className="text-xs font-mono font-bold text-ink-2">
-                  Sample .agent/local-search-config.yaml
+                  Sample .agents/local-search-config.yaml
                 </span>
                 <pre className="bg-panel-inset text-syntax-string p-4 rounded-card font-mono text-[11px] leading-relaxed overflow-x-auto border border-panel-edge">
 {`# yaml-language-server: $schema=https://raw.githubusercontent.com/
@@ -145,7 +145,7 @@ limits:               # optional
                   </div>
                   <ol className="text-ink-2 leading-relaxed text-[13px] space-y-0.5 list-decimal list-inside">
                     <li><code className="font-mono text-ink">--scope</code> flag on the command</li>
-                    <li><code className="font-mono text-ink">&lt;cwd&gt;/.agent/local-search-config.yaml</code>, walking up</li>
+                    <li><code className="font-mono text-ink">&lt;cwd&gt;/.agents/local-search-config.yaml</code>, walking up</li>
                     <li><code className="font-mono text-ink">~/.local-search-config.yaml</code> global fallback</li>
                     <li>Nearest registered repo enclosing the CWD</li>
                     <li><strong className="text-danger-ink">Hard error</strong> — never a silent search of every repo</li>
@@ -334,7 +334,7 @@ limits:               # optional
             </div>
 
             <div className="p-3.5 bg-paper-2 rounded-card border border-rule space-y-1">
-              <span className="text-ink font-bold">&lt;project&gt;/.agent/local-search-config.yaml</span>
+              <span className="text-ink font-bold">&lt;project&gt;/.agents/local-search-config.yaml</span>
               <p className="font-body text-ink-2 text-[13px]">Per-project scope, weights and limits, found by walking up. Read by the engine <strong>and</strong> the Claude Code skill.</p>
             </div>
 

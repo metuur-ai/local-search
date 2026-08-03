@@ -199,7 +199,7 @@ export function HelpModal({ onClose, focusSection = null }) {
             Which repos get searched
           </div>
           <p>One config file decides it, and both this UI and the CLI read the same one:</p>
-          <code class="block">&lt;project&gt;/.agent/local-search-config.yaml</code>
+          <code class="block">&lt;project&gt;/.agents/local-search-config.yaml</code>
           <p>It is found by walking up from your working directory, stopping at a git repository root. A global fallback lives at <code>~/.local-search-config.yaml</code>. Edit it with <code>local-search scope set a,b</code> or <code>local-search init --set a,b</code> — both write the same <code>repositories:</code> list, and neither disturbs any <code>weights:</code> or <code>limits:</code> you have set.</p>
           <p>Upgrading from v0.3.x? A <code>.local-search.toml</code> is converted automatically on first run. Preview it with <code>local-search config migrate --dry-run</code>, or set <code>LOCAL_SEARCH_NO_AUTO_MIGRATE=1</code> to opt out. See the <a href="https://github.com/metuur-ai/local-search/blob/main/user-guide/reference/upgrading-to-0.4.md" target="_blank" rel="noopener noreferrer">upgrade notes ↗</a>.</p>
 

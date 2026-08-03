@@ -93,7 +93,7 @@ export const ConceptSpotlightCard: React.FC<ConceptSpotlightCardProps> = ({
             )}
             {currentStepId === 5 && (
               <p>
-                Project boundary resolution reads one file, <code>.agent/local-search-config.yaml</code>, for both the CLI engine and the Claude Code skill runner. Order: <code>--scope</code> flag &gt; CWD walk-up (stopping at the git root) &gt; <code>~/.local-search-config.yaml</code> global default &gt; nearest enclosing registered repo &gt; hard error.
+                Project boundary resolution reads one file, <code>.agents/local-search-config.yaml</code>, for both the CLI engine and the Claude Code skill runner. Order: <code>--scope</code> flag &gt; CWD walk-up (stopping at the git root) &gt; <code>~/.local-search-config.yaml</code> global default &gt; nearest enclosing registered repo &gt; hard error.
               </p>
             )}
 

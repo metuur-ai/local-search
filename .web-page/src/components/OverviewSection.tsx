@@ -25,6 +25,18 @@ import {
 
 type GuideQuestion = 'why' | 'what' | 'how';
 
+/** Keep in step with `Version` in cli/main.go. */
+const VERSION = '0.4.0';
+
+/** The four claims worth making above the fold. Each carries its own icon so
+ *  the row still reads as a list of facts without colour. */
+const HERO_PROOF: ReadonlyArray<{ label: string; Icon: typeof ShieldCheck }> = [
+  { label: 'Runs fully offline', Icon: Database },
+  { label: 'Zero-cloud — nothing leaves the machine', Icon: ShieldCheck },
+  { label: '~12ms queries', Icon: Zap },
+  { label: 'No runtime dependencies', Icon: Layers },
+];
+
 /** The three guide sections, as data — the markup for them is identical, and
  *  writing it once is what stops the three from drifting apart again. */
 const GUIDE_QUESTIONS: ReadonlyArray<{
@@ -83,60 +95,114 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
   const [activeQuestion, setActiveQuestion] = useState<GuideQuestion>('why');
 
   return (
-    <div className="space-y-6 pb-12 app-container">
-      {/* Dark Hero Banner Header */}
-      <div className="bg-panel text-panel-ink rounded-card p-6 sm:p-10 border border-panel-edge relative overflow-hidden">
+    <>
+      {/* Hero. Full-bleed rather than another rounded card in the stack — the
+          band edge is what tells you this is the top of the page and not just
+          the first item of a list. Copy is centred and the surfaces, CTAs and
+          proof all sit on one vertical axis. */}
+      <section className="relative overflow-hidden bg-panel text-panel-ink border-b border-panel-edge">
         {/* Subtle grid background, in the panel's own edge tone rather than a
             stray brand hue, so the hero reads as one material. */}
         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(var(--color-panel-edge)_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="space-y-4 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-mono text-sm text-panel-ink-2 tracking-tight">local-search</span>
-              <span className="w-px h-3.5 bg-panel-edge" aria-hidden="true" />
-              <span className="text-sm text-panel-ink-3">For engineers, managers &amp; AI coding agents</span>
-            </div>
-
-            {/* One idea, stated once. The Why/What/How split is navigation and
-                lives in the tabs below — it is not the headline's job. */}
-            <h1 className="text-3xl sm:text-5xl font-bold font-display text-panel-ink tracking-tight leading-[1.1] text-balance">
-              Code search that lives in your repo, not in the cloud.
-            </h1>
-
-            <p className="text-base sm:text-lg leading-relaxed text-panel-ink-2 text-pretty">
-              Git-native retrieval that works fully offline — so answers track the
-              commit you have checked out instead of drifting documentation.
-            </p>
+        <div className="app-container relative z-10 py-12 sm:py-16 lg:py-20 flex flex-col items-center text-center">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <span className="font-mono text-sm text-panel-ink-2 tracking-tight">local-search</span>
+            <span className="w-px h-3.5 bg-panel-edge" aria-hidden="true" />
+            <span className="text-sm text-panel-ink-3">For engineers, managers &amp; AI coding agents</span>
           </div>
 
-          <div className="flex flex-col gap-2.5 shrink-0 w-full md:w-auto">
+          {/* One idea, stated once. The Why/What/How split is navigation and
+              lives in the tabs below — it is not the headline's job. */}
+          <h1 className="mt-5 max-w-4xl text-4xl sm:text-5xl lg:text-6xl font-bold font-display text-panel-ink tracking-tight leading-[1.05] text-balance">
+            Code search that lives in your repo, not in the cloud.
+          </h1>
+
+          <p className="mt-5 max-w-2xl text-base sm:text-lg leading-relaxed text-panel-ink-2 text-pretty">
+            Git-native retrieval that works fully offline — so answers track the
+            commit you have checked out instead of drifting documentation.
+          </p>
+
+          {/* What you actually get when you install it. Named up front because
+              "search tool" alone does not say whether it is a binary, a service
+              or a site. */}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-input bg-panel-inset border border-panel-edge text-sm text-panel-ink-2">
+              <Terminal className="w-3.5 h-3.5 text-panel-ink-3" aria-hidden="true" />
+              <span>CLI</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-input bg-panel-inset border border-panel-edge text-sm text-panel-ink-2">
+              <Layers className="w-3.5 h-3.5 text-panel-ink-3" aria-hidden="true" />
+              <span>Embedded web UI</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-input bg-panel-inset border border-panel-edge font-mono text-sm text-panel-ink-2">
+              v{VERSION}
+            </span>
+          </div>
+
+          <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
             <button
               onClick={() => onNavigateTab('search')}
-              className="px-5 py-3 bg-accent hover:brightness-110 text-accent-contrast font-semibold text-sm rounded-input transition flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              className="px-6 py-3 bg-accent hover:brightness-110 text-accent-contrast font-semibold text-sm rounded-input transition flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Zap className="w-4 h-4" aria-hidden="true" />
               <span>Try live search</span>
             </button>
             <button
               onClick={() => onNavigateTab('cli')}
-              className="px-5 py-3 bg-panel-raised hover:bg-panel-edge text-panel-ink border border-panel-edge font-semibold text-sm rounded-input transition flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              className="px-6 py-3 bg-panel-raised hover:bg-panel-edge text-panel-ink border border-panel-edge font-semibold text-sm rounded-input transition flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Terminal className="w-4 h-4" aria-hidden="true" />
               <span>Launch CLI simulator</span>
             </button>
           </div>
-        </div>
 
-        {/* Why / What / How. Previously three hand-written buttons in three
-            different hues, which made the section look like three unrelated
-            features rather than one control. Now one render, one accent:
-            selection is carried by the filled number chip and the raised
-            surface, so it survives being read in greyscale. */}
+          {/* Proof strip. A dev tool has no testimonials worth printing, so the
+              claims that would otherwise be buried in the guide carry the
+              credibility instead. Each has an icon so the row does not depend
+              on the accent colour to read as a list of facts. */}
+          <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-panel-ink-2">
+            {HERO_PROOF.map(({ label, Icon }) => (
+              <li key={label} className="flex items-center gap-1.5">
+                <Icon className="w-4 h-4 text-accent shrink-0" aria-hidden="true" />
+                <span>{label}</span>
+              </li>
+            ))}
+          </ul>
+
+          {/* The product, shown rather than described. Static by design: it is
+              a picture of a result, and the real thing is one button away. */}
+          <div className="mt-12 w-full max-w-3xl text-left">
+            <div className="rounded-card border border-panel-edge bg-panel-inset overflow-hidden shadow-panel">
+              <div className="flex items-center gap-2 px-3.5 py-2 border-b border-panel-edge bg-panel-raised">
+                <Terminal className="w-3.5 h-3.5 text-panel-ink-3" aria-hidden="true" />
+                <span className="font-mono text-[11px] text-panel-ink-3">local-search</span>
+                <span className="ml-auto font-mono text-[11px] text-panel-ink-3">HEAD 8f3c1a2</span>
+              </div>
+              <pre className="p-4 font-mono text-[11px] sm:text-xs leading-relaxed overflow-x-auto">
+<span className="text-panel-ink-3">$ </span><span className="text-panel-ink">local-search search </span><span className="text-syntax-string">&quot;refund window&quot;</span>{'\n'}
+{'\n'}
+<span className="text-syntax-keyword">specs/billing/refunds.md</span><span className="text-panel-ink-3">:42</span>{'   '}<span className="text-syntax-number">0.91</span>{'\n'}
+<span className="text-panel-ink-2">{'  '}Refunds are accepted within 30 days of purchase.{'\n'}</span>
+{'\n'}
+<span className="text-syntax-keyword">specs/api/payments.md</span><span className="text-panel-ink-3">:118</span>{'  '}<span className="text-syntax-number">0.77</span>{'\n'}
+<span className="text-panel-ink-2">{'  '}POST /refunds — partial refunds require an amount.{'\n'}</span>
+{'\n'}
+<span className="text-syntax-comment"># 2 results · 11ms · 0 network calls</span>
+              </pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="space-y-6 pt-6 pb-12 app-container">
+        {/* Why / What / How. Lifted out of the hero so the band has one primary
+            action rather than five competing targets; this is the entry to the
+            guide, so it reads better as the first thing after it. */}
         <div
           role="tablist"
           aria-label="Guide sections"
-          className="relative z-10 mt-10 pt-6 border-t border-panel-edge grid grid-cols-1 sm:grid-cols-3 gap-2"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-2"
         >
           {GUIDE_QUESTIONS.map(({ id, step, label, question }) => {
             const isActive = activeQuestion === id;
@@ -148,31 +214,30 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
                 aria-selected={isActive}
                 aria-controls={`guide-panel-${id}`}
                 onClick={() => setActiveQuestion(id)}
-                className={`p-4 rounded-input text-left border transition flex items-center gap-3 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                className={`p-4 rounded-card text-left border transition flex items-center gap-3 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                   isActive
-                    ? 'bg-panel-raised border-panel-edge'
-                    : 'bg-panel-inset border-transparent hover:bg-panel-raised/60'
+                    ? 'bg-white border-rule shadow-xs'
+                    : 'bg-paper-2 border-rule/60 hover:bg-white'
                 }`}
               >
                 <span
                   aria-hidden="true"
                   className={`w-8 h-8 rounded-input flex items-center justify-center font-mono font-semibold text-sm shrink-0 transition ${
-                    isActive ? 'bg-accent text-accent-contrast' : 'bg-panel-edge text-panel-ink-2'
+                    isActive ? 'bg-accent text-accent-contrast' : 'bg-paper-3 text-ink-2'
                   }`}
                 >
                   {step}
                 </span>
                 <span className="min-w-0">
-                  <span className={`block text-sm font-semibold ${isActive ? 'text-panel-ink' : 'text-panel-ink-2'}`}>
+                  <span className={`block text-sm font-semibold ${isActive ? 'text-ink' : 'text-ink-2'}`}>
                     {label}
                   </span>
-                  <span className="block text-sm text-panel-ink-3">{question}</span>
+                  <span className="block text-sm text-ink-3">{question}</span>
                 </span>
               </button>
             );
           })}
         </div>
-      </div>
 
       {/* Install, on the landing itself. The full Step 0 lives inside "How do
           I use it?", which nobody sees until they pick that question — so the
@@ -609,11 +674,11 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
               </div>
               <h3 className="font-display font-semibold text-ink text-base">2. Claude Code AI Skill</h3>
               <p className="text-sm text-ink-2 leading-relaxed">
-                Connect local-search as a custom tool via <code className="text-info-ink font-mono">.agent/local-search-config.yaml</code> so your AI agent reads specs before writing code.
+                Connect local-search as a custom tool via <code className="text-info-ink font-mono">.agents/local-search-config.yaml</code> so your AI agent reads specs before writing code.
               </p>
 
               <div className="bg-panel-inset text-syntax-fn p-3 rounded-input font-mono text-[11px] space-y-1 border border-panel-edge">
-                <div className="text-panel-ink-3"># .agent/local-search-config.yaml</div>
+                <div className="text-panel-ink-3"># .agents/local-search-config.yaml</div>
                 <div className="text-syntax-fn">name: local-search</div>
                 <div className="text-syntax-fn">command: local-search search</div>
               </div>
@@ -672,6 +737,7 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };

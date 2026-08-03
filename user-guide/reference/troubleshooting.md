@@ -68,7 +68,7 @@ where you run the command from, and setting `LOCAL_SEARCH_WEB_DIR` does
 like:
 
 ```
-Error: /Users/you/proj/.agent/local-search-config.yaml:4:1: unknown key "repositorys"
+Error: /Users/you/proj/.agents/local-search-config.yaml:4:1: unknown key "repositorys"
    4 | repositorys:
      | ^
    did you mean "repositories"?
@@ -125,13 +125,13 @@ happen without touching anything.
 
 ## Scope changed after upgrading, or a subdirectory picks up the wrong repos
 
-**Cause:** v0.4.0 made `.agent/local-search-config.yaml` resolve by **walking
+**Cause:** v0.4.0 made `.agents/local-search-config.yaml` resolve by **walking
 up** from your working directory (it used to be exact-path only). A
 subdirectory with no config of its own now inherits the nearest ancestor's.
 
 **Fix:** `local-search scope show` prints the `Source` path actually used —
 start there. If a sub-project needs its own scope, give it its own
-`.agent/local-search-config.yaml`; nearest ancestor wins.
+`.agents/local-search-config.yaml`; nearest ancestor wins.
 
 The walk stops at a **git repository root** and never reads at `$HOME`, so a
 stray config in your home directory can't capture every project on the machine.
@@ -154,7 +154,7 @@ Work through these in order:
    `local-search repo add <folder> <name>` first.
 2. **Is your scope excluding it?** `local-search scope show` tells you the
    resolved scope and where it came from. If the repo you expect isn't in
-   scope, either pass `--repos <name>` explicitly or adjust `.agent/local-search-config.yaml`
+   scope, either pass `--repos <name>` explicitly or adjust `.agents/local-search-config.yaml`
    (see **[configuration.md](configuration.md)**, "Engine scope" section).
 3. **Is the index stale?** Local Search usually rescans automatically on git
    changes, but if you edited files without committing, or the auto-rescan

@@ -97,16 +97,16 @@ test('mergeRepoRows: enriches repo-list rows with init spec counts', () => {
   ]);
 });
 
-// CLI v0.4.0: a malformed .agent/local-search-config.yaml makes `init --json`
+// CLI v0.4.0: a malformed .agents/local-search-config.yaml makes `init --json`
 // exit 1 while still printing valid JSON carrying the line-numbered error.
 // Without extracting it, the failure surfaces only as every spec count being 0.
 test('configErrorFromInit: extracts the error field', () => {
   const init = JSON.stringify({
-    path: '/p/.agent/local-search-config.yaml',
+    path: '/p/.agents/local-search-config.yaml',
     repositories: [],
     available: [],
     unknown: [],
-    error: '/p/.agent/local-search-config.yaml:4:1: unknown key "repositorys"',
+    error: '/p/.agents/local-search-config.yaml:4:1: unknown key "repositorys"',
   });
   assert.match(configErrorFromInit(init), /unknown key "repositorys"/);
 });

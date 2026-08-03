@@ -104,7 +104,7 @@ an `error` field, and the server logs it:
 
 ```
 local-search config problem — spec counts unavailable:
-/Users/you/proj/.agent/local-search-config.yaml:4:1: unknown key "repositorys"
+/Users/you/proj/.agents/local-search-config.yaml:4:1: unknown key "repositorys"
    4 | repositorys:
      | ^
    did you mean "repositories"?

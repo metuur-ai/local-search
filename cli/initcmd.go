@@ -1,7 +1,7 @@
 package main
 
 // local-search init | setup — manage the project config at
-// <project>/.agent/local-search-config.yaml, which declares the repositories
+// <project>/.agents/local-search-config.yaml, which declares the repositories
 // this project searches.
 //
 // Since v0.4.0 that file is THE config: the same file and the same

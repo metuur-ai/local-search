@@ -90,7 +90,7 @@ relationships: product-specs:chargeback
       outputNode = (
         <div className="font-mono text-[11px] text-panel-ink-2 space-y-1">
           <div><span className="text-syntax-keyword">Scope:</span>   product-specs, platform-docs, billing-service</div>
-          <div><span className="text-syntax-keyword">Source:</span>  /Users/you/work/.agent/local-search-config.yaml</div>
+          <div><span className="text-syntax-keyword">Source:</span>  /Users/you/work/.agents/local-search-config.yaml</div>
           <div><span className="text-syntax-keyword">Weights:</span> specs=1.00 graphify=0.70 codegraph=0.80</div>
           <div><span className="text-syntax-keyword">Limits:</span>  specs=20 graphify=10 codegraph=10 blast_depth=2</div>
         </div>
@@ -148,7 +148,7 @@ relationships: product-specs:chargeback
           <div>• <span className="text-syntax-string">find &lt;query&gt;</span> [--scope repo1,repo2]</div>
           <div>• <span className="text-syntax-string">read &lt;name&gt;</span> — Print full spec file content</div>
           <div>• <span className="text-syntax-string">repo add &lt;path&gt; &lt;name&gt;</span> — Register folder</div>
-          <div>• <span className="text-syntax-string">scope show / set / clear</span> — Manage project scope (.agent/local-search-config.yaml)</div>
+          <div>• <span className="text-syntax-string">scope show / set / clear</span> — Manage project scope (.agents/local-search-config.yaml)</div>
           <div>• <span className="text-syntax-string">tags</span> — View requirement @spec tags and frequencies</div>
           <div>• <span className="text-syntax-string">graph explain &lt;entity&gt;</span> — 1-hop neighborhood walkthrough</div>
           <div>• <span className="text-syntax-string">doctor</span> — Comprehensive health &amp; index diagnostic check</div>
@@ -208,7 +208,7 @@ relationships: product-specs:chargeback
       flags: ['--scope <repo1,repo2>', '--json'],
       category: '03 Unified Multi-Source Search',
       what: 'Runs unified scoped search across 3 distinct sources simultaneously: indexed specs, Graphify knowledge graphs, and code-review call graphs.',
-      how: 'Reads project scope from .agent/local-search-config.yaml, executes sub-queries against all three sources, normalizes scores with configured weight multipliers, and outputs a merged table.',
+      how: 'Reads project scope from .agents/local-search-config.yaml, executes sub-queries against all three sources, normalizes scores with configured weight multipliers, and outputs a merged table.',
       why: 'Answers "Where is refund logic implemented and specified?" in a single query by linking specification documents directly to code symbols.',
     },
     {
@@ -223,8 +223,8 @@ relationships: product-specs:chargeback
       cmd: 'local-search scope show / set / clear',
       flags: ['--set <repo1,repo2>', '--config <path>'],
       category: '05 Configuration Scoping',
-      what: 'Inspects, sets, or clears repository boundaries, BM25 weight multipliers, and blast radius query limits in .agent/local-search-config.yaml.',
-      how: 'Walks up parent directories from CWD (stopping at the git root) to find .agent/local-search-config.yaml and pins search operations to specific repos in monorepos.',
+      what: 'Inspects, sets, or clears repository boundaries, BM25 weight multipliers, and blast radius query limits in .agents/local-search-config.yaml.',
+      how: 'Walks up parent directories from CWD (stopping at the git root) to find .agents/local-search-config.yaml and pins search operations to specific repos in monorepos.',
       why: 'Prevents query noise in massive monorepos by restricting search operations strictly to the microservices or spec repositories relevant to your current project.',
     },
     {
@@ -263,7 +263,7 @@ relationships: product-specs:chargeback
       cmd: 'local-search init / setup',
       flags: ['--json', '--add <a,b>', '--remove <a,b>', '--set <a,b>', '--dir <path>'],
       category: '10 Agent Skill Scope Setup',
-      what: 'Configures project scope for the bundled Claude Code skill by editing .agent/local-search-config.yaml.',
+      what: 'Configures project scope for the bundled Claude Code skill by editing .agents/local-search-config.yaml.',
       how: 'Validates repository names against the local registry and writes structured YAML declaring allowed search targets for AI agents.',
       why: 'Prevents AI agents from searching irrelevant repos or drowning in context bloat when answering specification queries.',
     },

@@ -63,7 +63,7 @@ export function specCountsFromInit(stdout) {
 
 /**
  * configErrorFromInit(stdout) -> string | null.
- * Since CLI v0.4.0 a malformed `.agent/local-search-config.yaml` makes
+ * Since CLI v0.4.0 a malformed `.agents/local-search-config.yaml` makes
  * `init --json` exit 1 while still emitting well-formed JSON carrying an
  * `error` field (line-numbered, with a "did you mean" hint).
  *

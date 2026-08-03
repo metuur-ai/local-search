@@ -2,7 +2,7 @@
 //
 // Resolution order (highest precedence first):
 //  1. --scope CLI flag (comma-separated)
-//  2. <cwd>/.agent/local-search-config.yaml, walking up (stops at a git root
+//  2. <cwd>/.agents/local-search-config.yaml, walking up (stops at a git root
 //     and below $HOME)
 //  3. ~/.local-search-config.yaml
 //  4. CWD walk-up: nearest registered repo whose path is a prefix of cwd
@@ -79,7 +79,7 @@ type (
 // truth so the user can see where the scope came from.
 type Scope struct {
 	Repos   []string // repo names to search
-	Source  string   // "--scope flag" | "<path>/.agent/local-search-config.yaml" | "~/.local-search-config.yaml" | "cwd-walk (<name>)" | ""
+	Source  string   // "--scope flag" | "<path>/.agents/local-search-config.yaml" | "~/.local-search-config.yaml" | "cwd-walk (<name>)" | ""
 	Weights Weights
 	Limits  Limits
 }
@@ -154,7 +154,7 @@ func (r Resolver) Resolve() (Scope, error) {
 		return s, nil
 	}
 
-	// 2. Walk up from CWD looking for .agent/local-search-config.yaml.
+	// 2. Walk up from CWD looking for .agents/local-search-config.yaml.
 	if r.CWD != "" {
 		settings, err := config.FindProject(r.CWD, r.HomeDir)
 		switch {

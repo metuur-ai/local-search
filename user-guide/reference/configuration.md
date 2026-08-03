@@ -36,7 +36,7 @@ Written by `local-search ui` when the web UI daemon starts: `ui.pid` holds the
 process ID and port, `ui.log` captures the daemon's stdout/stderr. `ui stop` and
 `ui status` read `ui.pid` to find and signal the running process.
 
-## Project config — `<project>/.agent/local-search-config.yaml`
+## Project config — `<project>/.agents/local-search-config.yaml`
 
 **The** config file since v0.4.0: read by the CLI engine (`find`, `code`) *and*
 by the Claude Code skill, with one `repositories:` list serving both. Controls
@@ -93,7 +93,7 @@ prefixing it with `graph:` (e.g. a `- graph:my-graph` list entry).
 
 **Resolution order** (highest precedence first):
 1. An explicit `--scope` flag on the command itself.
-2. `<cwd>/.agent/local-search-config.yaml`, found by walking upward from the
+2. `<cwd>/.agents/local-search-config.yaml`, found by walking upward from the
    current directory. The walk stops at a git repository root, and never reads
    at `$HOME` itself.
 3. `~/.local-search-config.yaml` — an optional global default, same schema.
@@ -103,7 +103,7 @@ prefixing it with `graph:` (e.g. a `- graph:my-graph` list entry).
 
 `scope show` prints which of these sources was actually used.
 
-## Skill scope — `<project>/.agent/local-search-config.yaml`
+## Skill scope — `<project>/.agents/local-search-config.yaml`
 
 A separate, much simpler file consumed by the bundled Claude Code skill (not
 the Go search engine directly) — it tells the skill which registered repos to

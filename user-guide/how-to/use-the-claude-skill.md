@@ -49,7 +49,7 @@ local-search install-skill --force
 
 Once installed, Claude reads the skill's instructions whenever a question looks like it could be answered by your specs — "what's our refund policy," "is there a spec for X," "set up local search for this project," and similar. From there:
 
-1. **It reads your project's search scope** from `.agent/local-search-config.yaml` (creating it via `local-search init --json` if it doesn't exist yet) — this keeps Claude's searches inside the repos you've scoped for this project, rather than fanning out across everything you've ever registered. See [scope-a-project.md](scope-a-project.md) for how that file gets written.
+1. **It reads your project's search scope** from `.agents/local-search-config.yaml` (creating it via `local-search init --json` if it doesn't exist yet) — this keeps Claude's searches inside the repos you've scoped for this project, rather than fanning out across everything you've ever registered. See [scope-a-project.md](scope-a-project.md) for how that file gets written.
 2. **It drives `local-search` through its JSON output**, not the human-readable one — commands like `local-search json search <query>`, `local-search json read <name>`, and `local-search json related <name>` return structured data that's easy for the skill to parse and reason over, while you keep seeing normal formatted output whenever you run `local-search` yourself in a terminal.
 3. **It offers to configure scope conversationally** — asking "set up local search for this project" leads Claude to drive `local-search init --add/--remove/--set` on your behalf, rather than you hand-editing YAML.
 
@@ -63,5 +63,5 @@ You don't need to invoke any of this directly; it's what happens automatically o
 ## See also
 
 - [../reference/skill-reference.md](../reference/skill-reference.md) — every option the skill exposes, with a What/How/Why deep dive on `init` (project scope): all five flags, the `--json` contract, flag precedence, validation rules, and stale-entry handling
-- [scope-a-project.md](scope-a-project.md) — the `.agent/local-search-config.yaml` file the skill reads before every search
+- [scope-a-project.md](scope-a-project.md) — the `.agents/local-search-config.yaml` file the skill reads before every search
 - [../reference/cli-commands.md](../reference/cli-commands.md) — the full `install-skill` flag reference, and the `json` subcommands the skill relies on

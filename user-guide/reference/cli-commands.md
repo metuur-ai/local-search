@@ -134,14 +134,14 @@ Queries run against a Porter-stemmed, `unicode61`-tokenized full-text index, so:
 
 Unified **scoped** search across three sources at once — indexed specs, the
 graphify graph, and the code-review-graph — merged into one score-ranked table.
-Distinct from `search`: `find` obeys the resolved scope (`.agent/local-search-config.yaml`)
+Distinct from `search`: `find` obeys the resolved scope (`.agents/local-search-config.yaml`)
 rather than `--repos`, and weights all three sources per the scope config.
 
 ```bash
 $ local-search find "refund"
 ─────────────────────────────────────────────────────────────
 Searched repos: payments, billing
-Scope source:   /Users/you/work/.agent/local-search-config.yaml
+Scope source:   /Users/you/work/.agents/local-search-config.yaml
 Results:        7
 ─────────────────────────────────────────────────────────────
 
@@ -309,13 +309,13 @@ spec/documentation index.
 
 Scope controls which repos a bare `search`/`find`/`code` call considers when you
 don't pass `--repos` explicitly. See **[configuration.md](configuration.md)** for
-how the underlying `.agent/local-search-config.yaml` file is resolved.
+how the underlying `.agents/local-search-config.yaml` file is resolved.
 
 - `scope show` — print the resolved scope, its source file, and the effective
   weights/limits.
-- `scope set repo1,repo2` — write `.agent/local-search-config.yaml` in the current directory
+- `scope set repo1,repo2` — write `.agents/local-search-config.yaml` in the current directory
   with that scope.
-- `scope clear` — remove `.agent/local-search-config.yaml` from the current directory.
+- `scope clear` — remove `.agents/local-search-config.yaml` from the current directory.
 - `scope init` — auto-detect the nearest enclosing registered repo and scope to
   it.
 
@@ -324,12 +324,12 @@ how the underlying `.agent/local-search-config.yaml` file is resolved.
 ### `init` / `setup`
 
 Shows or creates the project scope file consumed by the bundled Claude Code
-skill, `.agent/local-search-config.yaml`.
+skill, `.agents/local-search-config.yaml`.
 
 ```bash
 $ local-search init --json
 {
-  "path": "/abs/path/.agent/local-search-config.yaml",
+  "path": "/abs/path/.agents/local-search-config.yaml",
   "exists": true,
   "empty": true,
   "repositories": [],
@@ -447,7 +447,7 @@ Per repo                        specs     content   share
 
 ## Config
 
-One file, two possible locations: `<project>/.agent/local-search-config.yaml`
+One file, two possible locations: `<project>/.agents/local-search-config.yaml`
 (found by walking up, stopping at a git root) and `~/.local-search-config.yaml`
 as a global fallback. Same schema; read by the engine *and* the Claude skill.
 
@@ -467,7 +467,7 @@ a broken config makes `find`/`code` refuse to run.
 
 ```bash
 $ local-search config validate
-/Users/you/proj/.agent/local-search-config.yaml:4:1: unknown key "repositorys"
+/Users/you/proj/.agents/local-search-config.yaml:4:1: unknown key "repositorys"
    4 | repositorys:
      | ^
    did you mean "repositories"?

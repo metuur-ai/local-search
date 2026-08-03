@@ -10,7 +10,7 @@ There is one config file, and it can live in one of two places:
 
 | File | Scope |
 |---|---|
-| `<project>/.agent/local-search-config.yaml` | per-project, found by **walking up** from your current directory |
+| `<project>/.agents/local-search-config.yaml` | per-project, found by **walking up** from your current directory |
 | `~/.local-search-config.yaml` | global fallback when no project config is found |
 
 Same schema, same parser, same validation. The project file wins when both
@@ -67,7 +67,7 @@ scope it read would otherwise have no effect.
 Resolution order, highest precedence first:
 
 1. `--scope` flag on the command line
-2. `<cwd>/.agent/local-search-config.yaml`, **walking up** — so running `find`
+2. `<cwd>/.agents/local-search-config.yaml`, **walking up** — so running `find`
    from `src/api/handlers/` still picks up the project root's config
 3. `~/.local-search-config.yaml`
 4. The nearest registered repo whose path encloses your current directory
@@ -97,7 +97,7 @@ Hand-editing is fine too — the file is yours. `local-search config validate`
 checks it and reports problems with line numbers:
 
 ```
-/Users/you/proj/.agent/local-search-config.yaml:4:1: unknown key "repositorys"
+/Users/you/proj/.agents/local-search-config.yaml:4:1: unknown key "repositorys"
    4 | repositorys:
      | ^
    did you mean "repositories"?
@@ -112,7 +112,7 @@ half-written file.
 
 | File | Scope | Written by | Read by |
 |---|---|---|---|
-| `<project>/.agent/local-search-config.yaml` | per-project (walks up) | `scope set` / `init` | The engine **and** the skill |
+| `<project>/.agents/local-search-config.yaml` | per-project (walks up) | `scope set` / `init` | The engine **and** the skill |
 | `~/.local-search-config.yaml` | global | you, by hand | The engine, when no project config is found |
 | `~/.local-search/repos` | global | `repo add` / `repo remove` | The CLI, to know which repos exist at all |
 | `~/.local-search/specs.db` | global | every scan | Every search/list/read — see [the disposable index](the-disposable-index.md) |
@@ -130,9 +130,9 @@ Three files became one:
 
 | Before | After |
 |---|---|
-| `<cwd>/.local-search.toml` (TOML, engine, key `scope:`) | `<project>/.agent/local-search-config.yaml` |
+| `<cwd>/.local-search.toml` (TOML, engine, key `scope:`) | `<project>/.agents/local-search-config.yaml` |
 | `~/.local-search/config.toml` (TOML, engine global) | `~/.local-search-config.yaml` |
-| `<project>/.agent/local-search-config.yaml` (YAML, skill, key `repositories:`) | unchanged path, now also read by the engine |
+| `<project>/.agents/local-search-config.yaml` (YAML, skill, key `repositories:`) | unchanged path, now also read by the engine |
 
 Any `.local-search.toml` is **migrated automatically** the first time
 local-search reads config after the upgrade: its contents are merged into the

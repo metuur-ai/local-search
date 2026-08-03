@@ -3,3 +3,6 @@ dist/
 *.log
 logs/
 data/
+
+.claude/skills/hallmark/
+.agents/skills/hallmark/
