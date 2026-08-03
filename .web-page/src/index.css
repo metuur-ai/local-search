@@ -28,11 +28,151 @@
    Syntax colours (emerald-400, blue-300, amber-400, purple-200) all clear 7:1
    against panel-inset, so shell output stays legible on the lifted background.
 --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   Tailwind theme.
+
+   Everything a component is allowed to reach for lives here. `../tokens.css`
+   declares the same values on :root for the hand-written Hallmark CSS below,
+   but a `:root` variable generates no utility class — so until a token is
+   named in this block there is no `bg-paper`, no `text-ink`, no `border-rule`,
+   and a component that wants paper has nothing to write but `bg-slate-50`.
+   That is exactly how this file ended up with ten hue families in it.
+
+   Type scale is deliberately NOT mirrored here. tokens.css puts --text-xs at
+   11px; Tailwind's default text-xs is 12px, and 245 elements currently use it
+   as body copy. Registering the smaller scale would shrink all of them. Body
+   size is a hierarchy problem, fixed in the components, not here.
+--------------------------------------------------------------------------- */
 @theme {
+  /* --- Paper: cool near-white, three steps of recession ------------------ */
+  --color-paper: oklch(98.4% 0.004 250);
+  --color-paper-2: oklch(96.2% 0.006 250);
+  --color-paper-3: oklch(93.5% 0.008 250);
+
+  /* --- Ink: text on paper ------------------------------------------------ */
+  --color-ink: oklch(21% 0.02 255);
+  --color-ink-2: oklch(44% 0.018 255);
+  --color-ink-3: oklch(55% 0.015 255);
+
+  /* --- Rules: hairlines, the theme's structural signature ---------------- */
+  --color-rule: oklch(89% 0.008 250);
+  --color-rule-strong: oklch(82% 0.01 250);
+
+  /* --- Accent: one emerald signal, used sparingly ------------------------ */
+  --color-accent: oklch(52% 0.14 163);
+  --color-accent-ink: oklch(38% 0.1 163);
+  --color-accent-soft: oklch(94% 0.04 163);
+  --color-accent-contrast: oklch(99% 0.01 163);
+  --color-focus: oklch(52% 0.14 163);
+
+  /* --- Dark panel ramp --------------------------------------------------- */
   --color-panel: #26324a;
   --color-panel-inset: #1e2839;
   --color-panel-raised: #33415e;
   --color-panel-edge: #3d4d70;
+
+  /* The L52 accent is tuned for white-on-solid on light paper, which makes it
+     too dark to read as a focus ring against the dark panel ramp (2.06:1 on
+     panel-raised). Dark surfaces re-point --color-focus at a light tint of the
+     same emerald, so every `ring-focus` / `outline-focus` inside a panel
+     inherits a ring that clears 3:1 without any component knowing about it. */
+  --color-focus-on-panel: oklch(76% 0.14 163);
+
+  /* --- Status ------------------------------------------------------------
+     Built on the same geometry as the accent (L52/C0.14 base, L38/C0.10 ink,
+     L94/C0.04 soft) so a warning chip and an accent chip read as the same
+     material in two hues rather than two different design languages.
+
+     The L52 base is not cosmetic: it is the lightest value at which the
+     near-white `-contrast` ink clears WCAG AA (4.5:1) on every one of the four
+     hues. Do not lighten these back toward L60 without re-checking that pair —
+     at L60 the accent solid only reaches 4.14:1 and every filled button in the
+     app fails. Solids are for filled surfaces; use `-ink` for text on light.
+
+     These are for STATE, not decoration: danger for destructive and failure,
+     warn for caution and pending, info for neutral annotation. A card does not
+     get a hue because it is the third card.
+  ----------------------------------------------------------------------- */
+  --color-info: oklch(52% 0.14 250);
+  --color-info-ink: oklch(38% 0.1 250);
+  --color-info-soft: oklch(94% 0.04 250);
+  --color-info-contrast: oklch(99% 0.01 250);
+
+  --color-warn: oklch(52% 0.14 70);
+  --color-warn-ink: oklch(38% 0.1 70);
+  --color-warn-soft: oklch(94% 0.04 70);
+  --color-warn-contrast: oklch(99% 0.01 70);
+
+  --color-danger: oklch(52% 0.14 27);
+  --color-danger-ink: oklch(38% 0.1 27);
+  --color-danger-soft: oklch(94% 0.04 27);
+  --color-danger-contrast: oklch(99% 0.01 27);
+
+  /* --- Categorical -------------------------------------------------------
+     The one sanctioned place for multiple hues: encoding graph node types,
+     token roles in highlighted shell output, and BM25 term classes — data
+     whose categories are unordered and need to be told apart at a glance.
+     cat-1 is the accent, so the primary category and the brand agree.
+     Five is the ceiling; past that, use shape or position instead of hue.
+  ----------------------------------------------------------------------- */
+  --color-cat-1: oklch(60% 0.14 163);
+  --color-cat-2: oklch(60% 0.14 250);
+  --color-cat-3: oklch(58% 0.16 300);
+  --color-cat-4: oklch(64% 0.14 70);
+  --color-cat-5: oklch(62% 0.11 205);
+
+  --color-cat-1-soft: oklch(94% 0.04 163);
+  --color-cat-2-soft: oklch(94% 0.04 250);
+  --color-cat-3-soft: oklch(94% 0.045 300);
+  --color-cat-4-soft: oklch(94% 0.045 70);
+  --color-cat-5-soft: oklch(94% 0.035 205);
+
+  /* --- On-panel: text and syntax over the dark ramp -----------------------
+     The soft/ink pairs above are built for paper. A terminal needs its own
+     set or every code block falls back to raw `emerald-400`/`blue-300`, which
+     is how the palette leaked in the first place. All of these are measured
+     against --color-panel-inset, the darkest surface they can land on.
+  ----------------------------------------------------------------------- */
+  --color-panel-ink: oklch(96% 0.006 250);
+  --color-panel-ink-2: oklch(80% 0.014 250);
+  /* 74.5%, not 66%: the quiet on-panel ink has to clear 4.5:1 against
+     --color-panel-raised, the lightest surface it can sit on, not just
+     against the darkest one. Same reasoning as --color-ink-3 on paper. */
+  --color-panel-ink-3: oklch(74.5% 0.016 250);
+
+  --color-syntax-string: oklch(82% 0.15 163);
+  --color-syntax-keyword: oklch(80% 0.11 250);
+  --color-syntax-number: oklch(84% 0.13 70);
+  --color-syntax-fn: oklch(84% 0.09 300);
+  --color-syntax-comment: oklch(74.5% 0.015 250);
+
+  /* --- Type, radii, motion ----------------------------------------------- */
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-input: 6px;
+  --radius-card: 8px;
+  --radius-pill: 999px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   Dark-surface focus ring.
+   Any element painted with the dark panel ramp re-points --color-focus at the
+   light tint. Because `ring-focus` and `outline-focus` resolve the variable at
+   the point of use, this repairs all 136 focus call sites through inheritance
+   rather than per-component overrides — and keeps working for panels added
+   later. Set on the surface itself so nested controls inherit it too.
+--------------------------------------------------------------------------- */
+.bg-panel,
+.bg-panel-inset,
+.bg-panel-raised,
+.bg-panel-edge {
+  --color-focus: var(--color-focus-on-panel);
 }
 
 /* ---------------------------------------------------------------------------

@@ -16,6 +16,21 @@ import { ConceptSpotlightCard } from './components/ConceptSpotlightCard';
 import { SpecDetailModal } from './components/SpecDetailModal';
 import { NodeDetailModal } from './components/NodeDetailModal';
 import confetti from 'canvas-confetti';
+import { Lightbulb } from 'lucide-react';
+
+function SideInsightsToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={shown}
+      className="text-sm font-semibold px-3 min-h-11 bg-paper hover:bg-paper-2 text-ink-2 rounded-input border border-rule transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+    >
+      <Lightbulb className="w-4 h-4 shrink-0" aria-hidden="true" />
+      <span>{shown ? 'Hide side insights' : 'Show side insights'}</span>
+    </button>
+  );
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useHashRoute();
@@ -66,13 +81,7 @@ export default function App() {
         {activeTab === 'search' && (
           <div className="app-container space-y-3">
             <div className="flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setShowSidebar(!showSidebar)}
-                className="text-xs font-semibold px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-              >
-                <span>{showSidebar ? 'Hide Side Insights' : '💡 Show Side Insights'}</span>
-              </button>
+              <SideInsightsToggle shown={showSidebar} onToggle={() => setShowSidebar(!showSidebar)} />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-full">
               <div className={`${showSidebar ? 'lg:col-span-8' : 'lg:col-span-12'} h-[600px] lg:h-auto transition-all`}>
@@ -94,13 +103,7 @@ export default function App() {
         {activeTab === 'cli' && (
           <div className="app-container space-y-3">
             <div className="flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setShowSidebar(!showSidebar)}
-                className="text-xs font-semibold px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-              >
-                <span>{showSidebar ? 'Hide Side Insights' : '💡 Show Side Insights'}</span>
-              </button>
+              <SideInsightsToggle shown={showSidebar} onToggle={() => setShowSidebar(!showSidebar)} />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-full">
               <div className={`${showSidebar ? 'lg:col-span-8' : 'lg:col-span-12'} transition-all`}>
@@ -122,13 +125,7 @@ export default function App() {
         {activeTab === 'graph' && (
           <div className="app-container space-y-3">
             <div className="flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setShowSidebar(!showSidebar)}
-                className="text-xs font-semibold px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-              >
-                <span>{showSidebar ? 'Hide Side Insights' : '💡 Show Side Insights'}</span>
-              </button>
+              <SideInsightsToggle shown={showSidebar} onToggle={() => setShowSidebar(!showSidebar)} />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[820px] h-full">
               <div className={`${showSidebar ? 'lg:col-span-8' : 'lg:col-span-12'} min-h-[780px] lg:h-[820px] flex flex-col transition-all`}>

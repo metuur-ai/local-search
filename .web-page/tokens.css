@@ -26,17 +26,56 @@
   --color-rule-strong: oklch(82% 0.01 250);
 
   /* --- Accent: one emerald signal, used sparingly ------------------------ */
-  --color-accent: oklch(60% 0.14 163);
+  /* 52%, not 60%: at 60% the emerald reads 3.2:1 on paper and fails as a
+     small-text/icon colour and as a button fill behind white text. */
+  --color-accent: oklch(52% 0.14 163);
   --color-accent-ink: oklch(38% 0.1 163);
   --color-accent-soft: oklch(94% 0.04 163);
   --color-accent-contrast: oklch(99% 0.01 163);
-  --color-focus: oklch(60% 0.14 163);
+  --color-focus: oklch(52% 0.14 163);
 
   /* --- Dark panel ramp (mirrors the Tailwind @theme block) --------------- */
   --color-panel: #26324a;
   --color-panel-inset: #1e2839;
   --color-panel-raised: #33415e;
   --color-panel-edge: #3d4d70;
+
+  /* --- On-panel: text and syntax over the dark ramp ----------------------- */
+  --color-panel-ink: oklch(96% 0.006 250);
+  --color-panel-ink-2: oklch(80% 0.014 250);
+  --color-panel-ink-3: oklch(74.5% 0.016 250);
+
+  --color-syntax-string: oklch(82% 0.15 163);
+  --color-syntax-keyword: oklch(80% 0.11 250);
+  --color-syntax-number: oklch(84% 0.13 70);
+  --color-syntax-fn: oklch(84% 0.09 300);
+  --color-syntax-comment: oklch(74.5% 0.015 250);
+
+  /* --- Status: state, not decoration ------------------------------------- */
+  --color-info: oklch(52% 0.14 250);
+  --color-info-ink: oklch(38% 0.1 250);
+  --color-info-soft: oklch(94% 0.04 250);
+
+  --color-warn: oklch(52% 0.14 70);
+  --color-warn-ink: oklch(38% 0.1 70);
+  --color-warn-soft: oklch(94% 0.04 70);
+
+  --color-danger: oklch(52% 0.14 27);
+  --color-danger-ink: oklch(38% 0.1 27);
+  --color-danger-soft: oklch(94% 0.04 27);
+
+  /* --- Categorical: unordered data classes only, ceiling of five ---------- */
+  --color-cat-1: oklch(60% 0.14 163);
+  --color-cat-2: oklch(60% 0.14 250);
+  --color-cat-3: oklch(58% 0.16 300);
+  --color-cat-4: oklch(64% 0.14 70);
+  --color-cat-5: oklch(62% 0.11 205);
+
+  --color-cat-1-soft: oklch(94% 0.04 163);
+  --color-cat-2-soft: oklch(94% 0.04 250);
+  --color-cat-3-soft: oklch(94% 0.045 300);
+  --color-cat-4-soft: oklch(94% 0.045 70);
+  --color-cat-5-soft: oklch(94% 0.035 205);
 
   /* --- Type -------------------------------------------------------------- */
   --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;

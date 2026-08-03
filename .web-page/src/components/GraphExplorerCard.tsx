@@ -3,19 +3,24 @@ import { GraphNode, GraphLink, LinkFamily } from '../types';
 import { SAMPLE_GRAPH_NODES, SAMPLE_GRAPH_LINKS } from '../data/sampleCorpus';
 import {
   Search,
-  RotateCcw,
   Upload,
   RefreshCw,
   Folder,
   X,
-  ExternalLink,
-  ChevronDown,
   Info,
   HelpCircle,
-  ArrowRight,
-  ArrowLeft,
   SlidersHorizontal,
   Check,
+  Compass,
+  Zap,
+  Link2,
+  Map as MapIcon,
+  BarChart3,
+  Bot,
+  Target,
+  ArrowLeft,
+  ArrowRight,
+  type LucideIcon,
 } from 'lucide-react';
 
 interface GraphExplorerCardProps {
@@ -30,8 +35,35 @@ interface UiBreakdownItem {
   subtitle: string;
   description: string;
   benefits: string[];
-  icon: string;
+  icon: LucideIcon;
 }
+
+// Node type -> categorical token. Defined once here and reused by
+// NodeDetailModal so the legend, node fills, and inspector drawer can never
+// drift from each other.
+export const NODE_TYPE_STYLES: Record<
+  string,
+  { label: string; swatch: string; soft: string; fillVar: string }
+> = {
+  Platform: { label: 'Platform', swatch: 'bg-cat-1', soft: 'bg-cat-1-soft', fillVar: 'var(--color-cat-1)' },
+  Docs: { label: 'Docs', swatch: 'bg-cat-4', soft: 'bg-cat-4-soft', fillVar: 'var(--color-cat-4)' },
+  Team: { label: 'Team', swatch: 'bg-cat-5', soft: 'bg-cat-5-soft', fillVar: 'var(--color-cat-5)' },
+  Ontology: { label: 'Ontology', swatch: 'bg-cat-3', soft: 'bg-cat-3-soft', fillVar: 'var(--color-cat-3)' },
+};
+export const DEFAULT_NODE_TYPE_STYLE = {
+  label: 'Other',
+  swatch: 'bg-ink-3',
+  soft: 'bg-paper-3',
+  fillVar: 'var(--color-ink-3)',
+};
+export const getNodeTypeStyle = (osLayer: string) => NODE_TYPE_STYLES[osLayer] ?? DEFAULT_NODE_TYPE_STYLE;
+
+// Link family -> state token, reused by NodeDetailModal's connection badges.
+export const LINK_FAMILY_STYLES: Record<LinkFamily, { label: string; badge: string; fillVar: string }> = {
+  declared: { label: 'Declared', badge: 'bg-accent-soft text-accent-ink', fillVar: 'var(--color-accent)' },
+  unresolved: { label: 'Unresolved', badge: 'bg-warn-soft text-warn-ink border border-warn/25', fillVar: 'var(--color-warn)' },
+  similarity: { label: 'Similarity', badge: 'bg-paper-3 text-ink-2', fillVar: 'var(--color-ink-3)' },
+};
 
 const UI_BREAKDOWN_ITEMS: UiBreakdownItem[] = [
   {
@@ -41,7 +73,7 @@ const UI_BREAKDOWN_ITEMS: UiBreakdownItem[] = [
     subtitle: 'Workspace & Atlas Identifier',
     description: 'Shows active project repo (`local-search`) and system mode (`KNOWLEDGE ATLAS`). Confirms which codebase subgraph is active.',
     benefits: ['Confirms active repository scope', 'Identifies Knowledge Atlas mode'],
-    icon: '🧭',
+    icon: Compass,
   },
   {
     id: 2,
@@ -50,7 +82,7 @@ const UI_BREAKDOWN_ITEMS: UiBreakdownItem[] = [
     subtitle: 'Real-time Fuzzy Entity Search',
     description: 'Filters and highlights graph nodes in real-time. Matches node IDs, document titles, YAML tags, or path names.',
     benefits: ['Instant node pinpointing', 'Cross-repo keyword searching'],
-    icon: '🔍',
+    icon: Search,
   },
   {
     id: 3,
@@ -59,7 +91,7 @@ const UI_BREAKDOWN_ITEMS: UiBreakdownItem[] = [
     subtitle: 'Visibility & Topology Refresher',
     description: 'Houses guide toggle, "All labels" clutter checkbox, "Upload JSON" importer, and "Refresh from repos" topology rebuild launcher.',
     benefits: ['Toggle text label clutter', 'Re-index git commits & frontmatter'],
-    icon: '⚡',
+    icon: Zap,
   },
   {
     id: 4,
@@ -68,25 +100,25 @@ const UI_BREAKDOWN_ITEMS: UiBreakdownItem[] = [
     subtitle: 'Multi-Facet Scope Granularity',
     description: 'Slices graph by File Type (Docs, PRD, API), Repository (`uncle-os`, `billing-service`), Directory (`/docs`, `/payments`), or Tag.',
     benefits: ['Isolate specific microservices', 'Filter by document domain'],
-    icon: '🎛️',
+    icon: SlidersHorizontal,
   },
   {
     id: 5,
     badge: '5',
     title: 'Connection Legend & Tally',
     subtitle: 'Edge Relationship Classifier',
-    description: 'Color-coded link family toggles: Declared (solid teal = explicit links), Unresolved (dashed amber = missing targets), and Similarity (dotted purple = AI vector affinity).',
+    description: 'Color-coded link family toggles: Declared (solid accent = explicit links), Unresolved (dashed warn = missing targets), and Similarity (dotted neutral = AI vector affinity).',
     benefits: ['Audit broken dependencies', 'Live entity & link tally'],
-    icon: '🔗',
+    icon: Link2,
   },
   {
     id: 6,
     badge: '6',
     title: 'Interactive Topology Canvas',
     subtitle: 'Force-Directed Graph Visualization',
-    description: 'Interactive map with color-coded nodes (Orange = Docs, Purple = Ontology/EARS, Red = Teams, Teal = Code) connected by directional arrow links.',
+    description: 'Interactive map with color-coded nodes (Docs, Ontology, Team, Platform each a distinct category) connected by directional arrow links.',
     benefits: ['Drag nodes & inspect topology', 'Visual directional flow'],
-    icon: '🗺️',
+    icon: MapIcon,
   },
   {
     id: 7,
@@ -95,7 +127,7 @@ const UI_BREAKDOWN_ITEMS: UiBreakdownItem[] = [
     subtitle: 'Monorepo Composition Summary',
     description: 'Floating bottom-left legend card tallying the exact breakdown of entity categories (124 Other, 74 Docs, 20 Team, 14 Ontology).',
     benefits: ['Repository composition audit', 'Quick color-coded legend'],
-    icon: '📊',
+    icon: BarChart3,
   },
   {
     id: 8,
@@ -104,7 +136,7 @@ const UI_BREAKDOWN_ITEMS: UiBreakdownItem[] = [
     subtitle: 'Deep Inspector & File Finder',
     description: 'Sliding right drawer displaying title, file path, repository, YAML tags, AI summary, "Reveal in Finder" button, and 1-hop dependency tree.',
     benefits: ['Inspect document frontmatter', 'Jump to file in workspace'],
-    icon: '🔍',
+    icon: Search,
   },
 ];
 
@@ -179,21 +211,10 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
     return true;
   });
 
-  // Color mapping matching screenshot
+  // Color mapping: one categorical token per node type (see NODE_TYPE_STYLES).
   const getNodeColor = (osLayer: string, docType: string) => {
-    if (docType === 'unresolved') return '#64748b'; // Slate / Grey
-    switch (osLayer) {
-      case 'Docs':
-        return '#d97706'; // Gold / Amber
-      case 'Team':
-        return '#ea580c'; // Orange / Red
-      case 'Ontology':
-        return '#9333ea'; // Purple
-      case 'Platform':
-        return '#0d9488'; // Teal / Green
-      default:
-        return '#475569'; // Slate
-    }
+    if (docType === 'unresolved') return DEFAULT_NODE_TYPE_STYLE.fillVar;
+    return getNodeTypeStyle(osLayer).fillVar;
   };
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || nodes[0];
@@ -219,14 +240,16 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
     if (position === 'top-left') posClasses = 'bottom-full mb-2 left-0 top-auto';
     if (position === 'top-right') posClasses = 'bottom-full mb-2 right-0 left-auto';
 
+    const ItemIcon = item.icon;
+
     return (
       <div
-        className={`absolute ${posClasses} z-[100] w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] bg-panel/95 text-white backdrop-blur-md rounded-2xl border border-teal-500/60 shadow-2xl p-4 text-xs space-y-3 animate-fadeIn ring-2 ring-amber-400/50`}
+        className={`absolute ${posClasses} z-[100] w-72 sm:w-80 max-w-[calc(100vw-2.5rem)] bg-panel/95 text-panel-ink backdrop-blur-md rounded-card border border-panel-edge shadow-2xs p-4 text-xs space-y-3 animate-fadeIn ring-2 ring-focus/50`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Pointer Triangle */}
         <div
-          className={`absolute w-3 h-3 bg-panel border-teal-500/60 rotate-45 ${
+          className={`absolute w-3 h-3 bg-panel border-panel-edge rotate-45 ${
             position.startsWith('top')
               ? 'bottom-[-6px] border-b border-r'
               : 'top-[-6px] border-t border-l'
@@ -236,40 +259,41 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between border-b border-panel-edge pb-2">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-mono font-bold text-xs flex items-center justify-center shadow-xs">
+            <span className="w-6 h-6 rounded-pill bg-accent text-accent-contrast font-mono font-bold text-xs flex items-center justify-center shadow-2xs">
               {item.id}
             </span>
             <div>
-              <h4 className="font-extrabold text-white text-xs sm:text-sm leading-tight flex items-center gap-1.5">
+              <h4 className="font-extrabold text-panel-ink text-xs sm:text-sm leading-tight flex items-center gap-1.5">
                 <span>{item.title}</span>
-                <span className="text-base">{item.icon}</span>
+                <ItemIcon className="w-4 h-4" aria-hidden="true" />
               </h4>
-              <p className="text-[10px] text-teal-300 font-mono">{item.subtitle}</p>
+              <p className="text-[10px] text-panel-ink-3 font-mono">{item.subtitle}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setActiveUiBadge(null)}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all cursor-pointer"
+            aria-label="Close item details"
+            className="text-panel-ink-3 hover:text-panel-ink p-1 rounded-input hover:bg-panel-raised transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* Description */}
-        <p className="text-[11px] text-slate-200 leading-relaxed bg-panel-inset p-2.5 rounded-xl border border-panel-edge">
+        <p className="text-[11px] text-panel-ink-2 leading-relaxed bg-panel-inset p-2.5 rounded-card border border-panel-edge">
           {item.description}
         </p>
 
         {/* Key Benefits */}
         <div className="space-y-1">
-          <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+          <span className="text-[10px] font-mono font-bold text-syntax-string uppercase tracking-wider">
             Key Benefits:
           </span>
-          <ul className="space-y-1 text-[10px] text-slate-300">
+          <ul className="space-y-1 text-[10px] text-panel-ink-2">
             {item.benefits.map((b, idx) => (
               <li key={idx} className="flex items-center gap-1.5">
-                <Check className="w-3 h-3 text-teal-400 shrink-0" />
+                <Check className="w-3 h-3 text-syntax-string shrink-0" aria-hidden="true" />
                 <span>{b}</span>
               </li>
             ))}
@@ -278,23 +302,25 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
         {/* Footer Navigation */}
         <div className="pt-2 border-t border-panel-edge flex items-center justify-between text-[11px]">
-          <span className="text-[10px] text-slate-400 font-mono">
+          <span className="text-[10px] text-panel-ink-3 font-mono">
             Item {id} of 8
           </span>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setActiveUiBadge(prevId)}
-              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
+              className="px-2.5 py-1 bg-panel-raised hover:bg-panel-edge text-panel-ink-2 rounded-input text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
-              <span>← Prev</span>
+              <ArrowLeft className="w-3 h-3" aria-hidden="true" />
+              <span>Prev</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveUiBadge(nextId)}
-              className="px-2.5 py-1 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+              className="px-2.5 py-1 bg-accent hover:bg-accent-ink text-accent-contrast rounded-input text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
-              <span>Next →</span>
+              <span>Next</span>
+              <ArrowRight className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -306,10 +332,11 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
     <div className="flex flex-col gap-4 h-full">
       {/* Knowledge Graph Explainer Banner (Above Graph Explorer Card) */}
       {showGuide && (
-        <div className="bg-gradient-to-r from-teal-50/90 via-slate-50 to-emerald-50/90 text-slate-900 p-4 sm:p-5 rounded-2xl border border-teal-200/90 z-20 relative animate-fadeIn shadow-md shrink-0">
+        <div className="bg-paper text-ink p-4 sm:p-5 rounded-card border border-rule z-20 relative animate-fadeIn shadow-2xs shrink-0">
           <button
             onClick={() => setShowGuide(false)}
-            className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/60 transition-all cursor-pointer"
+            aria-label="Close explanation banner"
+            className="absolute top-3 right-3 text-ink-3 hover:text-ink p-1 rounded-input hover:bg-paper-3 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             title="Close Explanation Banner"
           >
             <X className="w-4 h-4" />
@@ -317,40 +344,40 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
           <div className="max-w-6xl mx-auto space-y-4">
             {/* Header & Tab Selector */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-teal-200/80 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-3">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-teal-100 text-teal-800 border border-teal-200 font-mono text-[10px] font-bold uppercase rounded">
+                <span className="px-2 py-0.5 bg-accent-soft text-accent-ink border border-accent/25 font-mono text-xs font-bold uppercase rounded-input">
                   Knowledge Graph Guide
                 </span>
-                <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
+                <h3 className="font-display font-semibold text-base sm:text-lg text-ink">
                   Knowledge Graph Concept &amp; UI Explorer Guide
                 </h3>
               </div>
 
               {/* Guide Mode Tabs */}
-              <div className="flex items-center gap-1.5 bg-slate-200/70 p-1 rounded-xl border border-slate-300/80">
+              <div className="flex items-center gap-1.5 bg-paper-3 p-1 rounded-card border border-rule">
                 <button
                   type="button"
                   onClick={() => setGuideTab('concept')}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-3 py-1 rounded-input text-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                     guideTab === 'concept'
-                      ? 'bg-teal-700 text-white shadow-xs font-bold'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-ink text-paper shadow-2xs font-bold'
+                      : 'text-ink-2 hover:text-ink'
                   }`}
                 >
-                  <Info className="w-3.5 h-3.5" />
+                  <Info className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Concept &amp; Purpose</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setGuideTab('ui_breakdown')}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-3 py-1 rounded-input text-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                     guideTab === 'ui_breakdown'
-                      ? 'bg-teal-700 text-white shadow-xs font-bold'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-ink text-paper shadow-2xs font-bold'
+                      : 'text-ink-2 hover:text-ink'
                   }`}
                 >
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>UI Element Breakdown (1–8)</span>
                 </button>
               </div>
@@ -358,52 +385,64 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
             {/* TAB 1: CONCEPT & PURPOSE */}
             {guideTab === 'concept' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs animate-fadeIn">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm animate-fadeIn">
                 {/* Card 1: What is it? */}
-                <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 space-y-2 shadow-2xs">
-                  <div className="font-bold text-teal-900 flex items-center gap-1.5 text-xs">
-                    <Info className="w-4 h-4 text-teal-600" />
+                <div className="bg-white border border-rule rounded-card p-3.5 space-y-2 shadow-2xs">
+                  <div className="font-bold text-ink flex items-center gap-1.5 text-sm">
+                    <Info className="w-4 h-4" aria-hidden="true" />
                     <span>1. What is the Knowledge Graph?</span>
                   </div>
-                  <p className="text-slate-600 leading-relaxed text-[11px]">
+                  <p className="text-ink-2 leading-relaxed text-sm">
                     A structured, interactive topology map linking specifications, architecture decisions, microservices, and code entities across your workspace repositories into an interconnected semantic atlas.
                   </p>
-                  <div className="space-y-1 text-[11px] font-mono text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <div>• <strong className="text-amber-800">Nodes:</strong> Spec files, PRDs, component modules, and EARS requirements.</div>
-                    <div>• <strong className="text-teal-800">Edges:</strong> Directional links declared via YAML frontmatter (<code className="text-slate-800 bg-slate-200/60 px-1 py-0.5 rounded">dependsOn</code>), inline Wikilinks (<code className="text-slate-800 bg-slate-200/60 px-1 py-0.5 rounded">[[doc]]</code>), and vector embeddings.</div>
-                    <div>• <strong className="text-slate-700">Families:</strong> <span className="text-teal-700 font-bold">Declared</span> (explicit links), <span className="text-amber-700 font-bold">Unresolved</span> (missing targets), <span className="text-purple-700 font-bold">Similarity</span> (semantic affinity).</div>
+                  <div className="space-y-1 text-xs font-mono text-ink-2 bg-paper-2 p-2.5 rounded-input border border-rule">
+                    <div>• <strong className="text-ink">Nodes:</strong> Spec files, PRDs, component modules, and EARS requirements.</div>
+                    <div>• <strong className="text-ink">Edges:</strong> Directional links declared via YAML frontmatter (<code className="text-ink bg-paper-3 px-1 py-0.5 rounded-input">dependsOn</code>), inline Wikilinks (<code className="text-ink bg-paper-3 px-1 py-0.5 rounded-input">[[doc]]</code>), and vector embeddings.</div>
+                    <div>• <strong className="text-ink">Families:</strong> <span className="text-accent-ink font-bold">Declared</span> (explicit links), <span className="text-warn-ink font-bold">Unresolved</span> (missing targets), <span className="text-ink-2 font-bold">Similarity</span> (semantic affinity).</div>
                   </div>
                 </div>
 
                 {/* Card 2: What is it useful for? */}
-                <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 space-y-2 shadow-2xs">
-                  <div className="font-bold text-emerald-900 flex items-center gap-1.5 text-xs">
-                    <HelpCircle className="w-4 h-4 text-emerald-600" />
+                <div className="bg-white border border-rule rounded-card p-3.5 space-y-2 shadow-2xs">
+                  <div className="font-bold text-ink flex items-center gap-1.5 text-sm">
+                    <HelpCircle className="w-4 h-4" aria-hidden="true" />
                     <span>2. What is it useful for?</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="font-bold text-amber-900">💥 Blast Radius Analysis</div>
-                      <p className="text-slate-600 text-[10px] mt-0.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="p-2 bg-paper-2 rounded-input border border-rule">
+                      <div className="font-bold text-ink flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Blast Radius Analysis</span>
+                      </div>
+                      <p className="text-ink-2 text-xs mt-0.5">
                         Instantly see downstream microservices or specs that break when modifying a core API or requirement.
                       </p>
                     </div>
-                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="font-bold text-teal-900">🗺️ Monorepo Discovery</div>
-                      <p className="text-slate-600 text-[10px] mt-0.5">
+                    <div className="p-2 bg-paper-2 rounded-input border border-rule">
+                      <div className="font-bold text-ink flex items-center gap-1.5">
+                        <MapIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Monorepo Discovery</span>
+                      </div>
+                      <p className="text-ink-2 text-xs mt-0.5">
                         Traverse cross-repository linkages visually without memorizing multi-repo directory hierarchies.
                       </p>
                     </div>
-                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="font-bold text-purple-900">🤖 AI Agent Grounding</div>
-                      <p className="text-slate-600 text-[10px] mt-0.5">
+                    <div className="p-2 bg-paper-2 rounded-input border border-rule">
+                      <div className="font-bold text-ink flex items-center gap-1.5">
+                        <Bot className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>AI Agent Grounding</span>
+                      </div>
+                      <p className="text-ink-2 text-xs mt-0.5">
                         Feeds deterministic 1-hop subgraphs to LLMs (Claude Code) so AI coding agents respect architectural rules.
                       </p>
                     </div>
-                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                      <div className="font-bold text-emerald-900">🎯 Spec Traceability</div>
-                      <p className="text-slate-600 text-[10px] mt-0.5">
-                        Trace EARS requirements (<code className="text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded">@spec</code>) and Wikilinks (<code className="text-teal-800 bg-teal-100 px-1 py-0.5 rounded">[[doc]]</code>) to audit compliance.
+                    <div className="p-2 bg-paper-2 rounded-input border border-rule">
+                      <div className="font-bold text-ink flex items-center gap-1.5">
+                        <Target className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Spec Traceability</span>
+                      </div>
+                      <p className="text-ink-2 text-xs mt-0.5">
+                        Trace EARS requirements (<code className="text-ink bg-paper-3 px-1 py-0.5 rounded-input">@spec</code>) and Wikilinks (<code className="text-ink bg-paper-3 px-1 py-0.5 rounded-input">[[doc]]</code>) to audit compliance.
                       </p>
                     </div>
                   </div>
@@ -414,15 +453,15 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
             {/* TAB 2: UI ELEMENTS BREAKDOWN (1-8) */}
             {guideTab === 'ui_breakdown' && (
               <div className="space-y-3 animate-fadeIn">
-                <div className="flex items-center justify-between text-xs text-slate-600">
-                  <p className="text-[11px] text-slate-600 font-medium">
+                <div className="flex items-center justify-between text-sm text-ink-2">
+                  <p className="text-sm text-ink-2 font-medium">
                     Click any title below to highlight its exact UI control location and open its details modal in the Graph Explorer mock:
                   </p>
                   {activeUiBadge !== null && (
                     <button
                       type="button"
                       onClick={() => setActiveUiBadge(null)}
-                      className="text-[10px] text-teal-700 hover:text-teal-900 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                      className="text-xs text-accent-ink hover:underline font-semibold flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                     >
                       <span>Clear selection</span>
                     </button>
@@ -433,28 +472,29 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {UI_BREAKDOWN_ITEMS.map((item) => {
                     const isSelected = activeUiBadge === item.id;
+                    const ItemIcon = item.icon;
                     return (
                       <button
                         key={item.id}
                         type="button"
                         onClick={() => setActiveUiBadge(isSelected ? null : item.id)}
-                        className={`px-3 py-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                        className={`px-3 py-2.5 rounded-card border text-left transition-all cursor-pointer flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                           isSelected
-                            ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-md font-bold ring-2 ring-amber-300/80 scale-[1.02]'
-                            : 'bg-white hover:bg-teal-50/60 border-slate-200 hover:border-teal-400/80 text-slate-800 shadow-2xs'
+                            ? 'bg-accent text-accent-contrast border-accent shadow-2xs font-bold ring-2 ring-focus/80'
+                            : 'bg-white hover:bg-paper-2 border-rule hover:border-rule-strong text-ink shadow-2xs'
                         }`}
                       >
                         <span
-                          className={`w-5 h-5 rounded-full text-[10px] font-mono font-bold flex items-center justify-center shrink-0 ${
-                            isSelected ? 'bg-panel-inset text-amber-300' : 'bg-teal-100 text-teal-800 border border-teal-200'
+                          className={`w-5 h-5 rounded-pill text-[10px] font-mono font-bold flex items-center justify-center shrink-0 ${
+                            isSelected ? 'bg-panel-inset text-accent-contrast' : 'bg-accent-soft text-accent-ink border border-accent/25'
                           }`}
                         >
                           {item.id}
                         </span>
-                        <span className="text-xs font-semibold leading-tight line-clamp-1 flex-1">
+                        <span className="text-sm font-semibold leading-tight line-clamp-1 flex-1">
                           {item.title}
                         </span>
-                        <span className="text-xs shrink-0">{item.icon}</span>
+                        <ItemIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
                       </button>
                     );
                   })}
@@ -466,25 +506,25 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
       )}
 
       {/* Main Graph Explorer Card */}
-      <div className="bg-slate-50 text-slate-900 rounded-3xl flex flex-col shadow-xl relative flex-1 border border-slate-200 min-h-[680px]">
+      <div className="bg-paper text-ink rounded-card flex flex-col shadow-2xs relative flex-1 border border-rule min-h-[680px]">
         {/* 1. Header Bar matching screenshot */}
       <div
-        className={`bg-white px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 transition-all ${
+        className={`bg-white px-5 py-3 border-b border-rule flex flex-wrap items-center justify-between gap-3 transition-all ${
           activeUiBadge === 1 || activeUiBadge === 2 || activeUiBadge === 3
-            ? 'z-[90] relative ring-2 ring-amber-400 bg-amber-50/20'
+            ? 'z-[90] relative ring-2 ring-focus bg-accent-soft/40'
             : 'z-20 relative'
         }`}
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold shadow-xs">
+          <div className="w-8 h-8 rounded-input bg-accent text-accent-contrast flex items-center justify-center font-bold shadow-2xs">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">Agent OS Graph</h2>
-              <span className="text-[10px] font-mono text-slate-400">← local-search</span>
+              <h2 className="font-display font-semibold text-ink text-base sm:text-lg tracking-tight">Agent OS Graph</h2>
+              <span className="text-xs font-mono text-ink-3">local-search</span>
               {/* Badge 1 */}
               <div className="relative inline-flex items-center ml-1">
                 <button
@@ -494,8 +534,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                     setShowGuide(true);
                     setGuideTab('ui_breakdown');
                   }}
-                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all shadow-xs cursor-pointer ${
-                    activeUiBadge === 1 ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 scale-110' : 'bg-teal-700 text-white hover:bg-teal-600'
+                  className={`px-1.5 py-0.5 rounded-pill text-[10px] font-mono font-bold transition-all shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                    activeUiBadge === 1 ? 'bg-accent text-accent-contrast ring-2 ring-focus scale-110' : 'bg-ink text-paper hover:bg-ink-2'
                   }`}
                   title="Item #1: Header & Workspace Identity"
                 >
@@ -504,7 +544,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                 {renderChipPopover(1, 'bottom-left')}
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 uppercase font-mono tracking-wider font-semibold">
+            <p className="text-[10px] text-ink-3 uppercase font-mono tracking-wider font-semibold">
               KNOWLEDGE ATLAS
             </p>
           </div>
@@ -512,18 +552,18 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
         {/* Global Search Bar */}
         <div
-          className={`flex-1 min-w-[16rem] max-w-md mx-2 relative hidden md:flex items-center gap-1 p-0.5 rounded-xl transition-all ${
-            activeUiBadge === 2 ? 'ring-2 ring-amber-400 bg-amber-100/50' : ''
+          className={`flex-1 min-w-[16rem] max-w-md mx-2 relative hidden md:flex items-center gap-1 p-0.5 rounded-card transition-all ${
+            activeUiBadge === 2 ? 'ring-2 ring-focus bg-accent-soft/40' : ''
           }`}
         >
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-ink-3 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search files, tags, or projects..."
-              className="w-full bg-slate-100 hover:bg-slate-200/60 focus:bg-white text-slate-800 text-xs rounded-lg pl-8 pr-3 py-1.5 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/40 transition-all font-sans"
+              className="w-full bg-paper-3 hover:bg-paper-3 focus:bg-white text-ink text-sm rounded-input pl-8 pr-3 py-1.5 border border-rule focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 transition-all font-body"
             />
           </div>
           {/* Badge 2 */}
@@ -535,8 +575,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                 setShowGuide(true);
                 setGuideTab('ui_breakdown');
               }}
-              className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all shadow-xs cursor-pointer ${
-                activeUiBadge === 2 ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 scale-110' : 'bg-teal-700 text-white hover:bg-teal-600'
+              className={`px-1.5 py-0.5 rounded-pill text-[10px] font-mono font-bold transition-all shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                activeUiBadge === 2 ? 'bg-accent text-accent-contrast ring-2 ring-focus scale-110' : 'bg-ink text-paper hover:bg-ink-2'
               }`}
               title="Item #2: Global Search Input"
             >
@@ -548,8 +588,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
         {/* Action Controls & Rebuild Popover */}
         <div
-          className={`flex flex-wrap items-center justify-end gap-2 sm:gap-3 p-1 rounded-xl transition-all ${
-            activeUiBadge === 3 ? 'ring-2 ring-amber-400 bg-amber-100/50' : ''
+          className={`flex flex-wrap items-center justify-end gap-2 sm:gap-3 p-1 rounded-card transition-all ${
+            activeUiBadge === 3 ? 'ring-2 ring-focus bg-accent-soft/40' : ''
           }`}
         >
           {/* Badge 3 */}
@@ -561,8 +601,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                 setShowGuide(true);
                 setGuideTab('ui_breakdown');
               }}
-              className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all shadow-xs cursor-pointer ${
-                activeUiBadge === 3 ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 scale-110' : 'bg-teal-700 text-white hover:bg-teal-600'
+              className={`px-1.5 py-0.5 rounded-pill text-[10px] font-mono font-bold transition-all shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                activeUiBadge === 3 ? 'bg-accent text-accent-contrast ring-2 ring-focus scale-110' : 'bg-ink text-paper hover:bg-ink-2'
               }`}
               title="Item #3: Action Controls Cluster"
             >
@@ -573,52 +613,56 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
           <button
             onClick={() => setShowGuide(!showGuide)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-input text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
               showGuide
-                ? 'bg-teal-50 text-teal-800 border border-teal-300 shadow-2xs'
-                : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
+                ? 'bg-accent-soft text-accent-ink border border-accent/25 shadow-2xs'
+                : 'bg-white hover:bg-paper-2 text-ink-2 border border-rule'
             }`}
           >
-            <HelpCircle className="w-3.5 h-3.5 text-teal-600" />
+            <HelpCircle className="w-3.5 h-3.5" aria-hidden="true" />
             <span>What is Knowledge Graph?</span>
           </button>
 
           {/* All Labels Toggle */}
-          <label className="flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm font-medium text-ink-2 cursor-pointer">
             <input
               type="checkbox"
               checked={showAllLabels}
               onChange={(e) => setShowAllLabels(e.target.checked)}
-              className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5"
+              className="rounded-input border-rule-strong text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 w-3.5 h-3.5"
             />
             <span>All labels</span>
           </label>
 
-          <button className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200 flex items-center gap-1.5 shadow-2xs transition-all">
-            <Upload className="w-3.5 h-3.5 text-slate-500" />
+          <button className="px-3 py-1.5 bg-white hover:bg-paper-2 text-ink-2 rounded-input text-sm font-semibold border border-rule flex items-center gap-1.5 shadow-2xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
+            <Upload className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Upload JSON</span>
           </button>
 
           <div className="relative">
             <button
               onClick={() => setShowRebuildPopover(!showRebuildPopover)}
-              className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              className="px-3 py-1.5 bg-accent hover:bg-accent-ink active:bg-accent-ink text-accent-contrast rounded-input text-sm font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Refresh from repos</span>
             </button>
 
             {/* Rebuild Popover Modal */}
             {showRebuildPopover && (
-              <div className="absolute right-0 top-10 w-72 bg-white rounded-2xl p-4 shadow-2xl border border-slate-200 z-50 space-y-3 animate-fadeIn">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <h4 className="font-bold text-slate-900 text-xs">Rebuild graph from repos</h4>
-                  <button onClick={() => setShowRebuildPopover(false)} className="text-slate-400 hover:text-slate-600">
+              <div className="absolute right-0 top-10 w-72 bg-white rounded-card p-4 shadow-2xs border border-rule z-50 space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-rule pb-2">
+                  <h4 className="font-bold text-ink text-sm">Rebuild graph from repos</h4>
+                  <button
+                    onClick={() => setShowRebuildPopover(false)}
+                    aria-label="Close rebuild dialog"
+                    className="text-ink-3 hover:text-ink-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded-input"
+                  >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <div className="space-y-2 text-xs text-slate-700">
+                <div className="space-y-2 text-sm text-ink-2">
                   {[
                     { id: 'team-os-example-repo', specs: 195 },
                     { id: 'uncle-os', specs: 161 },
@@ -627,7 +671,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                   ].map((repo) => {
                     const isChecked = selectedRebuildRepos.includes(repo.id);
                     return (
-                      <label key={repo.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                      <label key={repo.id} className="flex items-center gap-2 cursor-pointer hover:bg-paper-2 p-1 rounded-input">
                         <input
                           type="checkbox"
                           checked={isChecked}
@@ -638,10 +682,10 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                               setSelectedRebuildRepos([...selectedRebuildRepos, repo.id]);
                             }
                           }}
-                          className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                          className="rounded-input border-rule-strong text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                         />
-                        <span className="font-mono text-[11px]">{repo.id}</span>
-                        <span className="text-[10px] text-slate-400 ml-auto">({repo.specs} specs)</span>
+                        <span className="font-mono text-xs">{repo.id}</span>
+                        <span className="text-xs text-ink-3 ml-auto">({repo.specs} specs)</span>
                       </label>
                     );
                   })}
@@ -652,7 +696,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                     setShowRebuildPopover(false);
                     if (onTaskCompleted) onTaskCompleted();
                   }}
-                  className="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all"
+                  className="w-full py-2 bg-accent hover:bg-accent-ink text-accent-contrast rounded-input text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                 >
                   Rebuild graph
                 </button>
@@ -664,15 +708,15 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
       {/* 2. Sub-Filter Toolbar matching screenshot */}
       <div
-        className={`bg-slate-100/80 px-5 py-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs transition-all ${
+        className={`bg-paper-2 px-5 py-2.5 border-b border-rule flex flex-wrap items-center justify-between gap-3 text-sm transition-all ${
           activeUiBadge === 4 || activeUiBadge === 5
-            ? 'z-[90] relative ring-2 ring-amber-400 bg-amber-50/30'
+            ? 'z-[90] relative ring-2 ring-focus bg-accent-soft/30'
             : 'z-10 relative'
         }`}
       >
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-xs font-mono font-bold text-ink-3 uppercase tracking-wider">
               FILTERS
             </span>
             {/* Badge 4 */}
@@ -684,8 +728,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                   setShowGuide(true);
                   setGuideTab('ui_breakdown');
                 }}
-                className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all shadow-xs cursor-pointer ${
-                  activeUiBadge === 4 ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 scale-110' : 'bg-teal-700 text-white hover:bg-teal-600'
+                className={`px-1.5 py-0.5 rounded-pill text-[10px] font-mono font-bold transition-all shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                  activeUiBadge === 4 ? 'bg-accent text-accent-contrast ring-2 ring-focus scale-110' : 'bg-ink text-paper hover:bg-ink-2'
                 }`}
                 title="Item #4: Sub-Filters Toolbar"
               >
@@ -698,7 +742,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
           <select
             value={fileTypeFilter}
             onChange={(e) => setFileTypeFilter(e.target.value)}
-            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 text-xs font-medium focus:outline-none shadow-2xs"
+            className="bg-white border border-rule rounded-input px-2.5 py-1 text-ink-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 shadow-2xs"
           >
             <option value="all">All Files Types</option>
             <option value="doc">Docs</option>
@@ -710,7 +754,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
           <select
             value={selectedRepo}
             onChange={(e) => setSelectedRepo(e.target.value)}
-            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 text-xs font-medium focus:outline-none shadow-2xs"
+            className="bg-white border border-rule rounded-input px-2.5 py-1 text-ink-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 shadow-2xs"
           >
             <option value="all">All Repos</option>
             <option value="uncle-os">uncle-os</option>
@@ -723,7 +767,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
           <select
             value={directoryFilter}
             onChange={(e) => setDirectoryFilter(e.target.value)}
-            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 text-xs font-medium focus:outline-none shadow-2xs"
+            className="bg-white border border-rule rounded-input px-2.5 py-1 text-ink-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 shadow-2xs"
           >
             <option value="all">All Directories</option>
             <option value="docs">/docs</option>
@@ -734,7 +778,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
           <select
             value={tagFilter}
             onChange={(e) => setTagFilter(e.target.value)}
-            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 text-xs font-medium focus:outline-none shadow-2xs"
+            className="bg-white border border-rule rounded-input px-2.5 py-1 text-ink-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 shadow-2xs"
           >
             <option value="all">All Tags</option>
             <option value="billing">billing</option>
@@ -747,7 +791,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
             value={nameContains}
             onChange={(e) => setNameContains(e.target.value)}
             placeholder="Name contains..."
-            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 text-xs placeholder:text-slate-400 focus:outline-none w-28 shadow-2xs"
+            className="bg-white border border-rule rounded-input px-2.5 py-1 text-ink-2 text-sm placeholder:text-ink-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 w-28 shadow-2xs"
           />
 
           <input
@@ -755,14 +799,14 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
             value={titleContains}
             onChange={(e) => setTitleContains(e.target.value)}
             placeholder="Title contains..."
-            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 text-xs placeholder:text-slate-400 focus:outline-none w-28 shadow-2xs"
+            className="bg-white border border-rule rounded-input px-2.5 py-1 text-ink-2 text-sm placeholder:text-ink-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 w-28 shadow-2xs"
           />
         </div>
 
         {/* Connection Filters & Stats Summary */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap items-center gap-1.5 border-l border-slate-200 pl-3">
-            <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+          <div className="flex flex-wrap items-center gap-1.5 border-l border-rule pl-3">
+            <span className="text-xs font-mono text-ink-3 font-bold uppercase tracking-wider">
               CONNECTIONS
             </span>
             {/* Badge 5 */}
@@ -774,8 +818,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                   setShowGuide(true);
                   setGuideTab('ui_breakdown');
                 }}
-                className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all shadow-xs cursor-pointer ${
-                  activeUiBadge === 5 ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 scale-110' : 'bg-teal-700 text-white hover:bg-teal-600'
+                className={`px-1.5 py-0.5 rounded-pill text-[10px] font-mono font-bold transition-all shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                  activeUiBadge === 5 ? 'bg-accent text-accent-contrast ring-2 ring-focus scale-110' : 'bg-ink text-paper hover:bg-ink-2'
                 }`}
                 title="Item #5: Connections Classifier & Stats"
               >
@@ -786,57 +830,57 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
             <button
               onClick={() => toggleFamily('declared')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-input text-xs font-bold border transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                 activeFamilies.declared
-                  ? 'bg-teal-50 text-teal-800 border-teal-600 shadow-2xs'
-                  : 'bg-white text-slate-400 border-slate-200'
+                  ? `${LINK_FAMILY_STYLES.declared.badge} border-accent shadow-2xs`
+                  : 'bg-white text-ink-3 border-rule'
               }`}
             >
-              <span className="w-3 h-0.5 bg-teal-600 inline-block rounded"></span>
-              <span>Declared</span>
+              <span className="w-3 h-0.5 bg-accent inline-block rounded-input"></span>
+              <span>{LINK_FAMILY_STYLES.declared.label}</span>
               <span className="text-[10px] opacity-80">{links.filter((l) => l.family === 'declared').length}</span>
             </button>
 
             <button
               onClick={() => toggleFamily('unresolved')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-input text-xs font-bold border transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                 activeFamilies.unresolved
-                  ? 'bg-amber-50 text-amber-800 border-amber-500 shadow-2xs'
-                  : 'bg-white text-slate-400 border-slate-200'
+                  ? `${LINK_FAMILY_STYLES.unresolved.badge} shadow-2xs`
+                  : 'bg-white text-ink-3 border-rule'
               }`}
             >
-              <span className="w-3 h-0.5 border-b-2 border-dashed border-amber-600 inline-block"></span>
-              <span>Unresolved</span>
+              <span className="w-3 h-0.5 border-b-2 border-dashed border-warn inline-block"></span>
+              <span>{LINK_FAMILY_STYLES.unresolved.label}</span>
               <span className="text-[10px] opacity-80">{links.filter((l) => l.family === 'unresolved').length}</span>
             </button>
 
             <button
               onClick={() => toggleFamily('similarity')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-input text-xs font-bold border transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                 activeFamilies.similarity
-                  ? 'bg-slate-200 text-slate-800 border-slate-400'
-                  : 'bg-white text-slate-400 border-slate-200'
+                  ? `${LINK_FAMILY_STYLES.similarity.badge} border-rule-strong`
+                  : 'bg-white text-ink-3 border-rule'
               }`}
             >
-              <span className="w-3 h-0.5 bg-slate-400 inline-block"></span>
-              <span>Similarity</span>
+              <span className="w-3 h-0.5 bg-ink-3 inline-block"></span>
+              <span>{LINK_FAMILY_STYLES.similarity.label}</span>
               <span className="text-[10px] opacity-80">{links.filter((l) => l.family === 'similarity').length}</span>
             </button>
           </div>
 
           {/* Counts pill from screenshot */}
-          <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] text-slate-500 border-l border-slate-200 pl-3">
+          <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-ink-3 border-l border-rule pl-3">
             <div>
-              <strong className="text-slate-800 font-bold">{filteredNodes.length}</strong> NODES
+              <strong className="text-ink font-bold">{filteredNodes.length}</strong> NODES
             </div>
             <div>
-              <strong className="text-slate-800 font-bold">{filteredLinks.length}</strong> LINKS
+              <strong className="text-ink font-bold">{filteredLinks.length}</strong> LINKS
             </div>
             <div>
-              <strong className="text-slate-800 font-bold">0</strong> PROJECTS
+              <strong className="text-ink font-bold">0</strong> PROJECTS
             </div>
             <div>
-              <strong className="text-slate-800 font-bold">0</strong> TAGS
+              <strong className="text-ink font-bold">0</strong> TAGS
             </div>
           </div>
         </div>
@@ -844,8 +888,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
       {/* 3. Interactive Graph Canvas Stage */}
       <div
-        className={`relative flex-1 bg-slate-100/50 overflow-hidden flex items-center justify-center transition-all ${
-          activeUiBadge === 6 ? 'ring-4 ring-amber-400/80 bg-amber-50/20' : ''
+        className={`relative flex-1 bg-paper-2 overflow-hidden flex items-center justify-center transition-all ${
+          activeUiBadge === 6 ? 'ring-4 ring-focus/80 bg-accent-soft/20' : ''
         }`}
       >
         {/* Floating Badge 6 on Canvas */}
@@ -858,8 +902,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                 setShowGuide(true);
                 setGuideTab('ui_breakdown');
               }}
-              className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all shadow-md cursor-pointer flex items-center gap-1 ${
-                activeUiBadge === 6 ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 scale-105' : 'bg-teal-800 text-white hover:bg-teal-700'
+              className={`px-2 py-1 rounded-input text-[10px] font-mono font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                activeUiBadge === 6 ? 'bg-accent text-accent-contrast ring-2 ring-focus scale-105' : 'bg-ink text-paper hover:bg-ink-2'
               }`}
               title="Item #6: Interactive Topology Map"
             >
@@ -872,7 +916,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
         <div
           className="absolute inset-0 pointer-events-none opacity-40"
           style={{
-            backgroundImage: `radial-gradient(#94a3b8 0.75px, transparent 0.75px)`,
+            backgroundImage: `radial-gradient(var(--color-rule-strong) 0.75px, transparent 0.75px)`,
             backgroundSize: `16px 16px`,
           }}
         />
@@ -880,7 +924,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
         <svg className="w-full h-full cursor-grab active:cursor-grabbing" viewBox="0 0 500 380">
           <defs>
             <marker
-              id="arrow-teal"
+              id="arrow-declared"
               viewBox="0 0 10 10"
               refX="18"
               refY="5"
@@ -888,10 +932,10 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
               markerHeight="5"
               orient="auto-start-reverse"
             >
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0d9488" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill={LINK_FAMILY_STYLES.declared.fillVar} />
             </marker>
             <marker
-              id="arrow-amber"
+              id="arrow-unresolved"
               viewBox="0 0 10 10"
               refX="18"
               refY="5"
@@ -899,7 +943,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
               markerHeight="5"
               orient="auto-start-reverse"
             >
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#ea580c" />
+              <path d="M 0 0 L 10 5 L 0 10 z" fill={LINK_FAMILY_STYLES.unresolved.fillVar} />
             </marker>
           </defs>
 
@@ -909,20 +953,20 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
             const tgtNode = filteredNodes.find((n) => n.id === link.target);
             if (!srcNode || !tgtNode) return null;
 
-            let strokeColor = '#94a3b8';
+            let strokeColor = LINK_FAMILY_STYLES.similarity.fillVar;
             let strokeDash = 'none';
             let strokeWidth = 1.2;
             let marker = undefined;
 
             if (link.family === 'declared') {
-              strokeColor = '#0d9488'; // Teal
+              strokeColor = LINK_FAMILY_STYLES.declared.fillVar;
               strokeWidth = 1.8;
-              marker = 'url(#arrow-teal)';
+              marker = 'url(#arrow-declared)';
             } else if (link.family === 'unresolved') {
-              strokeColor = '#ea580c'; // Orange / Amber
+              strokeColor = LINK_FAMILY_STYLES.unresolved.fillVar;
               strokeDash = '4,3';
               strokeWidth = 1.8;
-              marker = 'url(#arrow-amber)';
+              marker = 'url(#arrow-unresolved)';
             }
 
             return (
@@ -971,8 +1015,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                 {/* Core Circle */}
                 <circle
                   r="11"
-                  fill={isUnresolved ? '#475569' : color}
-                  stroke="#ffffff"
+                  fill={isUnresolved ? DEFAULT_NODE_TYPE_STYLE.fillVar : color}
+                  stroke="var(--color-paper)"
                   strokeWidth="2"
                   strokeDasharray={isUnresolved ? '3,3' : 'none'}
                 />
@@ -982,7 +1026,7 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                   <text
                     x="0"
                     y="22"
-                    fill="#1e293b"
+                    fill="var(--color-ink)"
                     fontSize="8"
                     fontWeight="700"
                     fontFamily="sans-serif"
@@ -999,12 +1043,12 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
 
         {/* Bottom Left NODE TYPES Overlay Card from screenshot */}
         <div
-          className={`absolute bottom-4 left-4 bg-white/90 backdrop-blur-md border border-slate-200 p-3 rounded-2xl shadow-lg space-y-1.5 text-xs w-44 transition-all ${
-            activeUiBadge === 7 ? 'z-[90] ring-2 ring-amber-400 bg-amber-50/90 scale-105' : 'z-10'
+          className={`absolute bottom-4 left-4 bg-white/90 backdrop-blur-md border border-rule p-3 rounded-card shadow-2xs space-y-1.5 text-xs w-44 transition-all ${
+            activeUiBadge === 7 ? 'z-[90] ring-2 ring-focus bg-accent-soft/90 scale-105' : 'z-10'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[9px] font-mono font-bold text-ink-3 uppercase tracking-wider">
               NODE TYPES
             </span>
             {/* Badge 7 */}
@@ -1016,8 +1060,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                   setShowGuide(true);
                   setGuideTab('ui_breakdown');
                 }}
-                className={`px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold transition-all shadow-xs cursor-pointer ${
-                  activeUiBadge === 7 ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 scale-110' : 'bg-teal-700 text-white hover:bg-teal-600'
+                className={`px-1.5 py-0.5 rounded-pill text-[9px] font-mono font-bold transition-all shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                  activeUiBadge === 7 ? 'bg-accent text-accent-contrast ring-2 ring-focus scale-110' : 'bg-ink text-paper hover:bg-ink-2'
                 }`}
                 title="Item #7: Entity Distribution Tally"
               >
@@ -1026,34 +1070,34 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
               {renderChipPopover(7, 'top-left')}
             </div>
           </div>
-          <div className="space-y-1 font-medium text-[11px]">
+          <div className="space-y-1 font-medium text-xs">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
-                <span className="text-slate-700">Other</span>
+                <span className={`w-2.5 h-2.5 rounded-pill ${DEFAULT_NODE_TYPE_STYLE.swatch}`}></span>
+                <span className="text-ink-2">{DEFAULT_NODE_TYPE_STYLE.label}</span>
               </span>
-              <span className="font-mono text-slate-400">124</span>
+              <span className="font-mono text-ink-3">124</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
-                <span className="text-slate-700">Docs</span>
+                <span className={`w-2.5 h-2.5 rounded-pill ${NODE_TYPE_STYLES.Docs.swatch}`}></span>
+                <span className="text-ink-2">{NODE_TYPE_STYLES.Docs.label}</span>
               </span>
-              <span className="font-mono text-slate-400">74</span>
+              <span className="font-mono text-ink-3">74</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-orange-600"></span>
-                <span className="text-slate-700">Team</span>
+                <span className={`w-2.5 h-2.5 rounded-pill ${NODE_TYPE_STYLES.Team.swatch}`}></span>
+                <span className="text-ink-2">{NODE_TYPE_STYLES.Team.label}</span>
               </span>
-              <span className="font-mono text-slate-400">20</span>
+              <span className="font-mono text-ink-3">20</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
-                <span className="text-slate-700">Ontology</span>
+                <span className={`w-2.5 h-2.5 rounded-pill ${NODE_TYPE_STYLES.Ontology.swatch}`}></span>
+                <span className="text-ink-2">{NODE_TYPE_STYLES.Ontology.label}</span>
               </span>
-              <span className="font-mono text-slate-400">14</span>
+              <span className="font-mono text-ink-3">14</span>
             </div>
           </div>
         </div>
@@ -1061,16 +1105,20 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
         {/* 4. Right Side Slide-over Inspector Drawer matching screenshot */}
         {selectedNode && (
           <div
-            className={`absolute top-4 right-4 bottom-4 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col animate-slideLeft transition-all ${
-              activeUiBadge === 8 ? 'z-[90] ring-4 ring-amber-400 bg-amber-50/20' : 'z-30'
+            className={`absolute top-4 right-4 bottom-4 w-80 sm:w-96 bg-white rounded-card shadow-2xs border border-rule flex flex-col animate-slideLeft transition-all ${
+              activeUiBadge === 8 ? 'z-[90] ring-4 ring-focus bg-accent-soft/20' : 'z-30'
             }`}
           >
             {/* Header Badge */}
-            <div className="p-5 pb-3 border-b border-slate-100 flex items-start justify-between shrink-0 relative z-50">
+            <div className="p-5 pb-3 border-b border-rule flex items-start justify-between shrink-0 relative z-50">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-ink-2 bg-paper-2 px-2 py-0.5 rounded-input border border-rule">
                     {selectedNode.docType.toUpperCase()}DOC
+                  </span>
+                  <span className="flex items-center gap-1 text-xs font-mono font-bold text-ink-2">
+                    <span className={`w-2 h-2 rounded-pill ${getNodeTypeStyle(selectedNode.osLayer).swatch}`}></span>
+                    {getNodeTypeStyle(selectedNode.osLayer).label}
                   </span>
                   {/* Badge 8 */}
                   <div className="relative inline-flex items-center">
@@ -1081,8 +1129,8 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                         setShowGuide(true);
                         setGuideTab('ui_breakdown');
                       }}
-                      className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all shadow-xs cursor-pointer ${
-                        activeUiBadge === 8 ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 scale-110' : 'bg-teal-700 text-white hover:bg-teal-600'
+                      className={`px-1.5 py-0.5 rounded-pill text-[10px] font-mono font-bold transition-all shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                        activeUiBadge === 8 ? 'bg-accent text-accent-contrast ring-2 ring-focus scale-110' : 'bg-ink text-paper hover:bg-ink-2'
                       }`}
                       title="Item #8: Node Inspector Drawer"
                     >
@@ -1091,13 +1139,14 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                     {renderChipPopover(8, 'bottom-right')}
                   </div>
                 </div>
-                <h3 className="text-base font-extrabold text-slate-900 mt-1.5 tracking-tight">
+                <h3 className="text-base font-display font-semibold text-ink mt-1.5 tracking-tight">
                   {selectedNode.name}
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedNodeId(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-lg transition-all"
+                aria-label="Close node inspector"
+                className="text-ink-3 hover:text-ink-2 p-1 hover:bg-paper-2 rounded-input transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1106,50 +1155,50 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
             {/* Scrollable Content */}
             <div className="p-5 pt-3 overflow-y-auto flex-1 space-y-4">
               {/* PROPERTIES Box */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5 text-xs">
-              <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <div className="bg-paper-2 border border-rule rounded-card p-3.5 space-y-2.5 text-sm">
+              <div className="text-xs font-mono font-bold text-ink-3 uppercase tracking-wider">
                 PROPERTIES
               </div>
 
-              <div className="space-y-1.5 font-mono text-[11px]">
+              <div className="space-y-1.5 font-mono text-xs">
                 <div>
-                  <span className="text-slate-400 uppercase text-[10px] block">TITLE</span>
-                  <span className="font-sans font-semibold text-slate-800">{selectedNode.title}</span>
+                  <span className="text-ink-3 uppercase text-[10px] block">TITLE</span>
+                  <span className="font-body font-semibold text-ink">{selectedNode.title}</span>
                 </div>
 
                 <div className="flex items-center justify-between pt-1">
                   <div>
-                    <span className="text-slate-400 uppercase text-[10px] block">TYPE</span>
-                    <span className="text-slate-800 font-bold">{selectedNode.docType}</span>
+                    <span className="text-ink-3 uppercase text-[10px] block">TYPE</span>
+                    <span className="text-ink font-bold">{selectedNode.docType}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 uppercase text-[10px] block">REPO</span>
-                    <span className="text-slate-800 font-bold">{selectedNode.repo}</span>
+                    <span className="text-ink-3 uppercase text-[10px] block">REPO</span>
+                    <span className="text-ink font-bold">{selectedNode.repo}</span>
                   </div>
                 </div>
 
                 <div className="pt-1">
-                  <span className="text-slate-400 uppercase text-[10px] block">PATH</span>
-                  <span className="text-slate-600 break-all">{selectedNode.path}</span>
+                  <span className="text-ink-3 uppercase text-[10px] block">PATH</span>
+                  <span className="text-ink-2 break-all">{selectedNode.path}</span>
                 </div>
               </div>
 
               {/* Reveal in Finder Button */}
-              <button className="w-full py-1.5 bg-white hover:bg-slate-100 border border-teal-600 text-teal-700 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-2xs">
-                <Folder className="w-3.5 h-3.5 text-teal-600" />
+              <button className="w-full py-1.5 bg-white hover:bg-paper-3 border border-rule-strong text-ink rounded-input font-semibold text-sm transition-all flex items-center justify-center gap-1.5 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">
+                <Folder className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Reveal in Finder</span>
               </button>
 
               {/* TAGS */}
-              <div className="pt-2 border-t border-slate-200/80">
-                <span className="text-slate-400 uppercase text-[10px] block font-mono font-bold mb-1">
+              <div className="pt-2 border-t border-rule">
+                <span className="text-ink-3 uppercase text-[10px] block font-mono font-bold mb-1">
                   TAGS
                 </span>
                 <div className="flex flex-wrap gap-1">
                   {selectedNode.tags.map((tag, idx) => (
                     <span
                       key={idx}
-                      className="px-2 py-0.5 bg-purple-100 text-purple-800 font-mono text-[10px] rounded border border-purple-200"
+                      className="px-2 py-0.5 bg-paper-3 text-ink-2 font-mono text-[10px] rounded-input border border-rule"
                     >
                       {tag}
                     </span>
@@ -1159,20 +1208,20 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
             </div>
 
             {/* SUMMARY Box */}
-            <div className="space-y-1 text-xs">
-              <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <div className="space-y-1 text-sm">
+              <div className="text-xs font-mono font-bold text-ink-3 uppercase tracking-wider">
                 SUMMARY
               </div>
-              <p className="text-slate-600 leading-relaxed text-[11px] bg-slate-50 p-3 rounded-xl border border-slate-200">
-                This is the primary specification component for <strong className="text-slate-800">{selectedNode.title}</strong>, mapping 1-hop dependencies across the local-search knowledge topology.
+              <p className="text-ink-2 leading-relaxed text-sm bg-paper-2 p-3 rounded-card border border-rule">
+                This is the primary specification component for <strong className="text-ink">{selectedNode.title}</strong>, mapping 1-hop dependencies across the local-search knowledge topology.
               </p>
             </div>
 
             {/* CONNECTIONS Box */}
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between text-xs font-mono font-bold text-ink-3 uppercase tracking-wider">
                 <span>CONNECTIONS</span>
-                <span className="text-teal-700">{outgoingConnections.length + incomingConnections.length} DECLARED</span>
+                <span className="text-accent-ink">{outgoingConnections.length + incomingConnections.length} DECLARED</span>
               </div>
 
               <div className="space-y-1.5">
@@ -1182,13 +1231,13 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                     <div
                       key={idx}
                       onClick={() => setSelectedNodeId(conn.target)}
-                      className="p-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-[11px] cursor-pointer transition-all shadow-2xs"
+                      className="p-2 bg-white hover:bg-paper-2 border border-rule rounded-card flex items-center justify-between text-xs cursor-pointer transition-all shadow-2xs"
                     >
                       <div className="flex items-center gap-1.5 font-mono">
-                        <span className="w-2 h-2 rounded-full bg-amber-600"></span>
-                        <span className="text-teal-700 font-bold">→ {conn.relation || 'links_to'}</span>
+                        <span className="w-2 h-2 rounded-pill bg-accent"></span>
+                        <span className="text-accent-ink font-bold">Out - {conn.relation || 'links_to'}</span>
                       </div>
-                      <span className="font-semibold text-slate-800 truncate max-w-[140px]">
+                      <span className="font-semibold text-ink truncate max-w-[140px]">
                         {targetNode?.name || conn.target}
                       </span>
                     </div>
@@ -1201,13 +1250,13 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
                     <div
                       key={idx}
                       onClick={() => setSelectedNodeId(conn.source)}
-                      className="p-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-[11px] cursor-pointer transition-all shadow-2xs"
+                      className="p-2 bg-white hover:bg-paper-2 border border-rule rounded-card flex items-center justify-between text-xs cursor-pointer transition-all shadow-2xs"
                     >
                       <div className="flex items-center gap-1.5 font-mono">
-                        <span className="w-2 h-2 rounded-full bg-amber-600"></span>
-                        <span className="text-teal-700 font-bold">← {conn.relation || 'links_to'}</span>
+                        <span className="w-2 h-2 rounded-pill bg-accent"></span>
+                        <span className="text-accent-ink font-bold">In - {conn.relation || 'links_to'}</span>
                       </div>
-                      <span className="font-semibold text-slate-800 truncate max-w-[140px]">
+                      <span className="font-semibold text-ink truncate max-w-[140px]">
                         {srcNode?.name || conn.source}
                       </span>
                     </div>
