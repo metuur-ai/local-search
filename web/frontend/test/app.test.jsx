@@ -36,7 +36,7 @@ describe('App shell', () => {
 
   it('has a submit control disabled in the initial no-repos state', () => {
     render(<App />);
-    const submit = screen.getByRole('button', { name: /search/i });
+    const submit = screen.getByRole('button', { name: /^\s*search(\s|$)/i });
     expect(submit).toBeTruthy();
     expect(submit.disabled).toBe(true);
   });

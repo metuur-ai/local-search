@@ -159,6 +159,10 @@ function TurnMeta({ meta }) {
       .join(' · ');
     items.push(['fa-coins', `${tokens} tokens`, detail || 'Tokens used for this answer']);
   }
+  const cacheRead = fmtTokens(meta.cacheReadTokens);
+  const cacheWrite = fmtTokens(meta.cacheWriteTokens);
+  if (cacheRead) items.push(['fa-download', `Cache R ${cacheRead}`, 'Tokens read from the prompt cache']);
+  if (cacheWrite) items.push(['fa-upload', `Cache W ${cacheWrite}`, 'Tokens written to the prompt cache']);
   if (items.length === 0) return null;
 
   return (

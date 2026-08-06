@@ -28,7 +28,9 @@ function readJsonBody(req) {
 /**
  * handleQuery(req, res, { registry, deps }) — POST /api/query {q, repos}.
  * R-2.2: empty/absent repos -> 400, spawn nothing.
- * R-2.9: a session already active -> 409 (single active session).
+ * R-2.9: a session already active *for the same client* -> 409. The limit is
+ *   per browser tab/window (`clientId`), not global: separate tabs search in
+ *   parallel.
  * R-2.1: otherwise build prompt, spawnClaude (injected), register a session with the
  *   child + normalizer, respond {sessionId}.
  * R-2.6: spawn ENOENT (claude missing) -> 500 explicit JSON naming the missing binary.
@@ -46,10 +48,21 @@ export async function handleQuery(req, res, { registry, deps = {} } = {}) {
     return sendJson(res, 400, { error: 'repos_required', message: 'at least one repo is required' });
   }
 
-  // R-2.9: single active session — reject a second concurrent query. A graph
-  // (no-AI) session has no child until its stream connects, so also treat any
-  // non-done session as active.
-  const active = registry.list().find((s) => s.phase !== 'done' && (s.child || s.mode === 'graph'));
+  // Identity of the calling browser tab/window. The frontend mints one per tab
+  // (sessionStorage). Non-browser callers (CLI, curl) send none and share the
+  // 'default' bucket, keeping the original single-session behaviour for them.
+  const clientId = typeof body.clientId === 'string' && body.clientId ? body.clientId : 'default';
+
+  // R-2.9: one active session *per client*. A second query from the SAME tab is
+  // rejected; a query from another tab/window runs in parallel. A graph (no-AI)
+  // session has no child until its stream connects, so also treat any non-done
+  // session as active.
+  const active = registry
+    .list()
+    .find(
+      (s) =>
+        (s.clientId ?? 'default') === clientId && s.phase !== 'done' && (s.child || s.mode === 'graph'),
+    );
   if (active) {
     // Return the blocking session's id so the client can surface + kill it
     // (an orphaned session — e.g. a graph run whose stream never finished —
@@ -64,7 +77,7 @@ export async function handleQuery(req, res, { registry, deps = {} } = {}) {
   // No-AI ("graph only") path: skip claude entirely and run the local-search
   // graph DB search directly when the stream connects. Returns in CLI time.
   if (body.mode === 'graph') {
-    const session = registry.create({ mode: 'graph', phase: 'running', deps, query: q, repos });
+    const session = registry.create({ mode: 'graph', phase: 'running', deps, query: q, repos, clientId });
     session.runGraph = () => runGraphSearch({ query: q ?? '', repos, session, deps });
     return sendJson(res, 200, { sessionId: session.id });
   }
@@ -84,7 +97,7 @@ export async function handleQuery(req, res, { registry, deps = {} } = {}) {
   }
 
   const normalizer = createNormalizer();
-  const session = registry.create({ child, normalizer, phase: 'running', deps });
+  const session = registry.create({ child, normalizer, phase: 'running', deps, clientId });
 
   // Log the claude interaction (no-op when deps.cliLog is absent). Recorded after
   // session creation so session.id is available; tapChild adds a SECOND stdout

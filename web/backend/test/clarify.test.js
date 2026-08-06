@@ -277,8 +277,35 @@ test('R-9.3: cancel 404 unknown; otherwise kills child and writes done{cancelled
 });
 
 // ---------------------------------------------------------------------------
-// R-9.4 — generous safety timeout -> explicit error + kill (only if running)
+// R-9.4 — idle safety timeout -> explicit error + kill (only if running)
 // ---------------------------------------------------------------------------
+
+test('R-9.4: a long run that keeps streaming is NOT killed (idle timeout, not a runtime cap)', async () => {
+  const registry = createRegistry();
+  const child = makeFakeChild([], { autoClose: false });
+  const session = seedSession(registry, { timeoutMs: 40, heartbeatMs: 100000 }, child);
+
+  const req = makeFakeReq();
+  const res = makeFakeRes();
+  handleStream(req, res, { registry, id: session.id });
+
+  // Emit output every 15ms for ~90ms — well past timeoutMs in total runtime,
+  // but never idle for 40ms at a stretch.
+  for (let i = 0; i < 6; i++) {
+    await wait(15);
+    child.stdout.emit('data', JSON.stringify({ type: 'stream', text: `chunk ${i}` }) + '\n');
+  }
+
+  assert.doesNotMatch(res.frames, /kind":"timeout/, 'active run must not time out');
+  assert.equal(child.killed, false, 'active child must not be killed');
+  assert.equal(session.phase, 'running');
+
+  // Now go quiet -> the idle timer fires.
+  await wait(70);
+  assert.match(res.frames, /event: error/);
+  assert.match(res.frames, /timeout/);
+  assert.equal(child.killed, true, 'stalled child killed once idle');
+});
 
 test('R-9.4: over-running child hits the safety timeout -> error frame + killed', async () => {
   const registry = createRegistry();

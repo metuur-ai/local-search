@@ -22,6 +22,13 @@ const APP_VERSION = '0.1.0';
 // How many tag chips the ribbon shows before collapsing behind "+N more".
 const TAG_FACET_LIMIT = 24;
 
+// Grow the search textarea to fit its content, up to the CSS max-height.
+function autoGrow(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 // Compact relative timestamp ("2m ago") for the recent-searches list.
 function relTime(ts) {
   const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
@@ -673,13 +680,19 @@ export function App() {
     setHistory(clearHistory());
   }, []);
 
-  // ⌘/Ctrl+Enter (or Enter, since this is a single-line search field) submits.
+  // Enter submits; Shift+Enter inserts a newline.
   const onQueryKeyDown = (e) => {
-    if (e.key === 'Enter' && !submitDisabled) {
+    if (e.key === 'Enter' && !e.shiftKey && !submitDisabled) {
       e.preventDefault();
       onSubmit();
     }
   };
+
+  // Keep the textarea height in sync when the query changes programmatically
+  // (clear button, history restore, new search).
+  useEffect(() => {
+    autoGrow(searchInputRef.current);
+  }, [q]);
 
   return (
     <div class="app">
@@ -741,13 +754,16 @@ export function App() {
             {/* Search input bar */}
             <div class="search-bar">
               <i class="fa-solid fa-magnifying-glass search-bar-icon" aria-hidden="true" />
-              <input
+              <textarea
                 ref={searchInputRef}
-                type="text"
+                rows={1}
                 class="search-input"
                 placeholder="Ask a question about your code and docs…"
                 value={q}
-                onInput={(e) => setQ(e.target.value)}
+                onInput={(e) => {
+                  setQ(e.target.value);
+                  autoGrow(e.target);
+                }}
                 onKeyDown={onQueryKeyDown}
                 data-testid="query-box"
               />

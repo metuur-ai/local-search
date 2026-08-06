@@ -348,12 +348,13 @@ body {
 .search-bar {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .search-bar-icon {
   position: absolute;
   left: 0.9rem;
+  top: 0.95rem;
   color: var(--ink-400);
   font-size: 0.95rem;
   pointer-events: none;
@@ -365,11 +366,16 @@ body {
   padding: 0.8rem 2.5rem 0.8rem 2.5rem;
   font-family: var(--font-sans);
   font-size: 0.95rem;
+  line-height: 1.35;
   color: var(--ink-900);
   background: var(--surface-mut);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  resize: none;
+  overflow-y: auto;
+  max-height: 9.5rem;
+  display: block;
 }
 .search-input::placeholder { color: var(--ink-400); }
 .search-input:focus {
@@ -382,6 +388,7 @@ body {
 .search-clear {
   position: absolute;
   right: 0.7rem;
+  top: 0.7rem;
   display: grid;
   place-items: center;
   border: none;

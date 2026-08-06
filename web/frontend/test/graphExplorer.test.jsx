@@ -21,6 +21,8 @@ const graphMock = vi.hoisted(() => ({
 
 vi.mock('../src/graph-explorer/useForceGraph.js', () => ({
   useForceGraph: vi.fn(() => graphMock),
+  SPREAD_MIN: 0.6,
+  SPREAD_MAX: 3,
 }));
 
 // eslint-disable-next-line import/first

@@ -23,19 +23,25 @@ export function broadcast(session, type, data) {
  * else phase='done' and, with no answer, broadcast an explicit error (R-2.5).
  *
  * R-9.1: while running with live clients, broadcast a `heartbeat` every ~deps.heartbeatMs.
- * R-9.4: a generous safety timeout (deps.timeoutMs) fires an explicit `error` + kills the
- *   child ONLY if still running (not awaiting-reply, not done).
+ * R-9.4: a safety timeout (deps.timeoutMs, or $LOCAL_SEARCH_TIMEOUT_MS) fires an explicit
+ *   `error` + kills the child ONLY if still running (not awaiting-reply, not done).
+ *   It is an IDLE timeout, not a cap on total runtime: every stdout chunk rearms it, so a
+ *   long-but-healthy run that keeps streaming tool events is never killed. It only fires
+ *   when claude has produced nothing at all for timeoutMs.
  * All timers are unref'd and cleared on close so tests don't hang.
  */
 export function pipeChild({ session, child, normalizer, deps = {} } = {}) {
   const heartbeatMs = deps.heartbeatMs ?? 15000;
-  const timeoutMs = deps.timeoutMs ?? 300000;
+  const envTimeout = Number(process.env.LOCAL_SEARCH_TIMEOUT_MS);
+  const timeoutMs =
+    deps.timeoutMs ?? (Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : 600000);
 
   let sawAnswer = false;
   let sawQuestion = false;
   let buffer = '';
 
   const onData = (chunk) => {
+    armSafety(); // live output = not stalled; never cap a long healthy run
     buffer += chunk;
     let nl;
     while ((nl = buffer.indexOf('\n')) !== -1) {
@@ -69,17 +75,23 @@ export function pipeChild({ session, child, normalizer, deps = {} } = {}) {
   }, heartbeatMs);
   heartbeat.unref?.();
 
-  // R-9.4: generous safety timeout -> explicit error, only if still running.
-  const safety = setTimeout(() => {
-    if (session.phase !== 'running') return;
-    broadcast(session, 'error', {
-      message: `the run exceeded the ${timeoutMs}ms safety timeout`,
-      kind: 'timeout',
-    });
-    session.phase = 'done';
-    killTree(child);
-  }, timeoutMs);
-  safety.unref?.();
+  // R-9.4: idle safety timeout -> explicit error, only if still running. Rearmed by
+  // onData on every chunk, so only a genuinely stalled run trips it.
+  let safety;
+  const armSafety = () => {
+    clearTimeout(safety);
+    safety = setTimeout(() => {
+      if (session.phase !== 'running') return;
+      broadcast(session, 'error', {
+        message: `the run produced no output for ${timeoutMs}ms`,
+        kind: 'timeout',
+      });
+      session.phase = 'done';
+      killTree(child);
+    }, timeoutMs);
+    safety.unref?.();
+  };
+  armSafety();
 
   const clearTimers = () => {
     clearInterval(heartbeat);

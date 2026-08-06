@@ -83,11 +83,11 @@ test('R-2.2: POST /api/query with empty repos -> 400, spawn not called', async (
   assert.equal(spawnCalls.length, 0);
 });
 
-test('R-2.1/R-2.9: first query -> 200 {sessionId}; second concurrent -> 409', async () => {
+test('R-2.1/R-2.9: first query -> 200 {sessionId}; second concurrent from the SAME tab -> 409', async () => {
   const r1 = await fetch(`${base}/api/query`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ q: 'hi', repos: ['a'] }),
+    body: JSON.stringify({ q: 'hi', repos: ['a'], clientId: 'tab-1' }),
   });
   assert.equal(r1.status, 200);
   const { sessionId } = await r1.json();
@@ -97,9 +97,47 @@ test('R-2.1/R-2.9: first query -> 200 {sessionId}; second concurrent -> 409', as
   const r2 = await fetch(`${base}/api/query`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ q: 'again', repos: ['a'] }),
+    body: JSON.stringify({ q: 'again', repos: ['a'], clientId: 'tab-1' }),
   });
   assert.equal(r2.status, 409);
+  const blocked = await r2.json();
+  assert.equal(blocked.activeSessionId, sessionId);
+  // The rejected query must not have spawned a second child.
+  assert.equal(spawnCalls.length, 1);
+});
+
+test('R-2.9: concurrent queries from DIFFERENT tabs both run', async () => {
+  const post = (clientId) =>
+    fetch(`${base}/api/query`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ q: 'hi', repos: ['a'], clientId }),
+    });
+
+  const r1 = await post('tab-1');
+  assert.equal(r1.status, 200);
+  const r2 = await post('tab-2');
+  assert.equal(r2.status, 200, 'a second tab must not be blocked by the first');
+
+  const s1 = await r1.json();
+  const s2 = await r2.json();
+  assert.notEqual(s1.sessionId, s2.sessionId);
+  assert.equal(spawnCalls.length, 2, 'each tab gets its own claude child');
+
+  // ...but each tab still holds its own single-session lock.
+  assert.equal((await post('tab-2')).status, 409);
+});
+
+test('R-2.9: callers without a clientId (CLI/curl) share one session slot', async () => {
+  const post = () =>
+    fetch(`${base}/api/query`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ q: 'hi', repos: ['a'] }),
+    });
+
+  assert.equal((await post()).status, 200);
+  assert.equal((await post()).status, 409);
 });
 
 test('R-2.3: SSE stream emits sources, graph, answer, done from scripted child', async () => {

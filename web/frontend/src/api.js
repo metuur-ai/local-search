@@ -67,13 +67,34 @@ export async function revealSource({ repo, path, fullpath } = {}) {
   return res.json();
 }
 
+// Identity of THIS browser tab/window. Kept in sessionStorage, which is scoped
+// per tab (and per window) but survives reloads — so the backend's
+// single-active-session rule (R-2.9) applies within a tab while separate
+// tabs/windows can search in parallel. Falls back to a per-load id if
+// sessionStorage is unavailable (private mode / SSR).
+const FALLBACK_CLIENT_ID = 'tab-' + Math.random().toString(36).slice(2);
+const CLIENT_ID_KEY = 'local-search.clientId';
+
+export function clientId() {
+  try {
+    let id = sessionStorage.getItem(CLIENT_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID?.() ?? FALLBACK_CLIENT_ID;
+      sessionStorage.setItem(CLIENT_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return FALLBACK_CLIENT_ID;
+  }
+}
+
 // POST /api/query -> { sessionId }. Throws carrying the server message on 400/409/500.
 // `mode` is 'ai' (default, spawns claude) or 'graph' (no-AI, direct graph DB search).
 export async function postQuery({ q, repos, mode }) {
   const res = await fetch('/api/query', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ q, repos, mode }),
+    body: JSON.stringify({ q, repos, mode, clientId: clientId() }),
   });
   if (!res.ok) {
     // Preserve the structured body so the UI can react to a 409 `session_active`

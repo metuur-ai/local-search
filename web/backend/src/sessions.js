@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 /**
  * In-memory session registry. Holds no retrieval logic — just the lifecycle of
- * session objects keyed by id: { id, claudeSessionId, child, sseClients, startedAt, phase }.
+ * session objects keyed by id:
+ * { id, clientId, claudeSessionId, child, sseClients, startedAt, phase }.
+ * `clientId` scopes the single-active-session rule to one browser tab/window.
  */
 export function createRegistry() {
   const sessions = new Map();
@@ -11,6 +13,7 @@ export function createRegistry() {
     create(fields = {}) {
       const session = {
         id: randomUUID(),
+        clientId: 'default',
         claudeSessionId: null,
         child: null,
         sseClients: new Set(),
