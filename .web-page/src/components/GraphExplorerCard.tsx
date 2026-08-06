@@ -383,6 +383,13 @@ export const GraphExplorerCard: React.FC<GraphExplorerCardProps> = ({
               </div>
             </div>
 
+            <p className="text-xs sm:text-sm text-ink-2 leading-relaxed bg-paper-3 border border-rule rounded-input px-3 py-2">
+              <strong className="text-ink">Heads up — this is a mock.</strong> The explorer below reproduces the
+              look and feel of the real <code className="font-mono text-ink bg-paper px-1 py-0.5 rounded-input">local-search</code> graph
+              UI so you can learn how to drive it. The nodes and edges are sample data, not your indexed repos. Click
+              the numbered badges to walk through each control, then run the real thing locally.
+            </p>
+
             {/* TAB 1: CONCEPT & PURPOSE */}
             {guideTab === 'concept' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm animate-fadeIn">

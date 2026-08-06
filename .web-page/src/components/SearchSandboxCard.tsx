@@ -491,6 +491,13 @@ export const SearchSandboxCard: React.FC<SearchSandboxCardProps> = ({
               </div>
             </div>
 
+            <p className="text-xs text-ink-2 leading-relaxed bg-paper-3 border border-rule rounded-input px-2.5 py-2">
+              <strong className="text-ink">Heads up — this is a mock.</strong> The panel below reproduces the
+              look and feel of the real <code className="font-mono text-ink bg-paper px-1 py-0.5 rounded-input">local-search</code> web
+              UI so you can learn how to drive it. Results are sample data, not your indexed specs. Click the numbered
+              badges to walk through each control, then run the real thing locally.
+            </p>
+
             {guideTab === 'concept' ? (
               <p className="text-sm text-ink-2 leading-relaxed">
                 An offline, sub-20ms hybrid search engine combining SQLite FTS5 BM25 keyword matching with local 256-d feature hashing vectors and graph centrality boosts.
