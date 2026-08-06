@@ -12,27 +12,25 @@ export const ConceptSpotlightCard: React.FC<ConceptSpotlightCardProps> = ({
   currentStepId,
 }) => {
   return (
-    <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-5 flex flex-col shadow-xs relative overflow-hidden h-full">
+    <div className="bg-white border border-rule rounded-card p-5 flex flex-col shadow-2xs relative overflow-hidden h-full">
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center font-bold shadow-xs">
-          {audienceLevel === 'beginner' ? (
-            <Lightbulb className="w-4 h-4 text-emerald-100" />
-          ) : (
-            <Cpu className="w-4 h-4 text-emerald-100" />
-          )}
-        </div>
+        {audienceLevel === 'beginner' ? (
+          <Lightbulb className="w-5 h-5 text-accent" aria-hidden="true" />
+        ) : (
+          <Cpu className="w-5 h-5 text-accent" aria-hidden="true" />
+        )}
         <div>
-          <h4 className="font-bold text-emerald-950 text-sm sm:text-base">
+          <h4 className="font-display font-semibold text-ink text-base">
             {audienceLevel === 'beginner' ? 'Beginner-Friendly Insight' : 'Technical Advantage & Architecture'}
           </h4>
-          <span className="text-[10px] font-mono text-emerald-700 uppercase tracking-wider font-semibold">
+          <span className="text-xs font-mono text-ink-3 uppercase tracking-wider font-semibold">
             {audienceLevel === 'beginner' ? 'Plain English Analogy' : 'Under the Hood Mechanics'}
           </span>
         </div>
       </div>
 
       {/* Dynamic Content based on Step & Audience */}
-      <div className="flex-1 space-y-3 text-xs text-emerald-900 leading-relaxed">
+      <div className="flex-1 space-y-3 text-sm text-ink-2 leading-relaxed">
         {audienceLevel === 'beginner' ? (
           <>
             {currentStepId === 1 && (
@@ -61,12 +59,12 @@ export const ConceptSpotlightCard: React.FC<ConceptSpotlightCardProps> = ({
               </p>
             )}
 
-            <div className="p-3 bg-white/80 rounded-xl border border-emerald-200/80 space-y-1">
-              <div className="font-bold text-emerald-950 flex items-center gap-1.5 text-xs">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>100% Offline & Private</span>
+            <div className="p-3 bg-paper-2 rounded-card border border-rule space-y-1">
+              <div className="font-bold text-ink flex items-center gap-1.5 text-sm">
+                <ShieldCheck className="w-4 h-4 text-accent" aria-hidden="true" />
+                <span>100% Offline &amp; Private</span>
               </div>
-              <p className="text-[11px] text-emerald-800">
+              <p className="text-sm text-ink-2">
                 All index data stays strictly on your machine in <code>~/.local-search/specs.db</code>. No sensitive specs ever leave your hardware.
               </p>
             </div>
@@ -95,11 +93,11 @@ export const ConceptSpotlightCard: React.FC<ConceptSpotlightCardProps> = ({
             )}
             {currentStepId === 5 && (
               <p>
-                Project boundary resolution reads one file, <code>.agent/local-search-config.yaml</code>, for both the CLI engine and the Claude Code skill runner. Order: <code>--scope</code> flag &gt; CWD walk-up (stopping at the git root) &gt; <code>~/.local-search-config.yaml</code> global default &gt; nearest enclosing registered repo &gt; hard error.
+                Project boundary resolution reads one file, <code>.agents/local-search-config.yaml</code>, for both the CLI engine and the Claude Code skill runner. Order: <code>--scope</code> flag &gt; CWD walk-up (stopping at the git root) &gt; <code>~/.local-search-config.yaml</code> global default &gt; nearest enclosing registered repo &gt; hard error.
               </p>
             )}
 
-            <div className="mt-auto pt-2 border-t border-emerald-200/80 flex justify-between items-center text-[10px] font-mono text-emerald-800">
+            <div className="mt-auto pt-2 border-t border-rule flex justify-between items-center text-xs font-mono text-ink-3">
               <span>LATENCY: ~12ms - 30ms</span>
               <span>INDEX: SQLite FTS5 (Pure Go)</span>
             </div>

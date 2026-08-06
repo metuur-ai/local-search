@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/metuur-ai/local-search/main/cli/config/schema/local-search-config.schema.json",
   "title": "LocalSearch config",
-  "description": "Project or global configuration for local-search. Lives at <project>/.agent/local-search-config.yaml or ~/.local-search-config.yaml. Read by both the search engine (find, code) and the bundled Claude Code skill.",
+  "description": "Project or global configuration for local-search. Lives at <project>/.agents/local-search-config.yaml or ~/.local-search-config.yaml. Read by both the search engine (find, code) and the bundled Claude Code skill.",
   "type": "object",
   "additionalProperties": false,
   "properties": {

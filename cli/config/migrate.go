@@ -7,7 +7,7 @@ package config
 //
 // Old → new:
 //
-//	<dir>/.local-search.toml        → <dir>/.agent/local-search-config.yaml
+//	<dir>/.local-search.toml        → <dir>/.agents/local-search-config.yaml
 //	~/.local-search/config.toml     → ~/.local-search-config.yaml
 //
 // The `scope` key becomes `repositories`. Migration is directory-scoped: a TOML
@@ -69,7 +69,7 @@ type legacyLimits struct {
 	BlastCap   int `toml:"blast_cap"`
 }
 
-// Migrate converts <dir>/.local-search.toml into <dir>/.agent/local-search-config.yaml.
+// Migrate converts <dir>/.local-search.toml into <dir>/.agents/local-search-config.yaml.
 // Ran is false (with a nil error) when there is no legacy file.
 func Migrate(dir string, opts MigrateOptions) (MigrateResult, error) {
 	return migrate(LegacyProjectPath(dir), ProjectPath(dir), opts)

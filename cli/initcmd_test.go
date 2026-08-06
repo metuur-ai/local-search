@@ -24,7 +24,7 @@ func TestWriteReadProjectConfig(t *testing.T) {
 	if _, err := config.LoadFile(path); !config.IsNotExist(err) {
 		t.Fatalf("want not-exists for a missing file, got %v", err)
 	}
-	// Write creates the .agent/ dir and the file.
+	// Write creates the .agents/ dir and the file.
 	if err := config.SetRepositories(path, []string{"platform", "docs"}); err != nil {
 		t.Fatalf("SetRepositories: %v", err)
 	}

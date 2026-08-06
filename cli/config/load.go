@@ -12,7 +12,7 @@ import (
 	"github.com/goccy/go-yaml/parser"
 )
 
-// ProjectPath returns <dir>/.agent/local-search-config.yaml.
+// ProjectPath returns <dir>/.agents/local-search-config.yaml.
 func ProjectPath(dir string) string {
 	return filepath.Join(dir, AgentDir, FileName)
 }
@@ -122,12 +122,12 @@ func stripBOM(b []byte) []byte {
 
 // ── Walk-up discovery ─────────────────────────────────────────────────────────
 
-// FindProject walks up from start looking for .agent/local-search-config.yaml
+// FindProject walks up from start looking for .agents/local-search-config.yaml
 // and returns the first one found.
 //
 // The walk STOPS at $HOME (exclusive) and at a git repository root. Without
 // those guards a single `local-search init` run from $HOME would leave
-// ~/.agent/local-search-config.yaml and silently capture the scope of every
+// ~/.agents/local-search-config.yaml and silently capture the scope of every
 // project on the machine.
 //
 // Returns a wrapped fs.ErrNotExist when nothing is found. Any other error means
@@ -135,7 +135,7 @@ func stripBOM(b []byte) []byte {
 func FindProject(start, home string) (Settings, error) {
 	dir := start
 	for {
-		// $HOME is EXCLUSIVE: never even read ~/.agent/local-search-config.yaml.
+		// $HOME is EXCLUSIVE: never even read ~/.agents/local-search-config.yaml.
 		// A single `local-search init` run from $HOME would otherwise capture
 		// every project on the machine. (The global config lives at
 		// ~/.local-search-config.yaml and is consulted separately.)

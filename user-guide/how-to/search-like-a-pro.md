@@ -69,7 +69,7 @@ local-search search "auth" --repos graph-only   # only repos with a graphify-out
 > for the same idea; it's the sharpest edge in the CLI.
 >
 > ```bash
-> local-search scope set payments   # writes .agent/local-search-config.yaml
+> local-search scope set payments   # writes .agents/local-search-config.yaml
 > local-search find "refund"        # payments only
 > local-search search "refund"      # ALL registered repos
 > ```

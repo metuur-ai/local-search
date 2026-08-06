@@ -45,9 +45,9 @@ export const WorkflowSimulator: React.FC = () => {
         {
           stepNumber: 3,
           title: 'Inspect CLI Scope Configuration',
-          description: 'Check active repository boundaries defined in .agent/local-search-config.yaml.',
+          description: 'Check active repository boundaries defined in .agents/local-search-config.yaml.',
           command: 'local-search scope show',
-          output: `Scope: product-specs, platform-docs, billing-service\nSource: /Users/you/work/.agent/local-search-config.yaml\nWeights: specs=1.00 graphify=0.70 codegraph=0.80`,
+          output: `Scope: product-specs, platform-docs, billing-service\nSource: /Users/you/work/.agents/local-search-config.yaml\nWeights: specs=1.00 graphify=0.70 codegraph=0.80`,
         },
       ],
     },
@@ -134,13 +134,13 @@ export const WorkflowSimulator: React.FC = () => {
   return (
     <div className="space-y-6 app-container pb-12">
       {/* Header Banner */}
-      <div className="bg-panel text-slate-100 rounded-3xl p-6 border border-panel-edge shadow-lg space-y-4">
+      <div className="bg-panel text-panel-ink rounded-card p-6 border border-panel-edge shadow-2xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-blue-400 font-bold px-2 py-0.5 bg-blue-500/10 rounded border border-blue-500/20">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-syntax-keyword font-bold px-2 py-0.5 bg-panel-raised rounded-input border border-panel-edge">
               03 WORKFLOWS · LIFECYCLE SIMULATOR
             </span>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white mt-1">
+            <h2 className="text-xl sm:text-2xl font-display font-semibold text-panel-ink mt-1">
               Interactive Workflow Simulator
             </h2>
           </div>
@@ -151,33 +151,33 @@ export const WorkflowSimulator: React.FC = () => {
               setExecutedSteps([]);
               setTerminalOutput(null);
             }}
-            className="px-3 py-1.5 bg-panel-raised hover:bg-panel-edge text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border border-panel-edge"
+            className="px-3 py-1.5 bg-panel-raised hover:bg-panel-edge text-panel-ink-2 rounded-input text-xs font-semibold flex items-center gap-1.5 transition-all border border-panel-edge focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Reset Scenario</span>
           </button>
         </div>
 
         {/* 3 Guidance Boxes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-          <div className="bg-panel-inset p-3.5 rounded-2xl border border-panel-edge space-y-1">
-            <div className="text-[10px] font-mono font-bold text-blue-400 uppercase">WHY IS THIS HERE?</div>
-            <p className="text-xs text-slate-300 leading-relaxed">
+          <div className="bg-panel-inset p-3.5 rounded-card border border-panel-edge space-y-1">
+            <div className="text-[10px] font-mono font-bold text-syntax-keyword uppercase">WHY IS THIS HERE?</div>
+            <p className="text-sm text-panel-ink-2 leading-relaxed">
               To practice real-world team scenarios (like indexing repos or tracing requirements) before running them in your production terminal.
             </p>
           </div>
 
-          <div className="bg-panel-inset p-3.5 rounded-2xl border border-panel-edge space-y-1">
-            <div className="text-[10px] font-mono font-bold text-emerald-400 uppercase">WHAT AM I LOOKING AT?</div>
-            <p className="text-xs text-slate-300 leading-relaxed">
+          <div className="bg-panel-inset p-3.5 rounded-card border border-panel-edge space-y-1">
+            <div className="text-[10px] font-mono font-bold text-syntax-string uppercase">WHAT AM I LOOKING AT?</div>
+            <p className="text-sm text-panel-ink-2 leading-relaxed">
               Interactive scenarios below with step-by-step milestone execution and live terminal output simulation.
             </p>
           </div>
 
-          <div className="bg-panel-inset p-3.5 rounded-2xl border border-panel-edge space-y-1">
-            <div className="text-[10px] font-mono font-bold text-amber-400 uppercase">HOW DO I USE IT?</div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Select a scenario card below, click <strong className="text-blue-300">Run Step Command</strong>, then click <strong className="text-emerald-300">Proceed to Next Step</strong>!
+          <div className="bg-panel-inset p-3.5 rounded-card border border-panel-edge space-y-1">
+            <div className="text-[10px] font-mono font-bold text-syntax-number uppercase">HOW DO I USE IT?</div>
+            <p className="text-sm text-panel-ink-2 leading-relaxed">
+              Select a scenario card below, click <strong className="text-syntax-keyword">Run Step Command</strong>, then click <strong className="text-syntax-string">Proceed to Next Step</strong>!
             </p>
           </div>
         </div>
@@ -191,19 +191,19 @@ export const WorkflowSimulator: React.FC = () => {
             <button
               key={sc.id}
               onClick={() => handleSelectScenario(sc.id)}
-              className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+              className={`p-4 rounded-card border text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                 isSelected
-                  ? 'bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-500/20'
-                  : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  ? 'bg-info-soft border-info shadow-2xs ring-2 ring-info/20'
+                  : 'bg-paper border-rule hover:border-rule-strong hover:bg-paper-2'
               }`}
             >
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-input ${
+                isSelected ? 'bg-info text-white' : 'bg-paper-3 text-ink-2'
               }`}>
                 {sc.tag}
               </span>
-              <h3 className="font-bold text-slate-900 text-xs sm:text-sm mt-2">{sc.title}</h3>
-              <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{sc.subtitle}</p>
+              <h3 className="font-display font-semibold text-ink text-sm mt-2">{sc.title}</h3>
+              <p className="text-sm text-ink-3 mt-1 line-clamp-2">{sc.subtitle}</p>
             </button>
           );
         })}
@@ -212,10 +212,10 @@ export const WorkflowSimulator: React.FC = () => {
       {/* Interactive Execution Layout: Left Milestones Sidebar, Right Interactive Terminal Stage */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Step Milestones Checklist (Col 4) */}
-        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
+        <div className="lg:col-span-4 bg-paper border border-rule rounded-card p-5 space-y-4 shadow-2xs">
           <div>
-            <h3 className="font-bold text-slate-900 text-sm">{activeScenario.title}</h3>
-            <p className="text-xs text-slate-500 mt-0.5">{activeScenario.subtitle}</p>
+            <h3 className="font-display font-semibold text-ink text-base">{activeScenario.title}</h3>
+            <p className="text-sm text-ink-3 mt-0.5">{activeScenario.subtitle}</p>
           </div>
 
           <div className="space-y-2 pt-2">
@@ -227,29 +227,29 @@ export const WorkflowSimulator: React.FC = () => {
                 <div
                   key={step.stepNumber}
                   onClick={() => setCurrentStepIdx(idx)}
-                  className={`p-3 rounded-xl border text-xs transition-all cursor-pointer flex items-start gap-3 ${
+                  className={`p-3 rounded-card border text-sm transition-all cursor-pointer flex items-start gap-3 ${
                     isCurrent
-                      ? 'bg-blue-50/80 border-blue-400 text-blue-950 font-medium shadow-xs'
+                      ? 'bg-info-soft border-info text-info-ink font-medium shadow-2xs'
                       : isDone
-                      ? 'bg-emerald-50/60 border-emerald-200 text-emerald-950'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      ? 'bg-accent-soft border-accent/40 text-accent-ink'
+                      : 'bg-paper-2 border-rule text-ink-2 hover:bg-paper-3'
                   }`}
                 >
                   <div
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                    className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                       isDone
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-accent text-accent-contrast'
                         : isCurrent
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-200 text-slate-600'
+                        ? 'bg-info text-white'
+                        : 'bg-paper-3 text-ink-2'
                     }`}
                   >
-                    {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : step.stepNumber}
+                    {isDone ? <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" /> : step.stepNumber}
                   </div>
 
                   <div className="space-y-0.5 flex-1">
-                    <div className="font-bold text-slate-900">{step.title}</div>
-                    <div className="text-[11px] text-slate-500 line-clamp-1">{step.description}</div>
+                    <div className="font-bold text-ink">{step.title}</div>
+                    <div className="text-sm text-ink-3 line-clamp-1">{step.description}</div>
                   </div>
                 </div>
               );
@@ -258,23 +258,23 @@ export const WorkflowSimulator: React.FC = () => {
         </div>
 
         {/* Right Stage: Interactive Command Execution & Output (Col 8) */}
-        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-8 bg-paper border border-rule rounded-card p-6 space-y-5 shadow-2xs flex flex-col justify-between">
           <div className="space-y-4">
             {/* Step Counter Badge */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-mono font-bold text-blue-600 tracking-wider">
+            <div className="flex items-center justify-between border-b border-rule pb-3">
+              <span className="text-[11px] font-mono font-bold text-info-ink tracking-wider">
                 STEP {currentStepIdx + 1} OF {activeScenario.steps.length}
               </span>
-              <span className="text-xs text-slate-400">Milestone {activeStep.stepNumber}</span>
+              <span className="text-xs text-ink-3">Milestone {activeStep.stepNumber}</span>
             </div>
 
-            <h3 className="text-lg font-bold text-slate-900">{activeStep.title}</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">{activeStep.description}</p>
+            <h3 className="text-lg font-display font-semibold text-ink">{activeStep.title}</h3>
+            <p className="text-sm text-ink-2 leading-relaxed">{activeStep.description}</p>
 
             {/* Governance or Security Rule Warning */}
             {activeStep.ruleWarning && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-amber-900">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="bg-warn-soft border border-warn/25 rounded-card p-3.5 flex items-start gap-2.5 text-sm text-warn-ink">
+                <AlertCircle className="w-4 h-4 text-warn shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <span className="font-bold">Contract Rule:</span> {activeStep.ruleWarning}
                 </div>
@@ -282,20 +282,20 @@ export const WorkflowSimulator: React.FC = () => {
             )}
 
             {/* Terminal Command Display Box */}
-            <div className="bg-panel-inset rounded-2xl p-4 border border-panel-edge space-y-2 font-mono text-xs text-slate-100 shadow-inner">
-              <div className="flex items-center justify-between text-[11px] text-slate-400 border-b border-panel-edge pb-2">
+            <div className="bg-panel-inset rounded-card p-4 border border-panel-edge space-y-2 font-mono text-xs text-panel-ink shadow-inner">
+              <div className="flex items-center justify-between text-[11px] text-panel-ink-3 border-b border-panel-edge pb-2">
                 <span>Simulator Terminal Command</span>
-                <span className="text-emerald-400 font-bold">~/.local-search/specs.db</span>
+                <span className="text-syntax-string font-bold">~/.local-search/specs.db</span>
               </div>
 
-              <div className="flex items-center gap-2 text-emerald-400 font-bold pt-1">
+              <div className="flex items-center gap-2 text-syntax-string font-bold pt-1">
                 <span>$</span>
-                <span className="text-slate-100">{activeStep.command}</span>
+                <span className="text-panel-ink">{activeStep.command}</span>
               </div>
 
               {/* Console Output Stream */}
               {terminalOutput && (
-                <div className="mt-3 pt-3 border-t border-panel-edge text-slate-300 text-[11px] whitespace-pre-wrap leading-relaxed animate-fadeIn font-mono">
+                <div className="mt-3 pt-3 border-t border-panel-edge text-panel-ink-2 text-[11px] whitespace-pre-wrap leading-relaxed animate-fadeIn motion-reduce:animate-none font-mono">
                   {terminalOutput}
                 </div>
               )}
@@ -303,23 +303,23 @@ export const WorkflowSimulator: React.FC = () => {
           </div>
 
           {/* Action Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-rule">
             <button
               onClick={handleRunStep}
               disabled={isExecuting}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="min-h-11 px-5 py-2.5 bg-info hover:bg-info/90 active:bg-info text-white font-semibold text-xs rounded-input shadow-2xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
-              <Play className="w-4 h-4 fill-current text-white" />
+              <Play className="w-4 h-4 fill-current" aria-hidden="true" />
               <span>{isExecuting ? 'Running...' : 'Run Step Command'}</span>
             </button>
 
             <button
               onClick={handleNextStep}
               disabled={currentStepIdx >= activeScenario.steps.length - 1 || !executedSteps.includes(currentStepIdx)}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-100 disabled:text-slate-400 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+              className="min-h-11 px-5 py-2.5 bg-accent hover:bg-accent/90 disabled:bg-paper-3 disabled:text-ink-3 text-accent-contrast font-semibold text-xs rounded-input transition-all flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
               <span>Proceed to Step {currentStepIdx + 2}</span>
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>

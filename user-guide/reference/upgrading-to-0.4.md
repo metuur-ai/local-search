@@ -14,7 +14,7 @@ The first time local-search reads config after upgrading, any
 **the original is deleted**. Notices go to stderr:
 
 ```
-migrated /Users/you/proj/.local-search.toml → /Users/you/proj/.agent/local-search-config.yaml
+migrated /Users/you/proj/.local-search.toml → /Users/you/proj/.agents/local-search-config.yaml
   repositories added: payments
   carried over: weights.specs, limits.blast_depth
   removed /Users/you/proj/.local-search.toml
@@ -42,16 +42,16 @@ the TOML is removed.
 
 | Before | After |
 |---|---|
-| `<cwd>/.local-search.toml` | `<project>/.agent/local-search-config.yaml` |
+| `<cwd>/.local-search.toml` | `<project>/.agents/local-search-config.yaml` |
 | `~/.local-search/config.toml` | `~/.local-search-config.yaml` |
-| `<project>/.agent/local-search-config.yaml` | unchanged — now read by the engine too |
+| `<project>/.agents/local-search-config.yaml` | unchanged — now read by the engine too |
 
 The `scope:` key is now `repositories:`. One list serves both the CLI engine
 (`find`, `code`) and the Claude Code skill.
 
 ## Behaviour changes
 
-**Config lookup now walks up.** `.agent/local-search-config.yaml` used to be
+**Config lookup now walks up.** `.agents/local-search-config.yaml` used to be
 exact-path-only. Running `find` from `src/api/handlers/` now picks up the
 project root's config. Nearest ancestor wins.
 
@@ -61,14 +61,14 @@ capture the scope of everything beneath it.
 
 > **Monorepo note:** a subdirectory with no config of its own now inherits the
 > repo root's. If a sub-project needs a different scope, give it its own
-> `.agent/local-search-config.yaml`.
+> `.agents/local-search-config.yaml`.
 
 **Malformed configs are now errors.** They used to be silently ignored, which
 also meant the auto-create path could overwrite a file you were mid-edit. Now:
 
 ```bash
 $ local-search config validate
-/Users/you/proj/.agent/local-search-config.yaml:4:1: unknown key "repositorys"
+/Users/you/proj/.agents/local-search-config.yaml:4:1: unknown key "repositorys"
    4 | repositorys:
      | ^
    did you mean "repositories"?
@@ -121,13 +121,13 @@ change.
 
 ## Housekeeping for existing installs
 
-Earlier bundles shipped a stray `web/.agent/local-search-config.yaml`. With
+Earlier bundles shipped a stray `web/.agents/local-search-config.yaml`. With
 walk-up added, that file would become an ancestor config for anything created
 under the install directory, silently forcing an empty scope. It is no longer
 packaged — delete it from an existing install:
 
 ```bash
-rm ~/.local/share/local-search/web/.agent/local-search-config.yaml
+rm ~/.local/share/local-search/web/.agents/local-search-config.yaml
 ```
 
 ## See also

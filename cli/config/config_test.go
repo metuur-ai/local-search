@@ -304,12 +304,12 @@ func TestSave_SpliceCases(t *testing.T) {
 
 func TestSave_IsAtomicAndCreatesDirs(t *testing.T) {
 	dir := t.TempDir()
-	path := ProjectPath(dir) // <dir>/.agent/local-search-config.yaml
+	path := ProjectPath(dir) // <dir>/.agents/local-search-config.yaml
 	if err := SetRepositories(path, []string{"a"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(path); err != nil {
-		t.Fatalf(".agent/ not created: %v", err)
+		t.Fatalf(".agents/ not created: %v", err)
 	}
 	// No temp files left behind.
 	entries, _ := os.ReadDir(filepath.Dir(path))
@@ -378,7 +378,7 @@ func TestFindProject_NearestWins(t *testing.T) {
 	}
 }
 
-// P0-5: a stray ~/.agent/local-search-config.yaml must not capture every
+// P0-5: a stray ~/.agents/local-search-config.yaml must not capture every
 // project on the machine.
 func TestFindProject_StopsAtHome(t *testing.T) {
 	home := t.TempDir()

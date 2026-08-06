@@ -27,7 +27,7 @@ import (
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const Version = "0.4.4"
+const Version = "0.4.5"
 
 var (
 	appDir    = filepath.Join(homeDir(), ".local-search")
@@ -101,7 +101,7 @@ func main() {
 	case "reset":
 		cmdReset()
 	case "init", "setup":
-		// Manage the per-project search-scope file (.agent/local-search-config.yaml).
+		// Manage the per-project search-scope file (.agents/local-search-config.yaml).
 		// `setup` is an exact alias.
 		cmdInit(args)
 	case "config":
@@ -1945,7 +1945,7 @@ func extractScopeFlag(args []string) (string, []string) {
 // resolved scope, opening the DB along the way.
 //
 // Auto-init policy: if --scope was not passed AND there is no
-// .agent/local-search-config.yaml in CWD (nor in any parent dir up to a git
+// .agents/local-search-config.yaml in CWD (nor in any parent dir up to a git
 // root), create one in CWD seeded from CWD walk-up:
 //
 //   - If a registered repo encloses CWD, write `repositories: [that-repo]`.
@@ -2230,7 +2230,7 @@ func applyIncrementalUpdate(db *sql.DB, repo repoEntry) (changed bool, err error
 	return n > 0, nil
 }
 
-// autoInitLocalConfig writes .agent/local-search-config.yaml in cwd. Seeding
+// autoInitLocalConfig writes .agents/local-search-config.yaml in cwd. Seeding
 // precedence:
 //
 //  1. autoSeed (e.g. a "graph:foo" entry just produced by autoBootstrapFromCWD)
@@ -2725,11 +2725,11 @@ Usage:
   local-search code callees <qualified> [--scope ...] Direct callees
 
   local-search scope show                             Print resolved scope and where it came from
-  local-search scope set repo1,repo2                  Write .agent/local-search-config.yaml in CWD
+  local-search scope set repo1,repo2                  Write .agents/local-search-config.yaml in CWD
   local-search scope clear [--delete]                 Empty the repositories list (--delete removes the file)
   local-search scope init                             Auto-detect nearest enclosing repo as scope
 
-  local-search init | setup                           Show/create the project scope file (.agent/local-search-config.yaml)
+  local-search init | setup                           Show/create the project scope file (.agents/local-search-config.yaml)
   local-search init --add a,b | --remove a | --set a,b   Edit the project scope; --json prints machine state
 
   local-search scan                       Scan all repos
@@ -2805,7 +2805,7 @@ Supported file types:
 File locations:
   Repo list:      ~/.local-search/repos
   Database:       ~/.local-search/specs.db
-  Project config: <project>/.agent/local-search-config.yaml   (found by walking up)
+  Project config: <project>/.agents/local-search-config.yaml   (found by walking up)
   Global config:  ~/.local-search-config.yaml
 `)
 }

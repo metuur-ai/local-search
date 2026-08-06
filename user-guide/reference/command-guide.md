@@ -21,7 +21,7 @@ Four things exist, and almost every command touches exactly one of them:
 |---|---|---|---|
 | **Repo registry** — folders you told it about | `~/.local-search/repos` | `repo add` | `repo remove`, `reset` |
 | **Index** — the searchable SQLite cache | `~/.local-search/specs.db` | `scan` | `reset` (safe to delete anytime) |
-| **Project config** — which repos `find`/`code` AND the Claude skill consider | `<project>/.agent/local-search-config.yaml` (walks up) | `scope set` or `init` | `scope clear` |
+| **Project config** — which repos `find`/`code` AND the Claude skill consider | `<project>/.agents/local-search-config.yaml` (walks up) | `scope set` or `init` | `scope clear` |
 | **Global config** — the fallback when no project config is found | `~/.local-search-config.yaml` | you, by hand | delete the file |
 
 The index is disposable. Nothing you can do to `specs.db` loses data, because
@@ -41,7 +41,7 @@ takes `--repos`, defaulting to `all`. Only `find` and `code` resolve scope.
 So this is consistent, not a bug:
 
 ```bash
-$ local-search scope set payments   # .agent/local-search-config.yaml → payments
+$ local-search scope set payments   # .agents/local-search-config.yaml → payments
 $ local-search find "refund"        # searches payments only
 $ local-search search "refund"      # searches ALL registered repos
 ```
@@ -49,7 +49,7 @@ $ local-search search "refund"      # searches ALL registered repos
 Engine scope resolution, highest precedence first:
 
 1. `--scope` flag
-2. `<project>/.agent/local-search-config.yaml`, walking up to root
+2. `<project>/.agents/local-search-config.yaml`, walking up to root
 3. `~/.local-search-config.yaml`
 4. CWD walk-up — the deepest registered repo whose path encloses the CWD
 5. **Hard error.** Fanning out across every repo by accident is refused by
@@ -201,9 +201,9 @@ nothing.
 
 ### `init` / `setup`
 
-**What.** Shows or edits `.agent/local-search-config.yaml` — the project scope
+**What.** Shows or edits `.agents/local-search-config.yaml` — the project scope
 file read by the bundled Claude Code skill. This is a *different* file from
-`.agent/local-search-config.yaml` (which `scope` manages); see
+`.agents/local-search-config.yaml` (which `scope` manages); see
 [two-config-files](../explanation/two-config-files.md) for who reads what.
 
 **How.**
@@ -218,7 +218,7 @@ $ local-search init --json           # machine-readable state
 
 ```json
 {
-  "path": "/abs/path/.agent/local-search-config.yaml",
+  "path": "/abs/path/.agents/local-search-config.yaml",
   "exists": true,
   "empty": true,
   "repositories": [],
@@ -332,7 +332,7 @@ treats all three as peers and weights them per the resolved scope.
 $ local-search find "refund"
 ─────────────────────────────────────────────────────────────
 Searched repos: payments, billing
-Scope source:   /Users/you/work/.agent/local-search-config.yaml
+Scope source:   /Users/you/work/.agents/local-search-config.yaml
 Results:        7
 ─────────────────────────────────────────────────────────────
 
@@ -485,7 +485,7 @@ matters — for lexical similarity you want `--semantic` search or `graph search
 ## Narrowing what gets searched
 
 Scope controls which repos a bare `find`/`code` call considers when you don't
-pass `--scope`. It's stored in `.agent/local-search-config.yaml`, resolved by walking up from
+pass `--scope`. It's stored in `.agents/local-search-config.yaml`, resolved by walking up from
 the current directory. See [configuration.md](configuration.md) for resolution
 order.
 
@@ -499,7 +499,7 @@ weights and limits.
 ```bash
 $ local-search scope show
 Scope:   payments, billing
-Source:  /Users/you/work/.agent/local-search-config.yaml
+Source:  /Users/you/work/.agents/local-search-config.yaml
 Weights: specs=1.00 graphify=0.70 codegraph=0.80
 Limits:  specs=20 graphify=10 codegraph=10 blast_depth=2 blast_cap=50
 ```
@@ -523,7 +523,7 @@ and comments survive.
 
 ```bash
 $ local-search scope set payments,billing
-Wrote /Users/you/work/.agent/local-search-config.yaml with repositories = [payments billing]
+Wrote /Users/you/work/.agents/local-search-config.yaml with repositories = [payments billing]
 ```
 
 **Why.** Committing this file is the point. It makes "which repos matter here"
@@ -555,7 +555,7 @@ something arbitrary.
 
 ```bash
 $ local-search scope clear
-Cleared repositories in /Users/you/work/.agent/local-search-config.yaml (weights and limits kept).
+Cleared repositories in /Users/you/work/.agents/local-search-config.yaml (weights and limits kept).
 Use --delete to remove the file entirely.
 ```
 
@@ -912,19 +912,19 @@ healthy, that file has the reason.
 
 ```bash
 $ local-search config show
-Source:  /Users/you/work/.agent/local-search-config.yaml
+Source:  /Users/you/work/.agents/local-search-config.yaml
 Repos:   [payments billing]
 Weights: specs=1.00 graphify=0.70 codegraph=0.80
 Limits:  specs=20 graphify=10 codegraph=10 blast_depth=2 blast_cap=50
 
 $ local-search config validate
-/Users/you/work/.agent/local-search-config.yaml:4:1: unknown key "repositorys"
+/Users/you/work/.agents/local-search-config.yaml:4:1: unknown key "repositorys"
    4 | repositorys:
      | ^
    did you mean "repositories"?
 
 $ local-search config migrate --dry-run
-[dry-run] migrated /Users/you/work/.local-search.toml → /Users/you/work/.agent/local-search-config.yaml
+[dry-run] migrated /Users/you/work/.local-search.toml → /Users/you/work/.agents/local-search-config.yaml
   repositories added: payments
   carried over: weights.specs, limits.blast_depth
 ```
