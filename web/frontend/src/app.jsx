@@ -15,9 +15,10 @@ import { GraphView } from './components/GraphView.jsx';
 import { graphFromSources } from './components/graphElements.js';
 import { loadHistory, saveRun, clearHistory } from './history.js';
 import { loadCachedRepos, saveCachedRepos } from './repoCache.js';
+import pkg from '../package.json';
 
-// Shown in the site footer. Bump alongside the project version.
-const APP_VERSION = '0.1.0';
+// Shown in the site footer — read straight from package.json so it never drifts.
+const APP_VERSION = pkg.version;
 
 // How many tag chips the ribbon shows before collapsing behind "+N more".
 const TAG_FACET_LIMIT = 24;
