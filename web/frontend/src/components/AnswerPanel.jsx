@@ -124,6 +124,54 @@ function TurnTools({ markdown = '', version }) {
   );
 }
 
+function fmtDuration(ms) {
+  if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  const m = Math.floor(s / 60);
+  return `${m}m ${Math.round(s - m * 60)}s`;
+}
+
+function fmtTokens(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) return null;
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`;
+  return `${(n / 1_000_000).toFixed(1)}M`;
+}
+
+// Run stats for one answer: which model produced it, how long it took, tokens spent.
+function TurnMeta({ meta }) {
+  if (!meta) return null;
+  const duration = fmtDuration(meta.durationMs);
+  const tokens = fmtTokens(meta.totalTokens);
+  const items = [];
+  if (meta.model) items.push(['fa-microchip', meta.model, 'Model used for this answer']);
+  if (duration) items.push(['fa-clock', duration, 'Wall time for this answer']);
+  if (tokens) {
+    const detail = [
+      fmtTokens(meta.inputTokens) && `in ${fmtTokens(meta.inputTokens)}`,
+      fmtTokens(meta.outputTokens) && `out ${fmtTokens(meta.outputTokens)}`,
+      fmtTokens(meta.cacheReadTokens) && `cache read ${fmtTokens(meta.cacheReadTokens)}`,
+      fmtTokens(meta.cacheWriteTokens) && `cache write ${fmtTokens(meta.cacheWriteTokens)}`,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    items.push(['fa-coins', `${tokens} tokens`, detail || 'Tokens used for this answer']);
+  }
+  if (items.length === 0) return null;
+
+  return (
+    <div class="answer-turn-meta" data-testid="answer-turn-meta">
+      {items.map(([icon, label, title]) => (
+        <span class="answer-turn-meta-item" title={title} key={label}>
+          <i class={`fa-solid ${icon}`} /> {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // The rendered answer content — the whole transcript when `turns` is present,
 // otherwise the single `markdown`. Owns a ref so mermaid blocks inside it get
 // turned into diagrams (each mount, e.g. inline vs. the expand modal, renders
@@ -167,6 +215,7 @@ function AnswerContent({ markdown = '', turns = [] }) {
                   class="answer-body"
                   dangerouslySetInnerHTML={{ __html: marked(turn.markdown || '') }}
                 />
+                <TurnMeta meta={turn.meta} />
               </div>
             )
           )}

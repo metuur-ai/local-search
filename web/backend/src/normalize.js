@@ -15,6 +15,9 @@ import { deriveEvents } from './toolParse.js';
  */
 export function createNormalizer() {
   let sessionId = null;
+  // Last model seen (system/init, or the assistant messages themselves), reported
+  // back with the answer so each result shows which model produced it.
+  let model = null;
   // tool_use_id -> command string, so tool_result can be classified/parsed.
   const pendingTools = new Map();
 
@@ -40,12 +43,14 @@ export function createNormalizer() {
   function handleSystem(obj) {
     if (obj.subtype && obj.subtype !== 'init') return [];
     if (obj.session_id) sessionId = obj.session_id;
+    if (obj.model) model = obj.model;
     const data = { phase: 'started', sessionId };
     if (obj.model) data.model = obj.model;
     return [{ type: 'status', data }];
   }
 
   function handleAssistant(obj) {
+    if (obj.message?.model) model = obj.message.model;
     const blocks = obj.message?.content ?? [];
     const events = [];
     for (const block of blocks) {
@@ -95,9 +100,30 @@ export function createNormalizer() {
     }
 
     return [
-      { type: 'answer', data: { markdown: answer } },
+      { type: 'answer', data: { markdown: answer, meta: resultMeta(obj) } },
       { type: 'done', data: { ok: true } },
     ];
+  }
+
+  /** Per-result run stats (model / wall time / tokens) for the UI to show under each answer. */
+  function resultMeta(obj) {
+    const usage = obj.usage ?? {};
+    const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+    const inputTokens = num(usage.input_tokens);
+    const outputTokens = num(usage.output_tokens);
+    const cacheReadTokens = num(usage.cache_read_input_tokens);
+    const cacheWriteTokens = num(usage.cache_creation_input_tokens);
+    const meta = {
+      model,
+      durationMs: typeof obj.duration_ms === 'number' ? obj.duration_ms : null,
+      inputTokens,
+      outputTokens,
+      cacheReadTokens,
+      cacheWriteTokens,
+      totalTokens: inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens,
+      costUsd: typeof obj.total_cost_usd === 'number' ? obj.total_cost_usd : null,
+    };
+    return meta;
   }
 
   return {

@@ -15,6 +15,7 @@ local-search-*        # cross-compiled binaries (…-darwin-arm64, …-linux-amd
 # ── Node / web ────────────────────────────────────────────
 # NOTE: package-lock.json IS committed — build-bundle.sh runs `npm ci`.
 node_modules/
+.nm-backup/
 web/frontend/dist/
 web/logs/
 npm-debug.log*

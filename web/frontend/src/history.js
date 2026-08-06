@@ -29,7 +29,7 @@ export function loadHistory() {
 }
 
 // saveRun(run) → prepend a run, cap at MAX, persist, and return the new list.
-// `run` is a snapshot: { id, ts, query, repos, answerMarkdown, sources,
+// `run` is a snapshot: { id, ts, query, repos, answerMarkdown, turns, sources,
 // provenance, graph }. Runs with the same id replace the earlier entry so a
 // resumed turn updates in place rather than duplicating.
 export function saveRun(run) {

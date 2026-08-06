@@ -272,7 +272,9 @@ export function App() {
         // transcript to the last MAX_ANSWER_VERSIONS answers (older roll off).
         versionRef.current += 1;
         const version = versionRef.current;
-        setTurns((prev) => capTurns([...prev, { role: 'assistant', markdown: md, version }]));
+        setTurns((prev) =>
+          capTurns([...prev, { role: 'assistant', markdown: md, version, meta: d.meta || null }])
+        );
         setRunning(false);
         setDone(true);
         setInspectorTab('ai');
@@ -617,12 +619,15 @@ export function App() {
         query: q,
         repos: selected,
         answerMarkdown,
+        // The whole transcript (question + every follow-up exchange), not just
+        // the last answer, so a restored run re-opens the full conversation.
+        turns,
         sources,
         provenance,
         graph,
       })
     );
-  }, [done, sessionId, cancelled, errorMsg, answerMarkdown, q, selected, sources, provenance, graph]);
+  }, [done, sessionId, cancelled, errorMsg, answerMarkdown, turns, q, selected, sources, provenance, graph]);
 
   // Re-open a saved run into all panes without touching the backend.
   const restoreRun = useCallback(
@@ -636,13 +641,18 @@ export function App() {
       setQ(run.query || '');
       setSelected(Array.isArray(run.repos) ? run.repos : []);
       setAnswerMarkdown(run.answerMarkdown || '');
-      // Restored history is view-only: seed the transcript from the saved answer
-      // but null the live session so follow-up (which resumes a live session) is
+      // Restored history is view-only: replay the saved transcript (falling back
+      // to a single turn for runs saved before transcripts were persisted) but
+      // null the live session so follow-up (which resumes a live session) is
       // disabled until a fresh query runs.
-      setTurns(
-        run.answerMarkdown ? [{ role: 'assistant', markdown: run.answerMarkdown, version: 1 }] : []
-      );
-      versionRef.current = run.answerMarkdown ? 1 : 0;
+      const savedTurns =
+        Array.isArray(run.turns) && run.turns.length > 0
+          ? run.turns
+          : run.answerMarkdown
+            ? [{ role: 'assistant', markdown: run.answerMarkdown, version: 1 }]
+            : [];
+      setTurns(savedTurns);
+      versionRef.current = assistantCount(savedTurns);
       rolloverWarnedRef.current = false;
       setRolloverText(null);
       setSessionId(null);
@@ -781,7 +791,7 @@ export function App() {
                       class={`fa-solid fa-arrows-rotate${reposLoading ? ' fa-spin' : ''}`}
                       aria-hidden="true"
                     />
-                    {reposLoading ? 'Refreshing…' : 'Refresh'}
+                    {reposLoading ? 'Refreshing…' : 'Refresh Local Search Repos'}
                   </button>
                 </span>
               </div>

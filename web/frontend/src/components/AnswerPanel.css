@@ -283,6 +283,24 @@
   border-radius: var(--radius-pill);
 }
 
+/* Run stats (model / time / tokens) under each assistant turn. */
+.answer-turn-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.72rem;
+  color: var(--text-mut);
+}
+.answer-turn-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono, monospace);
+}
+
 /* Assistant turns after the first get a subtle divider so turns read apart. */
 .answer-turn-assistant + .answer-turn-user {
   padding-top: 0.9rem;
