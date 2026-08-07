@@ -142,6 +142,10 @@ export function App() {
   const [model, setModel] = useState(null);
   const [activityEvents, setActivityEvents] = useState([]);
   const [answerMarkdown, setAnswerMarkdown] = useState('');
+  // Run stats (model / wall time / tokens) of the latest answer, kept next to
+  // `answerMarkdown` so the stats show even when the transcript isn't threaded
+  // (e.g. a run re-opened from history).
+  const [answerMeta, setAnswerMeta] = useState(null);
   // Threaded transcript of the AI conversation: the original answer plus each
   // follow-up the user sends and Claude's grounded reply. `answerMarkdown`
   // holds the latest answer (for copy/save); `turns` holds the whole thread.
@@ -276,6 +280,7 @@ export function App() {
       answer: (d) => {
         const md = d.markdown || '';
         setAnswerMarkdown(md);
+        setAnswerMeta(d.meta || null);
         // Append this answer as a versioned assistant turn, capping the
         // transcript to the last MAX_ANSWER_VERSIONS answers (older roll off).
         versionRef.current += 1;
@@ -313,6 +318,7 @@ export function App() {
   const resetRunState = useCallback(() => {
     setActivityEvents([]);
     setAnswerMarkdown('');
+    setAnswerMeta(null);
     setTurns([]);
     versionRef.current = 0;
     rolloverWarnedRef.current = false;
@@ -627,6 +633,9 @@ export function App() {
         query: q,
         repos: selected,
         answerMarkdown,
+        // Run stats of the last answer, so a restored run still shows model /
+        // time / tokens even if its transcript predates per-turn stats.
+        meta: answerMeta,
         // The whole transcript (question + every follow-up exchange), not just
         // the last answer, so a restored run re-opens the full conversation.
         turns,
@@ -635,7 +644,7 @@ export function App() {
         graph,
       })
     );
-  }, [done, sessionId, cancelled, errorMsg, answerMarkdown, turns, q, selected, sources, provenance, graph]);
+  }, [done, sessionId, cancelled, errorMsg, answerMarkdown, answerMeta, turns, q, selected, sources, provenance, graph]);
 
   // Re-open a saved run into all panes without touching the backend.
   const restoreRun = useCallback(
@@ -649,6 +658,7 @@ export function App() {
       setQ(run.query || '');
       setSelected(Array.isArray(run.repos) ? run.repos : []);
       setAnswerMarkdown(run.answerMarkdown || '');
+      setAnswerMeta(run.meta || null);
       // Restored history is view-only: replay the saved transcript (falling back
       // to a single turn for runs saved before transcripts were persisted) but
       // null the live session so follow-up (which resumes a live session) is
@@ -657,7 +667,7 @@ export function App() {
         Array.isArray(run.turns) && run.turns.length > 0
           ? run.turns
           : run.answerMarkdown
-            ? [{ role: 'assistant', markdown: run.answerMarkdown, version: 1 }]
+            ? [{ role: 'assistant', markdown: run.answerMarkdown, version: 1, meta: run.meta || null }]
             : [];
       setTurns(savedTurns);
       versionRef.current = assistantCount(savedTurns);
@@ -1218,6 +1228,7 @@ export function App() {
             {ranMode !== 'graph' && (
               <AnswerPanel
                 markdown={answerMarkdown}
+                meta={answerMeta}
                 turns={turns}
                 running={running}
                 done={done}

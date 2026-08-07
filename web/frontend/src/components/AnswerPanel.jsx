@@ -180,7 +180,7 @@ function TurnMeta({ meta }) {
 // otherwise the single `markdown`. Owns a ref so mermaid blocks inside it get
 // turned into diagrams (each mount, e.g. inline vs. the expand modal, renders
 // its own copy). Returns null when there's nothing to show.
-function AnswerContent({ markdown = '', turns = [] }) {
+function AnswerContent({ markdown = '', turns = [], meta = null }) {
   const ref = useRef(null);
   const hasThread = Array.isArray(turns) && turns.length > 0;
   const hasAnswer = markdown.trim().length > 0;
@@ -230,6 +230,7 @@ function AnswerContent({ markdown = '', turns = [] }) {
             <TurnTools markdown={markdown} />
           </div>
           <div class="answer-body" dangerouslySetInnerHTML={{ __html: marked(markdown) }} />
+          <TurnMeta meta={meta} />
         </>
       )}
     </div>
@@ -284,6 +285,7 @@ function FollowUpForm({ onFollowUp, canFollowUp }) {
 
 export function AnswerPanel({
   markdown = '',
+  meta = null,
   turns = [],
   running = false,
   done = false,
@@ -330,7 +332,7 @@ export function AnswerPanel({
         </div>
       )}
 
-      <AnswerContent markdown={markdown} turns={turns} />
+      <AnswerContent markdown={markdown} turns={turns} meta={meta} />
 
       {running && (
         <div class="answer-working" data-testid="answer-running">
@@ -388,7 +390,7 @@ export function AnswerPanel({
               </div>
             </header>
             <div class="answer-modal-body">
-              <AnswerContent markdown={markdown} turns={turns} />
+              <AnswerContent markdown={markdown} turns={turns} meta={meta} />
             </div>
             <FollowUpForm onFollowUp={onFollowUp} canFollowUp={canFollowUp} />
           </div>
