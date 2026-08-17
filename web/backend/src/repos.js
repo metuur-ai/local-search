@@ -97,10 +97,16 @@ export function mergeRepoRows(listStdout, initStdout) {
   }));
 }
 
-/** Default runRepos: shell `local-search json repos`, resolve its stdout string. */
+/**
+ * Default runRepos: shell `local-search --no-index-update json repos`, resolve
+ * its stdout string. `--no-index-update` keeps the repo picker read-only — it is
+ * polled by the UI and must not kick off an index scan.
+ */
 export function defaultRunRepos() {
   return new Promise((resolve, reject) => {
-    const child = spawn('local-search', ['json', 'repos'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn('local-search', ['--no-index-update', 'json', 'repos'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     let out = '';
     let err = '';
     child.stdout.on('data', (d) => (out += d));

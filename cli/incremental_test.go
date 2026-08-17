@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,6 +32,14 @@ func writeSpec(t *testing.T, path, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
+}
+
+// expireIndexCheck backdates the query-time probe stamp so the next
+// applyIncrementalUpdate actually shells out to git instead of short-circuiting
+// on indexCheckTTL.
+func expireIndexCheck(db *sql.DB, name string) {
+	localdb.SetMeta(db, "last_index_check_"+name, //nolint:errcheck
+		time.Now().Add(-2*indexCheckTTL).UTC().Format(time.RFC3339))
 }
 
 // TestApplyIncrementalUpdate_StampsLastIndexUpdateOnlyWhenChanged verifies the
@@ -82,6 +91,7 @@ func TestApplyIncrementalUpdate_StampsLastIndexUpdateOnlyWhenChanged(t *testing.
 	gitRun(t, repoDir, "add", ".")
 	gitRun(t, repoDir, "commit", "-m", "add b")
 
+	expireIndexCheck(db, repo.Name)
 	changed, err = applyIncrementalUpdate(db, repo)
 	if err != nil {
 		t.Fatalf("unexpected error on real update: %v", err)
@@ -98,6 +108,7 @@ func TestApplyIncrementalUpdate_StampsLastIndexUpdateOnlyWhenChanged(t *testing.
 	}
 
 	// 3. A subsequent no-op query must NOT re-index or bump the timestamp.
+	expireIndexCheck(db, repo.Name)
 	changed, err = applyIncrementalUpdate(db, repo)
 	if err != nil {
 		t.Fatalf("unexpected error on second no-op: %v", err)
@@ -145,6 +156,7 @@ func TestApplyIncrementalUpdate_ConvergesOnUntrackedFiles(t *testing.T) {
 	if !changed1 {
 		t.Fatalf("first update should index the untracked file")
 	}
+	expireIndexCheck(db, repo.Name)
 	changed2, err := applyIncrementalUpdate(db, repo)
 	if err != nil {
 		t.Fatalf("update2: %v", err)

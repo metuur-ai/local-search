@@ -27,13 +27,42 @@ import (
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const Version = "0.4.9"
+const Version = "0.4.10"
 
 var (
 	appDir    = filepath.Join(homeDir(), ".local-search")
 	reposFile = filepath.Join(appDir, "repos")
 	dbFile    = filepath.Join(appDir, "specs.db")
 )
+
+// skipIndexUpdate disables the query-time incremental index pass entirely
+// (no git probing, no IncrementalScan, no last_index_update_<name> stamp).
+// Set by the global --no-index-update flag, which is stripped from os.Args in
+// main() before command dispatch so every subcommand accepts it.
+//
+// Intended for callers that query in a tight loop and index out-of-band — the
+// embedded web UI spawns the binary once per keystroke-level search, and
+// re-probing every repo each time is pure overhead there.
+var skipIndexUpdate bool
+
+// indexCheckTTL suppresses repeated query-time git probes of the same repo.
+// Within this window a repo is assumed unchanged and skipped without shelling
+// out to git at all. Tracked per repo in meta as last_index_check_<name>.
+const indexCheckTTL = 10 * time.Second
+
+// stripGlobalFlags removes flags that are valid for every subcommand from the
+// raw argv, so per-command flag parsers never see them.
+func stripGlobalFlags(args []string) []string {
+	out := args[:0:0]
+	for _, a := range args {
+		if a == "--no-index-update" {
+			skipIndexUpdate = true
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
 
 func homeDir() string {
 	if h, err := os.UserHomeDir(); err == nil {
@@ -45,13 +74,16 @@ func homeDir() string {
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 func main() {
-	if len(os.Args) < 2 {
+	// Global flags are stripped before dispatch so per-command flag sets are
+	// unaffected; the command word itself (os.Args[1]) is never a global flag.
+	argv := stripGlobalFlags(os.Args[1:])
+	if len(argv) < 1 {
 		cmdHelp()
 		return
 	}
 
-	cmd := os.Args[1]
-	args := os.Args[2:]
+	cmd := argv[0]
+	args := argv[1:]
 
 	switch cmd {
 	case "repo", "repos":
@@ -1768,7 +1800,17 @@ func cmdJSON(args []string) {
 	sub := args[0]
 	rest := args[1:]
 
-	db := ensureDB()
+	// `find` and `context` hand off to resolveScope, which runs the
+	// incremental-update pass itself. Using ensureDB() here would run that
+	// same pass over every registered repo a second time on every single
+	// query — the main reason the embedded UI appeared to re-index
+	// everything before each search.
+	var db *sql.DB
+	if sub == "find" || sub == "context" {
+		db = openDBForResolve()
+	} else {
+		db = ensureDB()
+	}
 	defer db.Close()
 
 	switch sub {
@@ -2167,6 +2209,9 @@ func openDBForResolve() *sql.DB {
 // so a freshly-registered external graph doesn't accidentally trigger an
 // indexing pass.
 func runIncrementalUpdates(db *sql.DB, repos []localdb.RepoRow) {
+	if skipIndexUpdate {
+		return
+	}
 	knownNames := make(map[string]bool, len(repos))
 	for _, r := range repos {
 		knownNames[r.Name] = true
@@ -2207,6 +2252,15 @@ func applyIncrementalUpdate(db *sql.DB, repo repoEntry) (changed bool, err error
 	if !git.IsRepo(repo.Path) {
 		return false, nil
 	}
+	// Within indexCheckTTL of the last probe, assume the repo is unchanged and
+	// skip shelling out to git entirely.
+	checkKey := "last_index_check_" + repo.Name
+	if ts := localdb.GetMeta(db, checkKey); ts != "" {
+		if last, perr := time.Parse(time.RFC3339, ts); perr == nil && time.Since(last) < indexCheckTTL {
+			return false, nil
+		}
+	}
+	localdb.SetMeta(db, checkKey, time.Now().UTC().Format(time.RFC3339)) //nolint:errcheck
 	lastCommit := localdb.GetMeta(db, "git_commit_"+repo.Name)
 	changedFiles, err := git.ChangedFiles(repo.Path, lastCommit)
 	if err != nil || len(changedFiles) == 0 {

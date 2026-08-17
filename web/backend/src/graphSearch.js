@@ -14,14 +14,16 @@ import { tapChild } from './cliLog.js';
 
 /**
  * defaultSpawnSearch({ query, repo, session, spawn }) -> Promise<string stdout>.
- * Spawns `local-search json search <query> <repo>` with an argv array (no shell,
- * so the query needs no quoting/escaping) and resolves its stdout. Records the
- * live child on `session` so cancel/disconnect can killTree it. `spawn` is
- * injected for tests.
+ * Spawns `local-search --no-index-update json search <query> <repo>` with an
+ * argv array (no shell, so the query needs no quoting/escaping) and resolves its
+ * stdout. `--no-index-update` keeps the read path read-only: the UI fires a
+ * search per repo per question, and without it every one of those re-runs the
+ * incremental index scan. Records the live child on `session` so
+ * cancel/disconnect can killTree it. `spawn` is injected for tests.
  */
 export function defaultSpawnSearch({ query, repo, session, spawn = nodeSpawn, cliLog } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn('local-search', ['json', 'search', query, repo], {
+    const child = spawn('local-search', ['--no-index-update', 'json', 'search', query, repo], {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     if (session) session.child = child;
@@ -29,7 +31,7 @@ export function defaultSpawnSearch({ query, repo, session, spawn = nodeSpawn, cl
     // listeners; it does not disturb the accumulation/resolve logic below.
     const h = cliLog?.record({
       cli: 'local-search',
-      command: `local-search json search "${query}" ${repo}`,
+      command: `local-search --no-index-update json search "${query}" ${repo}`,
       sessionId: session?.id,
     });
     if (h) tapChild(h, child);
@@ -51,7 +53,7 @@ export function defaultSpawnSearch({ query, repo, session, spawn = nodeSpawn, cl
 // query so the repo stays the 4th positional token.
 function commandFor(query, repo) {
   const safe = String(query ?? '').replace(/"/g, '');
-  return `local-search json search "${safe}" ${repo}`;
+  return `local-search --no-index-update json search "${safe}" ${repo}`;
 }
 
 /**

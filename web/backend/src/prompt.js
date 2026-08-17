@@ -12,7 +12,7 @@ export function buildPrompt({ query, repos } = {}) {
   const repoList = Array.isArray(repos) ? repos : [];
   const scope = repoList.join(', ');
   const perRepo = repoList
-    .map((r) => `   local-search json search "<terms>" ${r}`)
+    .map((r) => `   local-search --no-index-update json search "<terms>" ${r}`)
     .join('\n');
 
   return [
@@ -25,10 +25,12 @@ export function buildPrompt({ query, repos } = {}) {
     'and do not rely on the current working directory or any config file.',
     '',
     'Commands (all emit JSON for machine parsing):',
-    '- Search one repo:   local-search json search "<terms>" <repo>',
-    '- Read a spec:       local-search json read <name> <repo>',
-    '- Related specs:     local-search json related <name>',
+    '- Search one repo:   local-search --no-index-update json search "<terms>" <repo>',
+    '- Read a spec:       local-search --no-index-update json read <name> <repo>',
+    '- Related specs:     local-search --no-index-update json related <name>',
     '',
+    'ALWAYS pass the global `--no-index-update` flag exactly as shown: it keeps the query',
+    'read-only so the CLI does not re-scan the repos on every command.',
     'Run each command EXACTLY as shown — bare, with NO shell pipes or redirection.',
     'Do NOT append `| head`, `| tail`, `| grep`, or `2>&1`: the output is JSON that the',
     'tool parses whole, so truncating it or mixing in stderr makes it unparseable (0 results).',
