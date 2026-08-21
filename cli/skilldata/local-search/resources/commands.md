@@ -44,9 +44,21 @@ local-search init --dir <path>        # operate on a project dir other than CWD
 - Only registered repos are accepted; `--add`/`--set` reject unknown names and list
   the valid ones. External graphs are added as `graph:<name>` entries.
 - Any invocation creates `.agents/local-search-config.yaml` if it does not exist.
-- To scope a search from the file (read the list with `local-search init --json`):
+List the default scope:
+
+```bash
+local-search scope show                # Scope / Source / Weights / Limits for CWD
+local-search scope set repoA,repoB     # write the repositories list
+local-search scope clear [--delete]    # empty the list (--delete removes the file)
+```
+
+- To scope a search from the file (read the list with `local-search scope show`,
+  or `local-search init --json` for machine-readable output):
   - `local-search search "<query>" --repos repoA,repoB`
   - `local-search find "<query>" --scope repoA,repoB` (also `code`)
+- `--repos`/`--scope` override the config for that one call only; they write
+  nothing. `--repos all` searches everything. There is no exclude-repo flag —
+  list the repos you want to keep. To narrow by path, use `--exclude-location`.
 
 File shape:
 

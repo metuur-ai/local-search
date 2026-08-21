@@ -67,6 +67,49 @@ so results stay inside the project's boundary:
    `local-search config validate`. Do **not** try to repair the file by
    overwriting it.
 
+### Listing the default scope (`local-search scope show`)
+
+`local-search scope show` prints the scope in effect for the current directory:
+
+```
+Scope:   platform, docs
+Source:  /path/to/project/.agents/local-search-config.yaml
+Weights: specs=1.00 graphify=0.70 codegraph=0.80
+Limits:  specs=20 graphify=10 codegraph=10 blast_depth=2 blast_cap=50
+```
+
+An empty `Scope:` line means no repositories are configured. The two command
+families then behave differently: `search` falls back to `--repos all`, while
+`find`/`code` refuse to run and tell the user to add repos. `Source:` names the
+file the list came from. Use this when the
+user asks "what does this project search?"; use `local-search init --json` when
+you need the list as data (it also returns `available`, the repos not yet added).
+
+### Scoping a single search from a prompt
+
+The config list is the *default* scope. A user can narrow one search by naming
+repos in their prompt — translate the phrasing into flags instead of editing the
+config file:
+
+| User says | Run |
+| --- | --- |
+| "search only in platform and docs" | `local-search search "<q>" --repos platform,docs` |
+| "just the platform repo" | `local-search find "<q>" --scope platform` |
+| "search all repos" | `local-search search "<q>" --repos all` |
+| "skip the docs repo" | list the repos to keep — there is no exclude-repo flag |
+
+Notes:
+- The flag name differs per command: `search` takes `--repos`, `find`/`code` take
+  `--scope`. Both are comma-separated.
+- These flags apply to that one call only and never write to
+  `.agents/local-search-config.yaml`. To change the default permanently, use
+  `local-search init --add/--remove/--set` (below).
+- Narrowing by *path* rather than repo is `--exclude-location <pattern>`.
+
+Surface the current scope and this override syntax **only** when the user asks
+about scope, or when the scope is empty or ambiguous — don't narrate it on every
+search.
+
 ### Configuring scope interactively (`local-search init` / `setup`)
 
 `init` and `setup` are identical. **You (the skill) run the conversation** — the CLI
@@ -107,6 +150,9 @@ via `--repos`:
    only with the user's ok — run one-off unscoped searches with `--repos all`.
 
 The `search` examples below omit `--repos <scope>` for brevity — always add it.
+
+If the user named specific repos in their prompt, those win over the config list
+for that search — see "Scoping a single search from a prompt" above.
 
 ### Step 1: Extract search terms
 

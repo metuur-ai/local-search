@@ -24,7 +24,7 @@ const (
 	FileName = "local-search-config.yaml"
 
 	// AgentDir is the per-project directory holding it: <project>/.agents/.
-	AgentDir = ".agent"
+	AgentDir = ".agents"
 
 	// GlobalRel is the global config relative to $HOME. Note it sits BESIDE
 	// the ~/.local-search/ app dir (which holds specs.db and the repo

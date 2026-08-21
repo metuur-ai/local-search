@@ -26,18 +26,9 @@ export function canSubmit(selectedNames) {
 const hasGraphOf = (r) => r?.has_graph ?? (r?.graph_node_count || 0) > 0;
 const specCountOf = (r) => r?.spec_count || 0;
 
-// List order: selected first (easy to unpick), then graph-backed, then
-// spec-rich, then alphabetical — surfacing the highest-signal repos without
-// scrolling.
-function compareRepos(a, b, selectedSet) {
-  const sa = selectedSet.has(a.name);
-  const sb = selectedSet.has(b.name);
-  if (sa !== sb) return sa ? -1 : 1;
-  const ga = hasGraphOf(a);
-  const gb = hasGraphOf(b);
-  if (ga !== gb) return ga ? -1 : 1;
-  const bySpec = specCountOf(b) - specCountOf(a);
-  if (bySpec !== 0) return bySpec;
+// List order: always alphabetical by name (A–Z), so a repo sits in the same
+// place regardless of selection or signal.
+function compareRepos(a, b) {
   return String(a.name).localeCompare(String(b.name));
 }
 
@@ -101,7 +92,7 @@ export function RepoPicker({
         String(r.name).toLowerCase().includes(q) ||
         String(r.path || '').toLowerCase().includes(q)
     )
-    .sort((a, b) => compareRepos(a, b, selectedSet));
+    .sort(compareRepos);
 
   // Matches not yet selected — the target of the filter-aware "select matching"
   // action (which replaces a blind, footgun "select all").
@@ -147,7 +138,9 @@ export function RepoPicker({
 
       {selected.length > 0 && (
         <div class="repo-picker-tokens" data-testid="repo-tokens">
-          {selected.map((name) => (
+          {[...selected]
+            .sort((a, b) => String(a).localeCompare(String(b)))
+            .map((name) => (
             <button
               type="button"
               class="repo-token"

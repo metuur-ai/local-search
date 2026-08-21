@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/metuur-ai/local-search/main/cli/config/schema/local-search-config.schema.json
+# LocalSearch config. Managed by `local-search init` / `local-search scope set`; safe to hand-edit.
+# Names must match `local-search repo list`; "graph:" entries are external graphs.
+# Validate with `local-search config validate`.
+
+repositories: []

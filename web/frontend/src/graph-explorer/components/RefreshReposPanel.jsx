@@ -114,7 +114,11 @@ export function RefreshReposPanel({ onRebuilt }) {
             ) : rows.length === 0 ? (
               <span style="color:var(--ink-faint);">No repos found. Rebuild will use all repos.</span>
             ) : (
-              rows.map((row) => {
+              [...rows]
+                .sort((a, b) =>
+                  String(a.name ?? a.repo).localeCompare(String(b.name ?? b.repo))
+                )
+                .map((row) => {
                 const name = row.name ?? row.repo;
                 const count = row.spec_count != null ? row.spec_count : 0;
                 return (

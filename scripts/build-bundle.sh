@@ -111,7 +111,7 @@ mkdir -p "$STAGE/web"
 # `local-search init --json` from its own cwd, which used to create a config
 # there. Shipping one would make it a walk-up ancestor for every project
 # created under the install directory, silently forcing an empty scope.
-( cd "$ROOT/web" && tar --exclude=node_modules --exclude=logs --exclude=data --exclude=.devlocal --exclude=.agent -cf - . ) \
+( cd "$ROOT/web" && tar --exclude=node_modules --exclude=logs --exclude=data --exclude=.devlocal --exclude=.agents -cf - . ) \
   | ( tar -xf - -C "$STAGE/web" )
 
 cp "$ROOT/install.sh" "$STAGE/install.sh"
