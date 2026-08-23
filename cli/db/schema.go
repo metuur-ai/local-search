@@ -212,8 +212,18 @@ func CreateSchema(db *sql.DB) error {
 				return err
 			}
 		}
-	case version < schemaVersion:
-		// Stale cache from an older schema version — rebuild.
+	case version != schemaVersion:
+		// Any version mismatch rebuilds, in either direction.
+		//
+		// Older (version < schemaVersion) is the ordinary upgrade path. Newer
+		// (version > schemaVersion) happens when an older binary opens a DB
+		// written by a newer one; without this, that cache would be left with
+		// its newer table shapes intact and then stamped down to schemaVersion
+		// below, leaving tables that claim a version they don't match.
+		//
+		// Rebuilding unconditionally is safe because the DB is a derived cache
+		// (see schemaVersion above) — every dropped table is regenerated from
+		// the repos config by a rescan, which is the documented recovery path.
 		if err := dropDerivedTables(db); err != nil {
 			return err
 		}

@@ -1029,6 +1029,28 @@ func scanSurgical(targets []repoEntry) {
 	fmt.Printf("\nDone. %d specs indexed. Run 'local-search search <keyword>' to find specs.\n", total)
 }
 
+// indexWasReset reports whether the repo registry in the DB is empty while the
+// config file still lists repos.
+//
+// `repos` is one of the derivedTables (db/schema.go), so a schemaVersion bump
+// drops it along with the rest of the cache. That disagreement between file and
+// table is the signal that the whole index needs rebuilding — and it is what
+// makes the catch-up loops below take the FullScan branch instead of consulting
+// the now-stale git_commit_<name> in meta, which would otherwise report "no new
+// commits" and no-op against empty tables.
+//
+// Adding one repo to an existing set leaves the other rows in place, so this
+// stays false there and the per-repo "new repo" path still applies.
+func indexWasReset(knownInDB, listedInConfig int) bool {
+	return knownInDB == 0 && listedInConfig > 0
+}
+
+// indexResetHint is the message shown on paths that cannot rebuild the index
+// themselves: query-only commands that open the DB via openDB rather than
+// ensureDB.
+const indexResetHint = "index is empty — it was reset by a schema upgrade.\n" +
+	"Run `local-search scan all` to rebuild it."
+
 // ensureDB opens the DB (creating it if needed) and reconciles three states:
 //
 //  1. DB file missing → cmdScan("all") builds it from scratch.
@@ -1056,13 +1078,24 @@ func ensureDB() *sql.DB {
 	}
 
 	repos := loadRepos()
+
+	// Report the upgrade case once and accurately, rather than emitting a
+	// misleading "new repo" line per repo (they are not new; the table was
+	// dropped underneath them).
+	reset := indexWasReset(len(known), len(repos))
+	if reset {
+		fmt.Fprintf(os.Stderr, "(index was reset by a schema upgrade — rebuilding %d repo(s)…)\n", len(repos))
+	}
+
 	for _, r := range repos {
 		// Catch up newly-added repos (file says yes, table says no) with a
 		// FullScan so the repos row + code_graph_* metadata get created. We
 		// fall through to IncrementalScan after — but IncrementalScan is a
 		// no-op when there's nothing to do, so the order is harmless.
 		if !knownNames[r.Name] {
-			fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
+			if !reset {
+				fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
+			}
 			if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r), r.IncludeExtensions); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: scan of %s failed: %v\n", r.Name, err)
 				continue
@@ -2209,18 +2242,34 @@ func openDBForResolve() *sql.DB {
 // so a freshly-registered external graph doesn't accidentally trigger an
 // indexing pass.
 func runIncrementalUpdates(db *sql.DB, repos []localdb.RepoRow) {
+	configured := loadRepos()
+
+	// The schema-reset case never reaches here: ensureDB runs first on every
+	// path that reaches this function and rebuilds unconditionally, so the
+	// repos table is already repopulated by now. Commands that open the DB
+	// directly (openDB, not ensureDB) are the ones that must diagnose a reset
+	// themselves — see graphcmd.go's indexResetHint check.
 	if skipIndexUpdate {
 		return
 	}
+
 	knownNames := make(map[string]bool, len(repos))
 	for _, r := range repos {
 		knownNames[r.Name] = true
 	}
-	for _, r := range loadRepos() {
+
+	reset := indexWasReset(len(repos), len(configured))
+	if reset {
+		fmt.Fprintf(os.Stderr, "(index was reset by a schema upgrade — rebuilding %d repo(s)…)\n", len(configured))
+	}
+
+	for _, r := range configured {
 		// New repos in the file (not yet in the table) get a FullScan first
 		// so their row appears with code_graph_* metadata.
 		if !knownNames[r.Name] {
-			fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
+			if !reset {
+				fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
+			}
 			if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r), r.IncludeExtensions); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: scan of %s failed: %v\n", r.Name, err)
 				continue

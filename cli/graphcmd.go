@@ -104,6 +104,15 @@ func cmdGraphExplain(args []string) {
 	db := openDB()
 	defer db.Close()
 
+	// R-4.5 again, for the case where the file exists but its contents were
+	// dropped by a schemaVersion bump. Without this the empty index is
+	// indistinguishable from a genuine miss, and the user is told the entity
+	// does not exist rather than that the index needs rebuilding.
+	if known, err := localdb.Repos(db); err == nil && indexWasReset(len(known), len(loadRepos())) {
+		fmt.Fprintln(os.Stderr, "Error: "+indexResetHint)
+		os.Exit(exitExplainNoDB)
+	}
+
 	node, outgoing, incoming, err := localdb.KGExplain(db, entity)
 	if err != nil {
 		die(err.Error())

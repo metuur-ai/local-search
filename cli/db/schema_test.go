@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -143,5 +144,93 @@ func TestCreateSchema_IsIdempotent(t *testing.T) {
 	}
 	if err := CreateSchema(db); err != nil {
 		t.Fatalf("CreateSchema #3: %v", err)
+	}
+}
+
+// TestCreateSchema_VersionMismatchEmptiesRepos pins the property the CLI's
+// stale-index recovery depends on: when user_version differs from
+// schemaVersion in EITHER direction, CreateSchema drops `repos` along with the
+// rest of the derived cache, leaving it empty.
+//
+// cli/main.go's indexWasReset reads exactly this signal — zero rows in `repos`
+// while the repos config file still lists some — to decide that a schema
+// change wiped the index and a rescan is required. If `repos` were ever
+// removed from derivedTables, that detection would silently stop firing and
+// queries would return zero results with no explanation.
+//
+// The "newer" case guards a specific past bug: a DB written by a newer binary
+// used to fall through the ladder unrebuilt and then get stamped down to
+// schemaVersion, leaving newer-shaped tables claiming an older version.
+func TestCreateSchema_VersionMismatchEmptiesRepos(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		version int
+	}{
+		{"older binary wrote the cache", schemaVersion - 1},
+		{"newer binary wrote the cache", schemaVersion + 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "specs.db")
+
+			// Phase 1: build a current-shape DB and register a repo in it.
+			first, err := Open(path)
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			if err := CreateSchema(first); err != nil {
+				t.Fatalf("CreateSchema: %v", err)
+			}
+			if _, err := first.Exec(
+				"INSERT INTO repos(name, path) VALUES(?, ?)", "demo", "/tmp/demo",
+			); err != nil {
+				t.Fatalf("seed repos row: %v", err)
+			}
+			var seeded int
+			if err := first.QueryRow("SELECT count(*) FROM repos").Scan(&seeded); err != nil {
+				t.Fatalf("count seeded repos: %v", err)
+			}
+			if seeded != 1 {
+				t.Fatalf("precondition: want 1 seeded repo, got %d", seeded)
+			}
+
+			// Stamp the version this case is about, then reopen.
+			if _, err := first.Exec(
+				"PRAGMA user_version = " + strconv.Itoa(tc.version),
+			); err != nil {
+				t.Fatalf("set user_version=%d: %v", tc.version, err)
+			}
+			first.Close()
+
+			// Phase 2: reopen with the current code.
+			db, err := Open(path)
+			if err != nil {
+				t.Fatalf("reopen: %v", err)
+			}
+			defer db.Close()
+			if err := CreateSchema(db); err != nil {
+				t.Fatalf("CreateSchema (rebuild): %v", err)
+			}
+
+			// Phase 3: repos must be present-but-empty. Both halves matter: a
+			// missing table would make indexWasReset error rather than report
+			// a reset.
+			var after int
+			if err := db.QueryRow("SELECT count(*) FROM repos").Scan(&after); err != nil {
+				t.Fatalf("repos table should exist after rebuild: %v", err)
+			}
+			if after != 0 {
+				t.Errorf("user_version=%d (schemaVersion=%d): repos should be empty, got %d rows",
+					tc.version, schemaVersion, after)
+			}
+
+			// The stamp must match the running binary, never a stale value.
+			var stamped int
+			if err := db.QueryRow("PRAGMA user_version").Scan(&stamped); err != nil {
+				t.Fatalf("read user_version: %v", err)
+			}
+			if stamped != schemaVersion {
+				t.Errorf("user_version after rebuild = %d, want %d", stamped, schemaVersion)
+			}
+		})
 	}
 }
