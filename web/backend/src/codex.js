@@ -1,9 +1,20 @@
+import os from 'node:os';
+import path from 'node:path';
 import { deriveEvents } from './toolParse.js';
 import { endsWithQuestion } from './normalize.js';
 
 export function buildCodexArgs({ model, resumeSessionId, provider } = {}) {
-  // Exec-level sandbox flags precede the resume subcommand.
-  const args = ['exec', '--sandbox', 'read-only', '--json', '--skip-git-repo-check'];
+  // SQLite needs journal/schema writes even with --no-index-update. Use the
+  // cache as the workspace so repositories stay outside the writable root.
+  // Exec-level flags must precede resume as well as initial-turn prompts.
+  const args = [
+    'exec', '--sandbox', 'workspace-write',
+    '--cd', path.join(os.homedir(), '.local-search'),
+    '-c', 'sandbox_workspace_write.writable_roots=[]',
+    '-c', 'sandbox_workspace_write.exclude_tmpdir_env_var=true',
+    '-c', 'sandbox_workspace_write.exclude_slash_tmp=true',
+    '--json', '--skip-git-repo-check',
+  ];
   if (model) args.push('--model', model);
   if (provider?.baseUrl) {
     args.push('-c', 'model_provider="local_search"');

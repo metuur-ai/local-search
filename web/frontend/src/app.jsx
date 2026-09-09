@@ -737,6 +737,11 @@ export function App() {
         </div>
 
         <div class="topbar-meta">
+          {searchMode === 'ai' && (
+            aiError ? <div class="ai-selection-error" role="alert">{aiError} <button type="button" onClick={() => setAiReload((n) => n + 1)}>Retry</button></div>
+              : aiProviders ? <AiSelection providers={aiProviders} value={ai} onChange={setAi} disabled={running} />
+                : <p role="status" class="facet-hint">Loading AI options…</p>
+          )}
           {hasActivity && (
             <button
               type="button"
@@ -947,12 +952,6 @@ export function App() {
                   : 'Full AI synthesis over retrieved sources (slower — spawns the model).'}
               </p>
             </div>
-
-            {searchMode === 'ai' && (
-              aiError ? <div class="ai-selection-error" role="alert">{aiError} <button type="button" onClick={() => setAiReload((n) => n + 1)}>Retry</button></div>
-                : aiProviders ? <AiSelection providers={aiProviders} value={ai} onChange={setAi} disabled={running} />
-                  : <p role="status" class="facet-hint">Loading AI options…</p>
-            )}
 
             {/* Actions + metrics */}
             <div class="console-actions">

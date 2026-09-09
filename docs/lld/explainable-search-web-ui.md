@@ -231,6 +231,13 @@ sessions. Codex `thread.*`/`item.*` events normalize into the existing SSE contr
 completed shell commands feed the existing retrieval parser. Claude normalization
 continues unchanged. Answer metadata carries CLI, provider, and requested model.
 
+Codex uses `~/.local-search` as its `workspace-write` working directory, with
+additional writable roots and temporary-directory write access cleared. SQLite
+needs to create journal files and initialize its schema even when queries pass
+`--no-index-update`; a read-only sandbox fails with “Cannot open database.”
+Repository selection remains explicit in the prompt, independent of this working
+directory. The repository source trees remain outside the writable workspace.
+
 Controls are disabled while running. Choices remain page-local; saved answers carry
 execution metadata but do not resume sessions on restore. Invalid selections return
 400; invalid provider configuration returns 503 for AI routes. Missing CLI errors

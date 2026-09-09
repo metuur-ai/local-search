@@ -10,13 +10,20 @@ const MODEL = /^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$/;
 const ID = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/;
 const ENV = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
+// The CLIs expose no "list models" command, so the built-in defaults ship a
+// suggestion list. These are hints only — any model ID stays typeable.
+const CLI_SUGGESTIONS = {
+  claude: ['opus', 'sonnet', 'haiku'],
+  codex: ['gpt-5.4-codex', 'gpt-5.4', 'gpt-5.4-codex-mini'],
+};
+
 export function createAiCatalog(config = {}) {
   if (!config || typeof config !== 'object' || Array.isArray(config) ||
       (config.providers !== undefined && !Array.isArray(config.providers))) {
     throw new Error('AI configuration must contain a providers array');
   }
   const providers = ['claude', 'codex'].map((cli) => ({
-    id: `${cli}-default`, cli, label: 'CLI default', models: [],
+    id: `${cli}-default`, cli, label: 'CLI default', models: [], suggestions: CLI_SUGGESTIONS[cli],
   }));
   for (const entry of config.providers ?? []) {
     if (!entry || typeof entry.id !== 'string' || !ID.test(entry.id) || !['claude', 'codex'].includes(entry.cli) ||
@@ -66,7 +73,11 @@ export function loadAiCatalog(env = process.env) {
 export const defaultCatalog = createAiCatalog();
 
 export function publicCatalog(catalog = defaultCatalog) {
-  return { providers: catalog.providers.map(({ id, cli, label, models }) => ({ id, cli, label, models })) };
+  return {
+    providers: catalog.providers.map(({ id, cli, label, models, suggestions }) => ({
+      id, cli, label, models, suggestions: suggestions ?? [],
+    })),
+  };
 }
 
 export function aiArgs({ execution, resumeSessionId }) {

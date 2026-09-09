@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
 import { createCodexNormalizer, buildCodexArgs } from '../src/codex.js';
 
 // @spec SEARCH-AI-001, SEARCH-AI-003
@@ -9,7 +11,11 @@ test('Codex initial and resumed turns select a model without bypassing the sandb
     assert.equal(args[0], 'exec');
     assert.ok(args.includes('--json'));
     assert.equal(args[args.indexOf('--model') + 1], 'chosen-model');
-    assert.ok(args.includes('read-only'));
+    assert.equal(args[args.indexOf('--sandbox') + 1], 'workspace-write');
+    assert.equal(args[args.indexOf('--cd') + 1], path.join(os.homedir(), '.local-search'));
+    assert.ok(args.includes('sandbox_workspace_write.writable_roots=[]'));
+    assert.ok(args.includes('sandbox_workspace_write.exclude_tmpdir_env_var=true'));
+    assert.ok(args.includes('sandbox_workspace_write.exclude_slash_tmp=true'));
     assert.ok(!args.some((v) => v.includes('dangerously')));
     assert.equal(args.includes('resume'), Boolean(resumeSessionId));
     if (resumeSessionId) assert.equal(args.at(-1), resumeSessionId);

@@ -1,34 +1,121 @@
+/* Compact AI-execution control group, styled to sit inside the topbar next to
+   the run-status / model pills. */
 .ai-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.18rem 0.6rem 0.18rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+
+.ai-selection-legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.ai-selection-icon {
+  font-size: 0.7rem;
+  color: var(--brand-600);
+  margin-right: 0.35rem;
+}
+
+.ai-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0 0.4rem;
+  border-left: 1px solid var(--line);
+}
+
+.ai-field:first-of-type {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.ai-field-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-400, var(--ink-500));
+  white-space: nowrap;
+}
+
+.ai-selection :is(select, input) {
+  min-width: 0;
+  max-width: 9rem;
+  padding: 0.1rem 0.15rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-900);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.ai-selection select {
+  appearance: none;
+  padding-right: 0.85rem;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 0.34rem top 55%, right 0.13rem top 55%;
+  background-size: 0.22rem 0.22rem, 0.22rem 0.22rem;
+  background-repeat: no-repeat;
+  color: var(--ink-600);
+}
+
+.ai-selection input {
+  width: 6.5rem;
+  cursor: text;
+}
+
+.ai-selection input::placeholder { color: var(--ink-400, var(--ink-500)); }
+
+.ai-selection :is(select, input):hover { color: var(--brand-600); }
+.ai-selection :is(select, input):focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+}
+
+.ai-selection:disabled { opacity: 0.55; }
+.ai-selection:disabled :is(select, input) { cursor: not-allowed; }
+
+.ai-selection-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--red-500, var(--red));
+  padding: 0.3rem 0.65rem;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-pill);
+  background: var(--red-50);
+}
+
+.ai-selection-error button {
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  background: none;
   border: 0;
   padding: 0;
-  margin: 0 0 16px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  min-width: 0;
+  cursor: pointer;
 }
-.ai-selection legend { margin-bottom: 12px; }
-.ai-selection label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  color: var(--ink-600);
-  font-size: 12px;
+
+@media (max-width: 900px) {
+  .ai-selection { flex-wrap: wrap; row-gap: 0.2rem; }
+  .ai-field { border-left: 0; padding-left: 0; }
 }
-.ai-selection label:last-of-type, .ai-selection .facet-hint { grid-column: 1 / -1; }
-.ai-selection select, .ai-selection input {
-  width: 100%;
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--ink-900);
-  font: inherit;
-  font-size: 13px;
-}
-.ai-selection :is(select, input):focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
-.ai-selection:disabled { opacity: 0.6; }
-.ai-selection-error { color: var(--red); font-size: 13px; }
-@media (max-width: 360px) { .ai-selection { grid-template-columns: 1fr; } }
+
