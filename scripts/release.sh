@@ -9,7 +9,7 @@
 #
 # Usage:
 #   scripts/release.sh                 # tag from cli/main.go, reuse existing tarball
-#   scripts/release.sh v0.3.0          # explicit tag (overrides cli/main.go)
+#   scripts/release.sh v2026-09-09.1   # explicit tag (overrides cli/main.go)
 #   scripts/release.sh --build         # rebuild the bundle first (build-bundle.sh)
 #   scripts/release.sh --draft         # publish as a draft to review before going live
 #

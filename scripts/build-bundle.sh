@@ -14,12 +14,14 @@
 # Upload the tarball + install.sh to your release host, then users run:
 #   curl -fsSL https://…/install.sh | bash
 #
+# Versions are date-based: YYYY-MM-DD.N, where N restarts at 1 each day and
+# increments for every further release cut on the same date.
+#
 # Optionally bump the product version across ALL components before building:
-#   scripts/build-bundle.sh                     # build only (no version change)
-#   scripts/build-bundle.sh --bump patch        # 0.3.0 -> 0.3.1, everywhere, then build
-#   scripts/build-bundle.sh --bump minor        # 0.3.0 -> 0.4.0
-#   scripts/build-bundle.sh --bump major        # 0.3.0 -> 1.0.0
-#   scripts/build-bundle.sh --set-version 1.2.3 # set an explicit version, then build
+#   scripts/build-bundle.sh                              # build only (no version change)
+#   scripts/build-bundle.sh --bump                       # 2026-09-08.2 -> 2026-09-09.1 (new day)
+#                                                        # 2026-09-09.1 -> 2026-09-09.2 (same day)
+#   scripts/build-bundle.sh --set-version 2026-09-09.3   # set an explicit version, then build
 #
 # The Go const in cli/main.go is the source of truth (release.sh and
 # `local-search --version` read it); the web package.json files are unified
@@ -41,23 +43,20 @@ GO_VERSION_FILE="$ROOT/cli/main.go"
 
 current_version() { sed -n 's/^const Version = "\(.*\)"/\1/p' "$GO_VERSION_FILE"; }
 
-# compute_bump <major|minor|patch> — echo the next version relative to current.
-compute_bump() {
-  local level="$1" cur; cur="$(current_version)"
-  [[ "$cur" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || die "current version '$cur' is not MAJOR.MINOR.PATCH"
-  local M="${BASH_REMATCH[1]}" m="${BASH_REMATCH[2]}" p="${BASH_REMATCH[3]}"
-  case "$level" in
-    major) echo "$((M + 1)).0.0" ;;
-    minor) echo "$M.$((m + 1)).0" ;;
-    patch) echo "$M.$m.$((p + 1))" ;;
-    *)     die "unknown bump level '$level' (use major|minor|patch)" ;;
-  esac
+VERSION_RE='^[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+$'
+
+# compute_next — echo today's version: same date as current means patch+1,
+# any other date (including an older MAJOR.MINOR.PATCH version) restarts at 1.
+compute_next() {
+  local today cur; today="$(date +%Y-%m-%d)"; cur="$(current_version)"
+  if [[ "$cur" =~ ^${today}\.([0-9]+)$ ]]; then echo "$today.$(( BASH_REMATCH[1] + 1 ))"
+  else echo "$today.1"; fi
 }
 
 # apply_version <x.y.z> — write the version into every component.
 apply_version() {
   local new="$1"
-  [[ "$new" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version '$new' must be MAJOR.MINOR.PATCH"
+  [[ "$new" =~ $VERSION_RE ]] || die "version '$new' must be YYYY-MM-DD.N"
   info "Bumping version: $(current_version) → $new"
 
   # Go CLI const — compiled into every binary; the source of truth.
@@ -65,27 +64,40 @@ apply_version() {
   rm -f "$GO_VERSION_FILE.bak"
   info "  cli/main.go → $new"
 
-  # Web workspace — root + backend + frontend package.json + package-lock, kept
-  # consistent via npm's own tool so the later `npm ci` stays happy.
-  command -v npm >/dev/null || die "npm is required to bump the web package versions"
-  ( cd "$ROOT/web" && npm version "$new" \
-      --workspaces --include-workspace-root \
-      --no-git-tag-version --allow-same-version >/dev/null )
+  # Web workspace — root + backend + frontend package.json + package-lock. Written
+  # directly rather than via `npm version`, which rejects a date version as
+  # invalid semver; the lockfile's own copies are updated so `npm ci` stays happy.
+  command -v node >/dev/null || die "node is required to bump the web package versions"
+  node -e '
+    const fs = require("fs"), [root, v] = process.argv.slice(1);
+    const write = (f, edit) => {
+      const j = JSON.parse(fs.readFileSync(f, "utf8"));
+      edit(j);
+      fs.writeFileSync(f, JSON.stringify(j, null, 2) + "\n");
+    };
+    for (const f of ["package.json", "backend/package.json", "frontend/package.json"]) {
+      write(`${root}/web/${f}`, (j) => { j.version = v; });
+    }
+    write(`${root}/web/package-lock.json`, (j) => {
+      j.version = v;
+      for (const key of ["", "backend", "frontend"]) if (j.packages?.[key]) j.packages[key].version = v;
+    });
+  ' "$ROOT" "$new"
   info "  web root + backend + frontend + lockfile → $new"
 }
 
-BUMP_LEVEL="" SET_VERSION=""
+BUMP=0 SET_VERSION=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --bump)        BUMP_LEVEL="${2:-}"; shift 2 ;;
+    --bump)        BUMP=1; shift ;;
     --set-version) SET_VERSION="${2:-}"; shift 2 ;;
-    -h|--help)     sed -n '2,20p' "$0"; exit 0 ;;
+    -h|--help)     sed -n '2,24p' "$0"; exit 0 ;;
     *)             die "unknown argument: $1 (see --help)" ;;
   esac
 done
-[ -n "$SET_VERSION" ] && [ -n "$BUMP_LEVEL" ] && die "use either --bump or --set-version, not both"
+[ -n "$SET_VERSION" ] && [ "$BUMP" -eq 1 ] && die "use either --bump or --set-version, not both"
 if   [ -n "$SET_VERSION" ]; then apply_version "$SET_VERSION"
-elif [ -n "$BUMP_LEVEL"  ]; then apply_version "$(compute_bump "$BUMP_LEVEL")"
+elif [ "$BUMP" -eq 1 ];     then apply_version "$(compute_next)"
 fi
 
 rm -rf "$STAGE"
