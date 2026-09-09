@@ -1,5 +1,16 @@
 # local-search-ui Web UI — High-Level Design
 
+## AI execution selection
+
+Users can run an AI search through either Claude CLI or Codex CLI,
+using their selected provider and model. This extends the existing explainable-search
+behavior area; it does not change repository retrieval or graph-only search.
+
+The baseline below describes the original Claude integration. The selection extension
+is implemented in the web application. Its stable requirements are [SEARCH-AI-001 through SEARCH-AI-003](../specs/explainable-search-specs.md),
+owned by the [web UI LLD](../lld/explainable-search-web-ui.md#ai-execution-selection)
+and registered in the [explainable-search arrow](../arrows/explainable-search.md).
+
 ## Overview
 
 A lightweight web UI that lets a user run a search across selected indexed repos, gets a

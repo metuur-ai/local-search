@@ -146,6 +146,8 @@ function TurnMeta({ meta }) {
   const duration = fmtDuration(meta.durationMs);
   const tokens = fmtTokens(meta.totalTokens);
   const items = [];
+  if (meta.cli) items.push(['fa-terminal', meta.cli, 'CLI used for this answer']);
+  if (meta.provider) items.push(['fa-server', meta.provider, 'Provider selected for this answer']);
   if (meta.model) items.push(['fa-microchip', meta.model, 'Model used for this answer']);
   if (duration) items.push(['fa-clock', duration, 'Wall time for this answer']);
   if (tokens) {
@@ -209,7 +211,7 @@ function AnswerContent({ markdown = '', turns = [], meta = null }) {
               <div class="answer-turn answer-turn-assistant" key={i}>
                 <div class="answer-turn-head">
                   <span class="answer-turn-who">
-                    <i class="fa-solid fa-wand-magic-sparkles" /> Claude
+                    <i class="fa-solid fa-wand-magic-sparkles" /> Assistant
                     {turn.version ? <span class="answer-turn-version">v{turn.version}</span> : null}
                   </span>
                   {/* Copy / export are per iteration — this version's tools. */}
@@ -262,7 +264,7 @@ function FollowUpForm({ onFollowUp, canFollowUp }) {
           id="answer-followup-input"
           class="answer-followup-textarea"
           data-testid="answer-followup-input"
-          placeholder="Comment on the result, ask Claude to refine or dig deeper…"
+          placeholder="Comment on the result, ask for a refinement or more detail…"
           value={followUp}
           onInput={(e) => setFollowUp(e.target.value)}
           onKeyDown={(e) => {

@@ -1,7 +1,7 @@
 import { buildPrompt } from './prompt.js';
-import { spawnClaude as realSpawnClaude, killTree, buildClaudeArgs } from './claude.js';
-import { createNormalizer } from './normalize.js';
-import { pipeChild, broadcast } from './stream.js';
+import { killTree } from './claude.js';
+import { defaultCatalog, spawnAi, aiArgs, aiNormalizer } from './ai.js';
+import { pipeChild, broadcast, writeSse } from './stream.js';
 import { runGraphSearch } from './graphSearch.js';
 import { tapChild } from './cliLog.js';
 
@@ -35,8 +35,8 @@ function readJsonBody(req) {
  *   child + normalizer, respond {sessionId}.
  * R-2.6: spawn ENOENT (claude missing) -> 500 explicit JSON naming the missing binary.
  */
+// @spec SEARCH-AI-001, SEARCH-AI-002, SEARCH-AI-003
 export async function handleQuery(req, res, { registry, deps = {} } = {}) {
-  const spawnClaude = deps.spawnClaude ?? realSpawnClaude;
   const body = await readJsonBody(req);
   if (body === null) {
     return sendJson(res, 400, { error: 'bad_json', message: 'invalid JSON body' });
@@ -82,29 +82,40 @@ export async function handleQuery(req, res, { registry, deps = {} } = {}) {
     return sendJson(res, 200, { sessionId: session.id });
   }
 
-  const prompt = buildPrompt({ query: q, repos });
+  let execution;
+  try {
+    if (deps.aiConfigError) throw new Error(deps.aiConfigError);
+    execution = (deps.aiCatalog ?? defaultCatalog).resolve(body.ai);
+  } catch (err) {
+    return sendJson(res, deps.aiConfigError ? 503 : 400, { error: 'invalid_ai_selection', message: err.message });
+  }
+  const prompt = buildPrompt({ query: q, repos, cli: execution.cli });
+  const spawn = deps.spawnAi ?? (execution.cli === 'claude' ? deps.spawnClaude : null) ?? spawnAi;
 
   let child;
   try {
-    child = spawnClaude({ prompt });
+    child = spawn({ prompt, execution });
   } catch (err) {
     // R-2.6: claude binary missing (ENOENT) -> explicit 500.
     const missing = err?.code === 'ENOENT';
     return sendJson(res, 500, {
-      error: missing ? 'claude_missing' : 'spawn_failed',
-      message: missing ? 'the `claude` binary is not on PATH' : err?.message ?? String(err),
+      error: missing ? `${execution.cli}_missing` : 'spawn_failed',
+      message: missing ? `the ${execution.cli} binary is not on PATH` : err?.message ?? String(err),
     });
   }
 
-  const normalizer = createNormalizer();
-  const session = registry.create({ child, normalizer, phase: 'running', deps, clientId });
+  const normalizer = aiNormalizer(execution);
+  const session = registry.create({ child, normalizer, execution, phase: 'running', deps, clientId });
 
-  // Log the claude interaction (no-op when deps.cliLog is absent). Recorded after
+  // Capture output immediately, including events emitted before the browser connects.
+  pipeChild({ session, child, normalizer, deps });
+
+  // Log the selected CLI interaction (no-op when deps.cliLog is absent). Recorded after
   // session creation so session.id is available; tapChild adds a SECOND stdout
   // 'data' listener alongside pipeChild's, which does not disturb the pipe.
   const h = deps.cliLog?.record({
-    cli: 'claude',
-    command: 'claude ' + buildClaudeArgs({}).join(' ') + ' <prompt>',
+    cli: execution.cli,
+    command: execution.cli + ' ' + aiArgs({ execution }).join(' ') + ' <prompt>',
     prompt,
     sessionId: session.id,
   });
@@ -114,10 +125,11 @@ export async function handleQuery(req, res, { registry, deps = {} } = {}) {
   child.on('error', (err) => {
     session.phase = 'done';
     const missing = err?.code === 'ENOENT';
-    broadcast(session, 'error', {
-      message: missing ? 'the `claude` binary is not on PATH' : err?.message ?? String(err),
+    session.failure = {
+      message: missing ? `the ${execution.cli} binary is not on PATH` : err?.message ?? String(err),
       kind: 'spawn',
-    });
+    };
+    broadcast(session, 'error', session.failure);
   });
 
   return sendJson(res, 200, { sessionId: session.id });
@@ -143,7 +155,19 @@ export function handleStream(req, res, { registry, id } = {}) {
     connection: 'keep-alive',
   });
 
+  if (session.failure) {
+    writeSse(res, 'error', session.failure);
+    return res.end();
+  }
+
   session.sseClients.add(res);
+  const pending = session.pendingEvents ?? [];
+  session.pendingEvents = [];
+  for (const event of pending) writeSse(res, event.type, event.data);
+  if (pending.length && session.phase === 'done') {
+    session.sseClients.delete(res);
+    return res.end();
+  }
 
   // No-AI path: no claude child to pipe. Kick off the graph search once (on the
   // first stream connect) so its events broadcast to this now-registered client,
@@ -214,8 +238,9 @@ export async function handleReply(req, res, { registry, id } = {}) {
   if (!session) {
     return sendJson(res, 404, { error: 'no_session', message: 'unknown session' });
   }
-  if (!session.claudeSessionId) {
-    return sendJson(res, 409, { error: 'not_resumable', message: 'session has no claude session to resume' });
+  const resumeSessionId = session.agentSessionId ?? session.claudeSessionId;
+  if (!resumeSessionId) {
+    return sendJson(res, 409, { error: 'not_resumable', message: 'session has no CLI session to resume' });
   }
 
   const body = await readJsonBody(req);
@@ -228,23 +253,29 @@ export async function handleReply(req, res, { registry, id } = {}) {
   }
 
   const deps = session.deps ?? {};
-  const spawnClaude = deps.spawnClaude ?? realSpawnClaude;
+  const execution = session.execution ?? defaultCatalog.resolve();
+  const spawn = deps.spawnAi ?? (execution.cli === 'claude' ? deps.spawnClaude : null) ?? spawnAi;
 
   let child;
   try {
-    child = spawnClaude({ prompt: text, resumeSessionId: session.claudeSessionId });
+    child = spawn({ prompt: text, resumeSessionId, execution });
   } catch (err) {
     return sendJson(res, 500, { error: 'spawn_failed', message: err?.message ?? String(err) });
   }
 
   session.child = child;
   session.phase = 'running';
+  session.failure = null;
+  child.on('error', (err) => {
+    session.phase = 'done';
+    session.failure = { kind: 'spawn', message: err.code === 'ENOENT' ? `the ${execution.cli} binary is not on PATH` : err.message };
+    broadcast(session, 'error', session.failure);
+  });
 
-  // Log the resumed claude interaction (no-op when deps.cliLog is absent).
+  // Log the resumed CLI interaction (no-op when deps.cliLog is absent).
   const h = deps.cliLog?.record({
-    cli: 'claude',
-    command:
-      'claude ' + buildClaudeArgs({ resumeSessionId: session.claudeSessionId }).join(' ') + ' <prompt>',
+    cli: execution.cli,
+    command: execution.cli + ' ' + aiArgs({ execution, resumeSessionId }).join(' ') + ' <prompt>',
     prompt: text,
     sessionId: session.id,
   });
@@ -254,7 +285,7 @@ export async function handleReply(req, res, { registry, id } = {}) {
   broadcast(session, 'reply', { text });
 
   // R-8.4: resumed turn continues on the already-connected sseClients with a fresh normalizer.
-  pipeChild({ session, child, normalizer: createNormalizer(), deps });
+  pipeChild({ session, child, normalizer: aiNormalizer(execution), deps });
 
   return sendJson(res, 200, { ok: true });
 }

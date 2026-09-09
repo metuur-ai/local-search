@@ -203,6 +203,45 @@ on Claude formatting a combined JSON blob.
   knows the exact `local-search` commands even if the skill isn't installed in the server's Claude
   environment (pre-mortem risk #5).
 
+## AI execution selection
+
+The selection extension implements the [HLD intent](../hld/explainable-search-web-ui.md#ai-execution-selection).
+The preceding Claude-only design describes the original baseline.
+
+- **Segment:** explainable-search; stable prefix `SEARCH-AI-*`.
+- **Registry:** [selection specs](../specs/explainable-search-specs.md).
+- **Traceability:** [segment arrow](../arrows/explainable-search.md).
+
+The frontend fetches public provider/model options from `GET /api/ai-options`, renders
+CLI/provider/model controls, and submits `ai: { cli, provider, model }` with a query.
+The backend validates the selection against its catalog before spawning. Missing
+selection preserves Claude CLI defaults. Graph mode bypasses AI selection entirely.
+
+`web/backend/src/ai.js` owns the provider catalog, subprocess configuration, execution
+dispatch, and normalization selection. Configuration loads once at server startup
+from `LOCAL_SEARCH_AI_CONFIG` or `~/.local-search/ai-providers.json`. Only display fields
+reach the browser. Custom Claude endpoints use the Anthropic Messages protocol and
+child environment variables; custom Codex endpoints use Responses configuration and
+an environment-key reference. No key value is passed in command arguments.
+
+The resolved execution choice is stored on the in-memory session. Initial queries
+and resumed turns use that same choice. `agentSessionId` records either CLI's remote
+conversation ID; the legacy Claude field remains compatible with existing tests and
+sessions. Codex `thread.*`/`item.*` events normalize into the existing SSE contract;
+completed shell commands feed the existing retrieval parser. Claude normalization
+continues unchanged. Answer metadata carries CLI, provider, and requested model.
+
+Controls are disabled while running. Choices remain page-local; saved answers carry
+execution metadata but do not resume sessions on restore. Invalid selections return
+400; invalid provider configuration returns 503 for AI routes. Missing CLI errors
+identify the selected executable and survive an error before the SSE connection.
+
+[The web README](../../web/README.md#ai-cli-provider-and-model-selection) specifies
+configuration fields and endpoint compatibility. Individual provider/model service
+compatibility has not been verified through authenticated remote calls.
+
+The legacy `R-*` catalog in `docs/ears/` is not migrated by this extension.
+
 ## Out of Scope
 
 - Deterministic/constrained pre-run backend (Gap G3 alternative).

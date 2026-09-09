@@ -44,7 +44,7 @@ export function createCliLog({ file, echo = false, maxBytes = 64 * 1024 } = {}) 
     // Header block.
     let header = `${iso} ▶ ${cli}\n  ${command}\n`;
     if (sessionId) header += `  session=${sessionId}\n`;
-    if (cli === 'claude' && prompt) {
+    if ((cli === 'claude' || cli === 'codex') && prompt) {
       const indented = String(prompt)
         .split('\n')
         .map((line) => `    ${line}`)

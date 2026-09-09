@@ -8,7 +8,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
-import { fetchRepos, postQuery, openStream, postReply, postCancel } from './api.js';
+import { fetchRepos, fetchAiOptions, postQuery, openStream, postReply, postCancel } from './api.js';
+import { AiSelection } from './components/AiSelection.jsx';
 import { RepoPicker, canSubmit } from './components/RepoPicker.jsx';
 import { AnswerPanel } from './components/AnswerPanel.jsx';
 import { GraphView } from './components/GraphView.jsx';
@@ -127,6 +128,18 @@ export function App() {
   // Search mode: 'ai' spawns claude for a synthesized answer (slow); 'graph'
   // hits the local-search graph DB directly (no model — returns in ~CLI time).
   const [searchMode, setSearchMode] = useState('ai');
+  const [ai, setAi] = useState({ cli: 'claude', provider: 'claude-default', model: '' });
+  const [aiProviders, setAiProviders] = useState(null);
+  const [aiError, setAiError] = useState(null);
+  const [aiReload, setAiReload] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setAiError(null);
+    fetchAiOptions().then((providers) => {
+      if (active) setAiProviders(providers);
+    }).catch((err) => { if (active) setAiError(err.message); });
+    return () => { active = false; };
+  }, [aiReload]);
   // The mode the in-flight/last run actually used, so result panes can adapt.
   const [ranMode, setRanMode] = useState('ai');
   const [sessionId, setSessionId] = useState(null);
@@ -337,7 +350,7 @@ export function App() {
   }, []);
 
   const onSubmit = useCallback(async () => {
-    if (!canSubmit(selected) || running) return;
+    if (!canSubmit(selected) || running || (searchMode === 'ai' && (!aiProviders || aiError))) return;
 
     // Reset run-scoped state for a fresh query.
     resetRunState();
@@ -347,7 +360,7 @@ export function App() {
 
     let id;
     try {
-      const resp = await postQuery({ q, repos: selected, mode });
+      const resp = await postQuery({ q, repos: selected, mode, ai: mode === 'ai' ? ai : undefined });
       id = resp.sessionId;
     } catch (err) {
       setErrorMsg(err?.message ?? String(err));
@@ -364,7 +377,7 @@ export function App() {
     setStartedAt(Date.now());
 
     streamRef.current = openStream(id, buildHandlers(mode));
-  }, [selected, running, q, searchMode, buildHandlers, resetRunState]);
+  }, [selected, running, q, searchMode, ai, aiProviders, aiError, buildHandlers, resetRunState]);
 
   const onReply = useCallback(
     (text) => {
@@ -504,7 +517,7 @@ export function App() {
     return null;
   })();
 
-  const submitDisabled = !canSubmit(selected) || running;
+  const submitDisabled = !canSubmit(selected) || running || (searchMode === 'ai' && (!aiProviders || !!aiError));
 
   // "New search" is only meaningful once a run is in progress or has produced
   // something to clear — hide it on the pristine, first-load console.
@@ -934,6 +947,12 @@ export function App() {
                   : 'Full AI synthesis over retrieved sources (slower — spawns the model).'}
               </p>
             </div>
+
+            {searchMode === 'ai' && (
+              aiError ? <div class="ai-selection-error" role="alert">{aiError} <button type="button" onClick={() => setAiReload((n) => n + 1)}>Retry</button></div>
+                : aiProviders ? <AiSelection providers={aiProviders} value={ai} onChange={setAi} disabled={running} />
+                  : <p role="status" class="facet-hint">Loading AI options…</p>
+            )}
 
             {/* Actions + metrics */}
             <div class="console-actions">

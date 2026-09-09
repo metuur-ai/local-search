@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+CONFIG_FILE="${HOME}/.claude_profiles.json"
+
+usage() {
+  echo "Usage: $(basename "$0") <profile_name>" >&2
+  echo "Example: $(basename "$0") qwen" >&2
+}
+
+if [[ "$#" -ne 1 ]]; then
+  usage
+  exit 2
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Error: jq is required. Install it with: brew install jq" >&2
+  exit 1
+fi
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "Error: claude command not found in PATH." >&2
+  exit 1
+fi
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  echo "Error: configuration file not found: $CONFIG_FILE" >&2
+  exit 1
+fi
+
+PROFILE_NAME="$1"
+
+if ! jq -e --arg profile "$PROFILE_NAME" \
+  'has($profile) and (.[$profile] | type == "object")' \
+  "$CONFIG_FILE" >/dev/null; then
+  echo "Error: profile '$PROFILE_NAME' not found in $CONFIG_FILE" >&2
+  echo "Available profiles:" >&2
+  jq -r 'keys[]' "$CONFIG_FILE" | sed 's/^/  - /' >&2
+  exit 1
+fi
+
+unset_args=()
+set_args=()
+
+while IFS= read -r entry; do
+  key="$(jq -r '.key' <<<"$entry")"
+  value="$(jq -r 'if .value == null then "" else (.value | tostring) end' <<<"$entry")"
+  is_null="$(jq -r '.value == null' <<<"$entry")"
+
+  if [[ "$value" == "YOUR_API_KEY" ]]; then
+    if [[ -z "${ALIBABA_API_KEY:-}" ]]; then
+      echo "Error: ALIBABA_API_KEY is required for profile '$PROFILE_NAME'." >&2
+      exit 1
+    fi
+    value="$ALIBABA_API_KEY"
+  fi
+
+  if [[ ! "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+    echo "Error: invalid environment variable name in profile: $key" >&2
+    exit 1
+  fi
+
+  if [[ "$is_null" == "true" ]]; then
+    unset_args+=(-u "$key")
+  else
+    set_args+=("$key=$value")
+  fi
+done < <(
+  jq -c --arg profile "$PROFILE_NAME" \
+    '.[$profile] | to_entries[]' \
+    "$CONFIG_FILE"
+)
+
+echo "Starting Claude CLI with profile '$PROFILE_NAME'..."
+exec env "${unset_args[@]}" "${set_args[@]}" claude

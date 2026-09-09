@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { loadAiCatalog } from './backend/src/ai.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -99,6 +100,12 @@ const registry = createRegistry();
 // Memoized: /api/repos is hit on every popover open and /api/reveal needs the
 // repo roots on every click. Both would otherwise re-spawn the CLI each time.
 const deps = { runRepos: memoizeRepos(runRepos) };
+try {
+  deps.aiCatalog = loadAiCatalog();
+} catch (err) {
+  deps.aiConfigError = err.message;
+  console.warn(err.message);
+}
 deps.runLocalSearch = runLocalSearch;
 deps.graphCacheFile = graphCacheFile;
 if (cliLog) deps.cliLog = cliLog;

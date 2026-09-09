@@ -69,7 +69,14 @@ after(async () => {
 });
 
 beforeEach(() => {
-  for (const s of registry.list()) registry.delete(s.id);
+  for (const s of registry.list()) {
+    s.child?.emit('close', 0);
+    registry.delete(s.id);
+  }
+  deps.spawnClaude = ({ prompt }) => {
+    spawnCalls.push({ prompt });
+    return makeFakeChild(SCRIPT);
+  };
   spawnCalls.length = 0;
 });
 
@@ -84,6 +91,10 @@ test('R-2.2: POST /api/query with empty repos -> 400, spawn not called', async (
 });
 
 test('R-2.1/R-2.9: first query -> 200 {sessionId}; second concurrent from the SAME tab -> 409', async () => {
+  deps.spawnClaude = ({ prompt }) => {
+    spawnCalls.push({ prompt });
+    return makeFakeChild([], { autoClose: false });
+  };
   const r1 = await fetch(`${base}/api/query`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -107,6 +118,10 @@ test('R-2.1/R-2.9: first query -> 200 {sessionId}; second concurrent from the SA
 });
 
 test('R-2.9: concurrent queries from DIFFERENT tabs both run', async () => {
+  deps.spawnClaude = ({ prompt }) => {
+    spawnCalls.push({ prompt });
+    return makeFakeChild([], { autoClose: false });
+  };
   const post = (clientId) =>
     fetch(`${base}/api/query`, {
       method: 'POST',
@@ -129,6 +144,10 @@ test('R-2.9: concurrent queries from DIFFERENT tabs both run', async () => {
 });
 
 test('R-2.9: callers without a clientId (CLI/curl) share one session slot', async () => {
+  deps.spawnClaude = ({ prompt }) => {
+    spawnCalls.push({ prompt });
+    return makeFakeChild([], { autoClose: false });
+  };
   const post = () =>
     fetch(`${base}/api/query`, {
       method: 'POST',

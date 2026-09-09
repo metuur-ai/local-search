@@ -154,7 +154,7 @@ function extractToolResultText(content) {
  * strands the session awaiting a reply that never comes and leaves the UI
  * spinning forever. So beyond the trailing '?', require the text to look like a
  * bare question: short, single-paragraph, and free of markdown structure. */
-function endsWithQuestion(text) {
+export function endsWithQuestion(text) {
   const trimmed = text.trimEnd();
   if (!trimmed.endsWith('?')) return false;
   if (trimmed.length > 300) return false; // long -> an answer, not a prompt

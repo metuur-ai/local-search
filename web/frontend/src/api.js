@@ -90,11 +90,11 @@ export function clientId() {
 
 // POST /api/query -> { sessionId }. Throws carrying the server message on 400/409/500.
 // `mode` is 'ai' (default, spawns claude) or 'graph' (no-AI, direct graph DB search).
-export async function postQuery({ q, repos, mode }) {
+export async function postQuery({ q, repos, mode, ai }) {
   const res = await fetch('/api/query', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ q, repos, mode, clientId: clientId() }),
+    body: JSON.stringify({ q, repos, mode, ai, clientId: clientId() }),
   });
   if (!res.ok) {
     // Preserve the structured body so the UI can react to a 409 `session_active`
@@ -106,6 +106,14 @@ export async function postQuery({ q, repos, mode }) {
     throw err;
   }
   return res.json();
+}
+
+export async function fetchAiOptions() {
+  const res = await fetch('/api/ai-options');
+  if (!res.ok) throw new Error(await readError(res));
+  const body = await res.json();
+  if (!Array.isArray(body?.providers) || !body.providers.length) throw new Error('AI configuration unavailable');
+  return body.providers;
 }
 
 // The SSE event types the backend emits.

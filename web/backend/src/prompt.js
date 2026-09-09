@@ -8,7 +8,7 @@
  * best specs, and optionally pull related specs — then reason and answer, or ask
  * ONE clarifying question when it lacks what it needs.
  */
-export function buildPrompt({ query, repos } = {}) {
+export function buildPrompt({ query, repos, cli = 'claude' } = {}) {
   const repoList = Array.isArray(repos) ? repos : [];
   const scope = repoList.join(', ');
   const perRepo = repoList
@@ -17,7 +17,7 @@ export function buildPrompt({ query, repos } = {}) {
 
   return [
     'You are answering a question about indexed spec/doc repositories using the',
-    '`local-search` CLI, invoked through the Bash tool. Follow a search -> read -> reason loop.',
+    `\`local-search\` CLI, invoked through the ${cli === 'codex' ? 'shell' : 'Bash'} tool. Follow a search -> read -> reason loop.`,
     '',
     `Scope: the ONLY repos in scope are: ${scope}`,
     'The CLI scopes by a single positional repo argument — there is NO `--scope` flag,',

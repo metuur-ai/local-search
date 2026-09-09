@@ -7,6 +7,9 @@ export function writeSse(res, type, data) {
 
 /** Broadcast one SSE frame to every client currently connected to the session. */
 export function broadcast(session, type, data) {
+  if (!session.sseClients.size && type !== 'heartbeat') {
+    (session.pendingEvents ??= []).push({ type, data });
+  }
   for (const client of session.sseClients) {
     writeSse(client, type, data);
   }
@@ -31,6 +34,7 @@ export function broadcast(session, type, data) {
  * All timers are unref'd and cleared on close so tests don't hang.
  */
 export function pipeChild({ session, child, normalizer, deps = {} } = {}) {
+  if (session.streamPipe?.child === child) return session.streamPipe;
   const heartbeatMs = deps.heartbeatMs ?? 15000;
   const envTimeout = Number(process.env.LOCAL_SEARCH_TIMEOUT_MS);
   const timeoutMs =
@@ -56,7 +60,8 @@ export function pipeChild({ session, child, normalizer, deps = {} } = {}) {
       }
       for (const ev of normalizer.push(obj)) {
         if (ev.type === 'status' && ev.data?.sessionId) {
-          session.claudeSessionId = ev.data.sessionId;
+          session.agentSessionId = ev.data.sessionId;
+          if (!session.execution || session.execution.cli === 'claude') session.claudeSessionId = ev.data.sessionId;
         }
         if (ev.type === 'answer') sawAnswer = true;
         if (ev.type === 'question') {
@@ -100,12 +105,13 @@ export function pipeChild({ session, child, normalizer, deps = {} } = {}) {
 
   const onClose = () => {
     clearTimers();
+    if (session.child !== child) return;
     // R-8.1/R-8.3: a turn that ended with a question is not a failure — keep the
     // session awaiting a reply and do NOT emit an error.
     if (sawQuestion) return;
     session.phase = 'done';
     // R-2.5: closed with no usable answer -> explicit error.
-    if (!sawAnswer) {
+    if (!sawAnswer && !session.failure) {
       broadcast(session, 'error', { message: 'the run ended without producing an answer', kind: 'exit' });
     }
   };
@@ -113,5 +119,6 @@ export function pipeChild({ session, child, normalizer, deps = {} } = {}) {
   child.stdout?.on('data', onData);
   child.on('close', onClose);
 
-  return { clearTimers };
+  session.streamPipe = { child, clearTimers };
+  return session.streamPipe;
 }

@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { publicCatalog } from './ai.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { handleRepos } from './repos.js';
@@ -55,6 +56,11 @@ export function createServer({ staticDir, registry, deps, assetHandler } = {}) {
 
     if (req.method === 'GET' && pathname === '/api/health') {
       return sendJson(res, 200, { ok: true });
+    }
+
+    if (req.method === 'GET' && pathname === '/api/ai-options') {
+      if (deps?.aiConfigError) return sendJson(res, 503, { error: 'ai_config', message: deps.aiConfigError });
+      return sendJson(res, 200, publicCatalog(deps?.aiCatalog));
     }
 
     // GET /api/repos

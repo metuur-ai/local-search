@@ -56,22 +56,24 @@ test('stdout larger than maxBytes is capped and marked truncated', async () => {
   assert.ok(!text.includes('x'.repeat(100)));
 });
 
-test("record with cli:'claude' includes the prompt block", async () => {
-  const log = createCliLog({ file: tmpLog() });
-  const h = log.record({
-    cli: 'claude',
-    command: 'claude -p ... <prompt>',
-    prompt: 'line one\nline two',
-    sessionId: 'sess-1',
-  });
-  h.end(0);
+for (const cli of ['claude', 'codex']) {
+  test(`record with cli:${cli} includes the prompt block`, async () => {
+    const log = createCliLog({ file: tmpLog() });
+    const h = log.record({
+      cli,
+      command: `${cli} ... <prompt>`,
+      prompt: 'line one\nline two',
+      sessionId: 'sess-1',
+    });
+    h.end(0);
 
-  const text = await readAfterClose(log);
-  assert.match(text, /session=sess-1/);
-  assert.match(text, /prompt:/);
-  assert.match(text, /line one/);
-  assert.match(text, /line two/);
-});
+    const text = await readAfterClose(log);
+    assert.match(text, /session=sess-1/);
+    assert.match(text, /prompt:/);
+    assert.match(text, /line one/);
+    assert.match(text, /line two/);
+  });
+}
 
 test('error(err) writes an error trailer for spawn failures', async () => {
   const log = createCliLog({ file: tmpLog() });
