@@ -1,6 +1,6 @@
 {
   "name": "local-search-ui-frontend",
-  "version": "2026-09-09.1",
+  "version": "2026-09-10.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
