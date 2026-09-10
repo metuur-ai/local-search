@@ -150,6 +150,7 @@ Set `LOCAL_SEARCH_NO_AUTO_MIGRATE=1` to opt out entirely — useful in shared CI
 
 ## See also
 
+- [../explanation/designing-your-search-scope.md](../explanation/designing-your-search-scope.md) — *why* to scope, how to split a knowledge base into logical indexes, and the default-plus-on-demand pattern
 - [../explanation/two-config-files.md](../explanation/two-config-files.md) — the full resolution order, why the walk-up stops where it does, and what changed in v0.4.0
 - [use-the-claude-skill.md](use-the-claude-skill.md) — installing the skill that reads this file
 - [../reference/cli-commands.md](../reference/cli-commands.md) — full flag reference for `scope`, `init`, and `config`

@@ -54,6 +54,11 @@ Background reading for the curious. No steps, just understanding.
 
 - [How search works](explanation/how-search-works.md) — FTS5, BM25, the
   no-model semantic embedder, rank fusion, and graph-aware ranking.
+- [Designing your search scope](explanation/designing-your-search-scope.md) —
+  why scope matters once you have dozens of sources, how to split a knowledge
+  base into current-reality / components / work-in-progress indexes, the
+  default-plus-on-demand pattern, and tips for setting up multiple indexes to
+  isolate context.
 - [The disposable index](explanation/the-disposable-index.md) — why deleting
   `specs.db` is always safe.
 - [One config file](explanation/two-config-files.md) —

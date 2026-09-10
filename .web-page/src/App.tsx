@@ -11,6 +11,7 @@ import { GraphExplorerCard } from './components/GraphExplorerCard';
 import { CliTerminalCard } from './components/CliTerminalCard';
 import { AiSkillSection } from './components/AiSkillSection';
 import { IndexingSection } from './components/IndexingSection';
+import { ScopeDesignSection } from './components/ScopeDesignSection';
 import { SiteFooter } from './components/SiteFooter';
 import { ConceptSpotlightCard } from './components/ConceptSpotlightCard';
 import { SpecDetailModal } from './components/SpecDetailModal';
@@ -119,6 +120,8 @@ export default function App() {
         )}
 
         {activeTab === 'indexing' && <IndexingSection />}
+
+        {activeTab === 'scope' && <ScopeDesignSection />}
 
         {activeTab === 'aiskill' && <AiSkillSection />}
 

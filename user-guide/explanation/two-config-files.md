@@ -158,6 +158,8 @@ Three behaviours also changed:
 
 - [the disposable index](the-disposable-index.md) — why `specs.db` isn't in the
   "handle with care" category
+- [designing-your-search-scope.md](designing-your-search-scope.md) — how to
+  decide *what* belongs in `repositories:` in the first place
 - [../how-to/scope-a-project.md](../how-to/scope-a-project.md) — the
   step-by-step
 - [../reference/configuration.md](../reference/configuration.md) — every path

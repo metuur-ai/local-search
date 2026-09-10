@@ -6,6 +6,7 @@ export type ActiveTab =
   | 'overview'
   | 'search'
   | 'indexing'
+  | 'scope'
   | 'cli'
   | 'aiskill'
   | 'graph'

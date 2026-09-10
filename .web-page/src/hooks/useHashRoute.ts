@@ -14,6 +14,7 @@ const TABS: ActiveTab[] = [
   'overview',
   'search',
   'indexing',
+  'scope',
   'cli',
   'aiskill',
   'graph',

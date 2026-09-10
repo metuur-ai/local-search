@@ -24,6 +24,7 @@ const TABS: { id: ActiveTab; label: string; name: string }[] = [
   { id: 'overview', label: 'Overview', name: 'Index & Overview' },
   { id: 'search', label: 'Search', name: 'Local Search & BM25' },
   { id: 'indexing', label: 'Indexing', name: 'How we Index' },
+  { id: 'scope', label: 'Scope', name: 'Designing your search scope' },
   { id: 'cli', label: 'CLI', name: 'CLI Terminal Explorer' },
   { id: 'aiskill', label: 'AI Skill', name: 'AI Skill for Claude Code' },
   { id: 'graph', label: 'Graph', name: 'Knowledge Graph' },
