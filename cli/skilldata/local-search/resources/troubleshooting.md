@@ -2,6 +2,32 @@
 
 ## Common problems
 
+### Permission / read-only errors writing the index (Claude Code sandbox)
+
+Symptoms: a correct command fails with a permission or read-only error on
+`~/.local-search/specs.db`, scans never complete, or searches return stale
+results inside a Claude Code session while the same command works in a normal
+terminal.
+
+Cause: Claude Code's Bash sandbox allows writes under the working directory only,
+and the index lives outside every project. Add the path to
+`~/.claude/settings.json`:
+
+```json
+{
+  "sandbox": {
+    "filesystem": {
+      "allowWrite": ["~/.local-search"]
+    }
+  }
+}
+```
+
+These arrays merge across settings scopes, so append rather than replace. The
+change applies to the running session. `install.sh` writes this at install time;
+users who installed earlier need it added by hand. Confirm the path with
+`local-search doctor` ("App directory").
+
 ### "No repos added yet"
 
 The tool doesn't know where your specs are. Register a folder:

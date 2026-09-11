@@ -115,6 +115,10 @@ search.
 `init` and `setup` are identical. **You (the skill) run the conversation** — the CLI
 only exposes non-interactive primitives. Drive it with `AskUserQuestion`:
 
+0. **Check the sandbox once**, before touching scope: is `~/.local-search` in
+   `sandbox.filesystem.allowWrite` in `~/.claude/settings.json`? If not, add it
+   (see [Setup, Step 1](#step-1-allow-writes-to-localsearch-do-this-first)) —
+   otherwise the scope you configure resolves fine but every index write fails.
 1. `local-search init --json` — read current state (a pure read; writes nothing).
 2. Branch on the state:
    - **Missing (`exists: false`) or empty** → show `available` repos, ask which to
@@ -237,6 +241,43 @@ Related specs to review: payments/chargeback, billing/invoices.
 - Follow-ups where you already have the spec content loaded from a previous step
 
 ## Setup (helping users get started)
+
+### Step 1: allow writes to `~/.local-search` (do this first)
+
+The index lives at `~/.local-search/specs.db`, outside any project. Claude Code's
+Bash sandbox allows writes under the working directory only, so inside a sandboxed
+session **every scan that needs to update the index fails** — including the
+automatic rescan that runs on a stale query. The symptom is a permission or
+read-only error from an otherwise correct command, easy to misread as "the CLI
+isn't working".
+
+Check the user's settings (`~/.claude/settings.json`) for the path, and add it if
+it's missing:
+
+```json
+{
+  "sandbox": {
+    "filesystem": {
+      "allowWrite": ["~/.local-search"]
+    }
+  }
+}
+```
+
+Notes that matter when you edit this:
+
+- These arrays **merge across settings scopes**, so appending to the user file
+  never overrides a project-level list — append, never replace.
+- `~/` expands to the home directory; `./` or a bare path would resolve relative
+  to `~/.claude` in a user settings file, which is not what you want here.
+- The change applies to the running session, so the next command picks it up —
+  no restart.
+
+`install.sh` does this at install time. Do it by hand for users who installed
+earlier, or whose settings file was created afterwards. `local-search doctor`
+prints the resolved app directory if you need to confirm the path.
+
+### Step 2: register repos
 
 ```bash
 local-search repo add /path/to/specs my-project   # auto-scans immediately

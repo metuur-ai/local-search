@@ -13,13 +13,19 @@
 #                                 runs from anywhere (like `npm install -g local-search-ui`).
 #                                 The web UI needs Node >= 18; it is skipped (with a
 #                                 warning) if `node` is not found — the CLI + skill still install.
+#   4. ~/.local-search         -> sandbox.filesystem.allowWrite in the Claude settings.
+#                                 Claude Code's Bash sandbox only allows writes under the
+#                                 working directory, so without this every scan that needs
+#                                 to update ~/.local-search/specs.db fails inside a
+#                                 sandboxed session and the agent falls back to grep.
 #
 # Options (env):
 #   INSTALL_DIR=/custom/bin        binary + launcher location   (default ~/.local/bin)
 #   SKILLS_DIR=~/.claude/skills    Claude skills location
 #   WEB_DIR=~/.local/share/...     web app location
 #   BUNDLE_URL=https://...tar.gz   remote bundle, fetched when not run from a checkout
-#   INSTALL_CLI=0 INSTALL_SKILLS=0 INSTALL_WEB=0   skip a component
+#   CLAUDE_SETTINGS=~/.claude/settings.json        Claude Code settings file to patch
+#   INSTALL_CLI=0 INSTALL_SKILLS=0 INSTALL_WEB=0 INSTALL_SANDBOX=0   skip a component
 
 set -euo pipefail
 
@@ -31,9 +37,14 @@ SKILLS_DIR="${SKILLS_DIR:-$HOME/.claude/skills}"
 WEB_DIR="${WEB_DIR:-$HOME/.local/share/local-search/web}"
 BUNDLE_URL="${BUNDLE_URL:-https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz}"
 
+CLAUDE_SETTINGS="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
+# Fixed in the CLI (main.go: appDir = ~/.local-search), so it is not configurable here.
+APP_DIR_TILDE="~/.local-search"
+
 INSTALL_CLI="${INSTALL_CLI:-1}"
 INSTALL_SKILLS="${INSTALL_SKILLS:-1}"
 INSTALL_WEB="${INSTALL_WEB:-1}"
+INSTALL_SANDBOX="${INSTALL_SANDBOX:-1}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -184,6 +195,129 @@ install_skills() {
   fi
 }
 
+# ── Claude sandbox ────────────────────────────────────────────────────────────
+#
+# Claude Code's Bash sandbox allows writes under the working directory only, so a
+# sandboxed session cannot update ~/.local-search/specs.db — every scan fails and
+# the agent falls back to grep instead. `sandbox.filesystem.allowWrite` is the
+# supported way to widen that boundary for one path. Those arrays merge across
+# settings scopes, so appending here never clobbers a project-level list.
+
+sandbox_snippet() {
+  info 'Add this to your Claude settings by hand:'
+  info '  {'
+  info '    "sandbox": {'
+  info '      "filesystem": {'
+  info "        \"allowWrite\": [\"$APP_DIR_TILDE\"]"
+  info '      }'
+  info '    }'
+  info '  }'
+}
+
+# patch_settings <file> — merge $APP_DIR_TILDE into sandbox.filesystem.allowWrite.
+# Returns 0 on a write, 3 when the path was already there, 1 on a malformed file,
+# 2 when neither python3 nor jq is available for a safe JSON edit.
+patch_settings() {
+  local file="$1" tilde="$APP_DIR_TILDE" expanded="$HOME/.local-search"
+
+  if command -v python3 &>/dev/null; then
+    APP_TILDE="$tilde" APP_EXPANDED="$expanded" python3 - "$file" <<'PYEOF'
+import json, os, sys
+
+path = sys.argv[1]
+tilde, expanded = os.environ["APP_TILDE"], os.environ["APP_EXPANDED"]
+
+try:
+    with open(path) as fh:
+        text = fh.read()
+    data = json.loads(text) if text.strip() else {}
+except FileNotFoundError:
+    data = {}
+except (json.JSONDecodeError, OSError):
+    sys.exit(1)
+
+if not isinstance(data, dict):
+    sys.exit(1)
+
+sandbox = data.setdefault("sandbox", {})
+if not isinstance(sandbox, dict):
+    sys.exit(1)
+fs = sandbox.setdefault("filesystem", {})
+if not isinstance(fs, dict):
+    sys.exit(1)
+allow = fs.setdefault("allowWrite", [])
+if not isinstance(allow, list):
+    sys.exit(1)
+
+# Either spelling already covers the path, so a second install is a no-op.
+if tilde in allow or expanded in allow:
+    sys.exit(3)
+
+allow.append(tilde)
+# Write through a temp file in the same directory, then rename: a crash mid-write
+# leaves the user's settings intact rather than truncated.
+tmp = path + ".tmp"
+with open(tmp, "w") as fh:
+    json.dump(data, fh, indent=2)
+    fh.write("\n")
+os.replace(tmp, path)
+PYEOF
+    return $?
+  fi
+
+  if command -v jq &>/dev/null; then
+    if jq -e --arg t "$tilde" --arg e "$expanded" \
+         '(.sandbox.filesystem.allowWrite // []) as $a | ($a | index($t)) // ($a | index($e))' \
+         "$file" >/dev/null 2>&1; then
+      return 3
+    fi
+    local out; out="$(mktemp)"
+    if jq --arg t "$tilde" \
+         '.sandbox.filesystem.allowWrite = ((.sandbox.filesystem.allowWrite // []) + [$t])' \
+         "$file" > "$out" 2>/dev/null && [[ -s "$out" ]]; then
+      cat "$out" > "$file"
+      return 0
+    fi
+    return 1
+  fi
+
+  return 2
+}
+
+install_sandbox() {
+  local file="$CLAUDE_SETTINGS" created=0
+
+  if [[ ! -d "$(dirname "$file")" ]]; then
+    warn "Claude settings directory not found — skipping sandbox allowWrite."
+    sandbox_snippet
+    return
+  fi
+
+  info "Sandbox: $file"
+
+  if [[ ! -f "$file" ]]; then
+    printf '{}\n' > "$file" || { warn "could not create $file"; sandbox_snippet; return; }
+    created=1
+  else
+    cp "$file" "$file.bak" 2>/dev/null || warn "could not back up $file"
+  fi
+
+  local rc=0
+  patch_settings "$file" || rc=$?
+  case "$rc" in
+    0)
+      if [[ "$created" == "1" ]]; then
+        green "  created $file with $APP_DIR_TILDE in sandbox.filesystem.allowWrite"
+      else
+        green "  added $APP_DIR_TILDE to sandbox.filesystem.allowWrite (backup: $(basename "$file").bak)"
+      fi
+      ;;
+    3) info "  $APP_DIR_TILDE already allowed — unchanged" ;;
+    2) warn "neither python3 nor jq found — $file left untouched."; sandbox_snippet ;;
+    *) warn "could not parse $file — left untouched."; sandbox_snippet ;;
+  esac
+}
+
 install_web() {
   local src="$1" from="$1/web" launcher="$INSTALL_DIR/local-search-ui"
   [[ -d "$from" ]] || { warn "web/ not found — skipping web UI install"; return; }
@@ -232,6 +366,7 @@ main() {
   if [[ "$INSTALL_CLI"    == "1" ]]; then install_cli    "$src"; else info "CLI:    skipped"; fi
   if [[ "$INSTALL_SKILLS" == "1" ]]; then install_skills "$src"; else info "Skill:  skipped"; fi
   if [[ "$INSTALL_WEB"    == "1" ]]; then install_web    "$src"; else info "Web:    skipped"; fi
+  if [[ "$INSTALL_SANDBOX" == "1" ]]; then install_sandbox; else info "Sandbox: skipped"; fi
 
   ensure_on_path "$INSTALL_DIR"
 
