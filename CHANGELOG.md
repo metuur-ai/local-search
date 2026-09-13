@@ -3,6 +3,35 @@
 Versions are `YYYY-MM-DD.N` — the release date plus a counter that restarts at 1
 each day. Tags are the version prefixed with `v` (e.g. `v2026-09-09.1`).
 
+## Unreleased
+
+### Added
+
+- The bundle installer now installs the shared Local Search skill for Claude,
+  Codex, and other agents through `~/.claude/skills`, `$CODEX_HOME/skills`
+  (default `~/.codex/skills`), and `~/.agents/skills`.
+- Each skill destination can be customized with `CLAUDE_SKILLS_DIR`,
+  `CODEX_SKILLS_DIR`, or `AGENTS_SKILLS_DIR`, and disabled independently with
+  `INSTALL_CLAUDE=0`, `INSTALL_CODEX=0`, or `INSTALL_AGENTS=0`.
+- Codex setup now adds the index directory to its workspace-write permissions,
+  preserving existing settings and backing up changed configuration files.
+  Automatic configuration requires Python 3.11+ or `tomli`; otherwise the
+  installer provides manual setup instructions. Restart Codex after setup.
+
+### Changed
+
+- The shared skill now uses the active agent’s question and permission mechanisms
+  instead of requiring Claude-specific tools or editing Claude settings.
+  Agent-specific configuration is handled by the installer.
+- `SKILLS_DIR` remains supported as a legacy override for the Claude destination.
+
+### Fixed
+
+- Shortened the skill description to pass Codex skill validation.
+- Corrected the command reference: scope inspection is read-only, and the
+  `--directory` filter is supported by `read`, not `search`.
+- Updated the documented Go build requirement and index-rebuild instructions.
+
 ## 2026-09-09.1
 
 First release under the date-based versioning scheme; supersedes `0.4.12`.
