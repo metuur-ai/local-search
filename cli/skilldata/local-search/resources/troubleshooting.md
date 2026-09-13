@@ -2,31 +2,14 @@
 
 ## Common problems
 
-### Permission / read-only errors writing the index (Claude Code sandbox)
+### Permission / read-only errors writing the index
 
-Symptoms: a correct command fails with a permission or read-only error on
-`~/.local-search/specs.db`, scans never complete, or searches return stale
-results inside a Claude Code session while the same command works in a normal
-terminal.
-
-Cause: Claude Code's Bash sandbox allows writes under the working directory only,
-and the index lives outside every project. Add the path to
-`~/.claude/settings.json`:
-
-```json
-{
-  "sandbox": {
-    "filesystem": {
-      "allowWrite": ["~/.local-search"]
-    }
-  }
-}
-```
-
-These arrays merge across settings scopes, so append rather than replace. The
-change applies to the running session. `install.sh` writes this at install time;
-users who installed earlier need it added by hand. Confirm the path with
-`local-search doctor` ("App directory").
+The index at `~/.local-search/specs.db` may be outside the active environment’s
+writable directories. Even searches can write when refreshing stale data. Use
+`local-search doctor` to confirm the app directory, then use the active host’s
+supported permission controls. The bundle installer handles agent-specific setup;
+restart the agent after changing startup settings. Do not edit unrelated agent
+settings or bypass denied permissions.
 
 ### "No repos added yet"
 
@@ -46,7 +29,7 @@ Check these in order:
 2. Is the path still valid? The folder might have moved.
 3. Was the index built? `local-search stats` — check "Total specs" count.
 4. Is your query too narrow? Try broader terms or OR: `local-search search "refund OR payment"`
-5. Force a rebuild: `local-search scan`
+5. Force a rebuild: `local-search scan all`
 
 ### Index seems stale (missing recent changes)
 
@@ -54,7 +37,7 @@ The index auto-detects file changes on the next search. If it doesn't:
 
 1. Check the file was saved (not just open in editor)
 2. Check the file extension is `.md`, `.mdx`, or `.txt`
-3. Force rebuild: `local-search scan`
+3. Force rebuild: `local-search scan all`
 
 ### sqlite3 not found
 
@@ -75,7 +58,7 @@ Delete and rebuild:
 
 ```bash
 rm ~/.local-search/specs.db
-local-search scan
+local-search scan all
 ```
 
 The `.db` is a disposable cache. Your spec files are untouched.

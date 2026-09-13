@@ -1,6 +1,6 @@
 package main
 
-// The Claude skill ships inside the binary so `local-search install-skill`
+// The agent-agnostic skill ships inside the binary so `local-search install-skill`
 // can drop it into a skills directory with no separate download. skilldata/
 // is the single source of truth for the skill — install.sh and the bundle
 // no longer carry a loose copy.
@@ -22,7 +22,8 @@ const (
 	skillEmbedRoot = "skilldata/" + skillName
 )
 
-// cmdInstallSkill writes the embedded skill to a Claude skills directory.
+// cmdInstallSkill writes the embedded skill to a skills directory.
+// Legacy defaults target Claude; install.sh supplies each agent’s destination.
 //
 //	--global (default)  ~/.claude/skills   (available to Claude everywhere)
 //	--local             ./.claude/skills   (this project only, relative to CWD)
@@ -78,7 +79,7 @@ func cmdInstallSkill(args []string) {
 		die(fmt.Sprintf("install-skill: %v", err))
 	}
 	fmt.Printf("Installed %s skill (%d files) → %s\n", skillName, n, dest)
-	fmt.Printf("Claude Code discovers skills under %s\n", skillsDir)
+	fmt.Printf("Skill directory: %s\n", skillsDir)
 }
 
 // writeEmbeddedSkill copies the embedded skill tree to dest, returning the

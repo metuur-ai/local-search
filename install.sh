@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — install the local-search bundle: CLI + Claude skill + local web UI
+# install.sh — install the local-search bundle: CLI + shared agent skill + local web UI
 #
 # Usage:
 #   tmp=$(mktemp -d) && curl -fsSL https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz | tar -xz -C "$tmp" && bash "$tmp/bundle/install.sh"
@@ -7,7 +7,7 @@
 #
 # What it installs:
 #   1. local-search            -> $INSTALL_DIR (default ~/.local/bin)          [CLI]
-#   2. local-search skill      -> $SKILLS_DIR/local-search (default ~/.claude/skills)
+#   2. shared local-search skill -> Claude, Codex, and shared .agents skills directories
 #   3. web UI + `local-search-ui` global launcher -> $WEB_DIR (default ~/.local/share/local-search/web)
 #                                 `local-search-ui` lands in $INSTALL_DIR so the web UI
 #                                 runs from anywhere (like `npm install -g local-search-ui`).
@@ -19,9 +19,18 @@
 #                                 to update ~/.local-search/specs.db fails inside a
 #                                 sandboxed session and the agent falls back to grep.
 #
+#   5. ~/.local-search -> Codex sandbox_workspace_write.writable_roots.
+#      Requires Python 3.11+ (or tomli); preserves sandbox mode and approval policy.
+#      Restart Codex after installation; project/profile policies may override it.
+#
 # Options (env):
 #   INSTALL_DIR=/custom/bin        binary + launcher location   (default ~/.local/bin)
-#   SKILLS_DIR=~/.claude/skills    Claude skills location
+#   CLAUDE_SKILLS_DIR=~/.claude/skills (SKILLS_DIR is a legacy alias)
+#   CODEX_SKILLS_DIR=$CODEX_HOME/skills (default ~/.codex/skills)
+#   AGENTS_SKILLS_DIR=~/.agents/skills (shared agent-agnostic destination)
+#   INSTALL_AGENTS=0              skip the shared skill copy
+#   CODEX_CONFIG=$CODEX_HOME/config.toml (default ~/.codex/config.toml)
+#   INSTALL_CLAUDE=0 INSTALL_CODEX=0  skip an agent’s skill and customization
 #   WEB_DIR=~/.local/share/...     web app location
 #   BUNDLE_URL=https://...tar.gz   remote bundle, fetched when not run from a checkout
 #   CLAUDE_SETTINGS=~/.claude/settings.json        Claude Code settings file to patch
@@ -33,7 +42,14 @@ set -euo pipefail
 
 TOOL_NAME="local-search"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
-SKILLS_DIR="${SKILLS_DIR:-$HOME/.claude/skills}"
+# SKILLS_DIR remains a backwards-compatible override for the Claude destination.
+CLAUDE_SKILLS_DIR="${CLAUDE_SKILLS_DIR:-${SKILLS_DIR:-$HOME/.claude/skills}}"
+CODEX_SKILLS_DIR="${CODEX_SKILLS_DIR:-${CODEX_HOME:-$HOME/.codex}/skills}"
+AGENTS_SKILLS_DIR="${AGENTS_SKILLS_DIR:-$HOME/.agents/skills}"
+INSTALL_AGENTS="${INSTALL_AGENTS:-1}"
+CODEX_CONFIG="${CODEX_CONFIG:-${CODEX_HOME:-$HOME/.codex}/config.toml}"
+INSTALL_CLAUDE="${INSTALL_CLAUDE:-1}"
+INSTALL_CODEX="${INSTALL_CODEX:-1}"
 WEB_DIR="${WEB_DIR:-$HOME/.local/share/local-search/web}"
 BUNDLE_URL="${BUNDLE_URL:-https://github.com/metuur-ai/local-search/releases/latest/download/local-search-bundle.tar.gz}"
 
@@ -187,12 +203,18 @@ install_skills() {
     warn "CLI unavailable — cannot install the embedded skill. Install the CLI, then run: $TOOL_NAME install-skill"
     return
   fi
-  info "Skill:  $SKILLS_DIR/local-search"
-  if "$cli" install-skill --dir "$SKILLS_DIR" --force >/dev/null; then
-    green "  installed local-search skill"
-  else
-    warn "skill install failed"
-  fi
+  local agent dir enabled
+  for agent in claude codex agents; do
+    case "$agent" in
+      claude) dir="$CLAUDE_SKILLS_DIR"; enabled="$INSTALL_CLAUDE" ;;
+      codex)  dir="$CODEX_SKILLS_DIR"; enabled="$INSTALL_CODEX" ;;
+      agents) dir="$AGENTS_SKILLS_DIR"; enabled="$INSTALL_AGENTS" ;;
+    esac
+    [[ "$enabled" == "1" ]] || continue
+    info "Skill ($agent): $dir/local-search"
+    "$cli" install-skill --dir "$dir" --force >/dev/null || die "skill install failed for $agent"
+    green "  installed local-search skill for $agent"
+  done
 }
 
 # ── Claude sandbox ────────────────────────────────────────────────────────────
@@ -318,6 +340,87 @@ install_sandbox() {
   esac
 }
 
+# Preserve TOML formatting and unrelated settings. Unsupported layouts fail closed.
+patch_codex_settings() {
+  command -v python3 >/dev/null || return 2
+  python3 - "$CODEX_CONFIG" "$HOME/.local-search" <<'PYCODEX'
+import copy, json, os, pathlib, re, shutil, sys, tempfile
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        sys.exit(2)
+path = pathlib.Path(sys.argv[1])
+root = sys.argv[2]
+try:
+    text = path.read_text() if path.exists() else ""
+    data = tomllib.loads(text)
+    section = data.get("sandbox_workspace_write", {})
+    roots = section.get("writable_roots", [])
+    if not isinstance(roots, list) or not all(isinstance(v, str) for v in roots):
+        sys.exit(1)
+    if root in roots or "~/.local-search" in roots:
+        sys.exit(3)
+    expected = copy.deepcopy(data)
+    expected.setdefault("sandbox_workspace_write", {})["writable_roots"] = roots + [root]
+    value = json.dumps(roots + [root], ensure_ascii=False)
+    lines = text.splitlines(keepends=True)
+    candidates = []
+    if "sandbox_workspace_write" not in data:
+        candidates.append(text + "\n[sandbox_workspace_write]\nwritable_roots = " + value + "\n")
+    else:
+        # Try only conventional table/key spellings. Parse-and-compare proves
+        # that a candidate changes exactly the intended setting, even when
+        # multiline strings contain table-like text or arrays span lines.
+        for i, line in enumerate(lines):
+            if re.match(r"^\s*\[sandbox_workspace_write\]\s*(?:#.*)?$", line):
+                if "writable_roots" not in section:
+                    candidates.append("".join(lines[:i+1]).rstrip("\n") + "\nwritable_roots = " + value + "\n" + "".join(lines[i+1:]))
+            if re.match(r"^\s*writable_roots\s*=", line):
+                for end in range(i+1, len(lines)+1):
+                    candidates.append("".join(lines[:i]) + "writable_roots = " + value + "\n" + "".join(lines[end:]))
+    updated = None
+    for candidate in candidates:
+        try:
+            if tomllib.loads(candidate) == expected:
+                updated = candidate
+                break
+        except tomllib.TOMLDecodeError:
+            pass
+    if updated is None:
+        sys.exit(1)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        shutil.copy2(path, str(path) + ".bak")
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".local-search-")
+    try:
+        with os.fdopen(fd, "w") as out:
+            out.write(updated)
+        if path.exists():
+            os.chmod(tmp, path.stat().st_mode & 0o777)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+except (OSError, ValueError, AttributeError, TypeError):
+    sys.exit(1)
+PYCODEX
+}
+
+install_codex_sandbox() {
+  local rc=0
+  patch_codex_settings || rc=$?
+  case "$rc" in
+    0) green "  configured Codex index writes in $CODEX_CONFIG (existing file backed up)"
+       info "Restart Codex to load the setting; project/profile policies may override it." ;;
+    3) info "  Codex index directory already allowed — unchanged" ;;
+    *) warn "Codex config unchanged: Python 3.11+/tomli is required, with a supported valid TOML layout."
+       info "Add $HOME/.local-search to [sandbox_workspace_write].writable_roots in $CODEX_CONFIG, or launch Codex with --add-dir $HOME/.local-search." ;;
+  esac
+}
+
 install_web() {
   local src="$1" from="$1/web" launcher="$INSTALL_DIR/local-search-ui"
   [[ -d "$from" ]] || { warn "web/ not found — skipping web UI install"; return; }
@@ -366,7 +469,12 @@ main() {
   if [[ "$INSTALL_CLI"    == "1" ]]; then install_cli    "$src"; else info "CLI:    skipped"; fi
   if [[ "$INSTALL_SKILLS" == "1" ]]; then install_skills "$src"; else info "Skill:  skipped"; fi
   if [[ "$INSTALL_WEB"    == "1" ]]; then install_web    "$src"; else info "Web:    skipped"; fi
-  if [[ "$INSTALL_SANDBOX" == "1" ]]; then install_sandbox; else info "Sandbox: skipped"; fi
+  if [[ "$INSTALL_SANDBOX" == "1" ]]; then
+    if [[ "$INSTALL_CLAUDE" == "1" ]]; then install_sandbox; fi
+    if [[ "$INSTALL_CODEX" == "1" ]]; then install_codex_sandbox; fi
+  else
+    info "Sandbox: skipped"
+  fi
 
   ensure_on_path "$INSTALL_DIR"
 
@@ -374,7 +482,7 @@ main() {
   green "Done."
   info "CLI:   local-search help"
   info "Web:   local-search-ui      # runs from anywhere, then open http://localhost:8787"
-  info "Skill: available to Claude Code from $SKILLS_DIR/local-search"
+
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]:-}" == "$0" || -z "${BASH_SOURCE[0]:-}" ]]; then main "$@"; fi

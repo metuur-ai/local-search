@@ -1,23 +1,10 @@
 ---
 name: local-search
 description: >
-  Use this skill whenever someone asks a question that could be answered or informed
-  by project specs, requirements, or documentation. This includes direct spec requests
-  ('find the spec for X', 'search our docs', 'what specs do we have', 'check the
-  requirements for Y', 'look up the docs on Z'), analytical questions where specs
-  contain the answer ('what is the impact of changing X', 'how does our Y flow work',
-  'what happens if Z'), and setup tasks (adding repos, scanning, troubleshooting the
-  index). Also trigger when the user wants to configure, initialize, or set up which
-  repositories this project searches ('set up local search', 'init local search scope',
-  'which repos does this project search', 'add/remove a repo from my search scope') —
-  managed via `local-search init`/`setup` and the `.agents/local-search-config.yaml` file.
-  Trigger this skill even if the user doesn't say "spec" explicitly — if their
-  question touches a domain that might be documented in spec files (.md, .mdx, .txt),
-  search first. Also use when the user says 'what do our docs say about', 'is there
-  a spec for', 'check the requirements', 'look up', or asks about any business process,
-  product rule, API contract, or architectural decision that could be documented.
-  Search first, answer grounded in results. Do NOT answer from general knowledge when
-  spec content is available.
+  Search locally indexed project specs, requirements, and documentation to answer
+  questions grounded in source files. Use for finding docs, checking product rules
+  or API contracts, assessing documented change impacts, and registering repositories,
+  configuring project search scope, or troubleshooting the local-search index.
 ---
 
 # Local Search
@@ -34,7 +21,7 @@ go build -o local-search .
 cp local-search /usr/local/bin/local-search
 ```
 
-Requires Go 1.21+ to build. No runtime dependencies — SQLite is compiled in.
+Requires Go 1.25.7+ to build. No runtime dependencies — SQLite is compiled in.
 
 ## Project config (`.agents/local-search-config.yaml`)
 
@@ -60,7 +47,7 @@ so results stay inside the project's boundary:
    - `local-search search "auth" --repos repoA,repoB`
    - `local-search find "auth" --scope repoA,repoB` (also `code`)
    Both take a comma-separated list.
-3. If the file is missing or `empty`, offer to set it up (below), or fall back to a
+3. If the file is missing or `empty`, offer to set it up (below), or with the user's permission run a
    one-off unscoped `local-search search "..."`.
 4. If the JSON carries a non-empty `error`, the config is malformed. Show the
    error to the user (it names the line and suggests a fix) and offer to run
@@ -113,12 +100,10 @@ search.
 ### Configuring scope interactively (`local-search init` / `setup`)
 
 `init` and `setup` are identical. **You (the skill) run the conversation** — the CLI
-only exposes non-interactive primitives. Drive it with `AskUserQuestion`:
+only exposes non-interactive primitives. Use the active agent’s available question
+mechanism, or ask in plain text when none is available. If the user already named
+the repositories and requested the change, apply it without asking again:
 
-0. **Check the sandbox once**, before touching scope: is `~/.local-search` in
-   `sandbox.filesystem.allowWrite` in `~/.claude/settings.json`? If not, add it
-   (see [Setup, Step 1](#step-1-allow-writes-to-localsearch-do-this-first)) —
-   otherwise the scope you configure resolves fine but every index write fails.
 1. `local-search init --json` — read current state (a pure read; writes nothing).
 2. Branch on the state:
    - **Missing (`exists: false`) or empty** → show `available` repos, ask which to
@@ -236,46 +221,20 @@ Related specs to review: payments/chargeback, billing/invoices.
 ### When NOT to search
 
 - Pure setup questions: "how do I add a repo" — answer from the command reference below
-- Questions clearly outside any documented domain — answer from general knowledge, note that no specs were found
+- Questions clearly outside any documented domain — answer from general knowledge without claiming a search was performed
 - The user explicitly asks you not to check specs ("from your general knowledge", "don't check the docs")
 - Follow-ups where you already have the spec content loaded from a previous step
 
 ## Setup (helping users get started)
 
-### Step 1: allow writes to `~/.local-search` (do this first)
+### Step 1: verify access to the index
 
-The index lives at `~/.local-search/specs.db`, outside any project. Claude Code's
-Bash sandbox allows writes under the working directory only, so inside a sandboxed
-session **every scan that needs to update the index fails** — including the
-automatic rescan that runs on a stale query. The symptom is a permission or
-read-only error from an otherwise correct command, easy to misread as "the CLI
-isn't working".
-
-Check the user's settings (`~/.claude/settings.json`) for the path, and add it if
-it's missing:
-
-```json
-{
-  "sandbox": {
-    "filesystem": {
-      "allowWrite": ["~/.local-search"]
-    }
-  }
-}
-```
-
-Notes that matter when you edit this:
-
-- These arrays **merge across settings scopes**, so appending to the user file
-  never overrides a project-level list — append, never replace.
-- `~/` expands to the home directory; `./` or a bare path would resolve relative
-  to `~/.claude` in a user settings file, which is not what you want here.
-- The change applies to the running session, so the next command picks it up —
-  no restart.
-
-`install.sh` does this at install time. Do it by hand for users who installed
-earlier, or whose settings file was created afterwards. `local-search doctor`
-prints the resolved app directory if you need to confirm the path.
+The index lives at `~/.local-search/specs.db`, outside the project. Searches may
+write to it when refreshing stale data. Run commands with the active environment’s
+permission controls. If access is denied, report the path and use its supported
+permission workflow; do not change another agent’s settings or bypass a denied
+permission. The bundle’s `install.sh` handles agent-specific installation and
+sandbox customization. An existing session may need to be restarted after setup.
 
 ### Step 2: register repos
 

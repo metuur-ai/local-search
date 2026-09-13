@@ -32,7 +32,7 @@ are exact aliases. The command is non-interactive — the LocalSearch skill driv
 interactive add/remove/modify/review flow and calls these primitives.
 
 ```bash
-local-search init                     # show current scope + available repos; create file if missing
+local-search init                     # show current scope + available repos (read-only)
 local-search setup                    # exact alias of init
 local-search init --json              # machine state: {path, exists, empty, repositories, available, unknown}
 local-search init --add repoA,repoB   # add repos to the scope (comma-separated)
@@ -43,7 +43,7 @@ local-search init --dir <path>        # operate on a project dir other than CWD
 
 - Only registered repos are accepted; `--add`/`--set` reject unknown names and list
   the valid ones. External graphs are added as `graph:<name>` entries.
-- Any invocation creates `.agents/local-search-config.yaml` if it does not exist.
+- Read-only invocations, including `--json`, do not create the file. Scope mutations create it if missing.
 List the default scope:
 
 ```bash
@@ -190,7 +190,7 @@ hook file only if it becomes empty); install is idempotent.
 ### search
 
 ```bash
-local-search search <query> [--repo <name>] [--directory <path>] [--exclude-location <pattern>]...
+local-search search <query> [--repo <name>] [--repos <names>] [--exclude-location <pattern>]...
 ```
 
 Full-text search across all repos (or one repo if specified). Results show the **full filesystem path** of each match.
@@ -205,8 +205,6 @@ Full-text search across all repos (or one repo if specified). Results show the *
 | Phrase | `search '"refund request"'` | Exact phrase |
 | Repo filter (flag) | `search "refund" --repo product` | Only search "product" repo |
 | Repo filter (positional) | `search refund product` | Legacy positional form |
-| Directory filter | `search "refund" --directory billing/` | Only paths starting with `billing/` |
-| Combine repo + dir | `search "event" --repo backend --directory integrations/` | Both filters together |
 | Exclude location | `search refund --exclude-location archive` | Exclude paths containing "archive" |
 | Multi-exclude | `search refund --exclude-location archive --exclude-location tmp` | Multiple patterns |
 
