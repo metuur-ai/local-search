@@ -12,6 +12,7 @@
 #   scripts/release.sh v2026-09-09.1   # explicit tag (overrides cli/main.go)
 #   scripts/release.sh --build         # rebuild the bundle first (build-bundle.sh)
 #   scripts/release.sh --draft         # publish as a draft to review before going live
+#   scripts/release.sh --generate-notes # GitHub-generated notes for new releases (default)
 #
 # Requires: gh (authenticated), git. --build additionally needs Go + Node.
 #
@@ -35,6 +36,7 @@ for arg in "$@"; do
   case "$arg" in
     --build)      BUILD=1 ;;
     --draft)      DRAFT=1 ;;
+    --generate-notes) : ;; # Already the default when creating a release.
     -h|--help)    sed -n '2,20p' "$0"; exit 0 ;;
     v[0-9]*)      TAG="$arg" ;;
     *)            die "unknown argument: $arg (see --help)" ;;
