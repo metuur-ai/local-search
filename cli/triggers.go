@@ -91,16 +91,14 @@ func resolveHookRunTarget(name, cwd string, repos []repoEntry) (repoEntry, error
 				return r, nil
 			}
 		}
-		return repoEntry{}, fmt.Errorf("unknown repo %s", name)
+		return repoEntry{}, unknownRepoError(name, repos)
 	}
 	return resolveHookRepo(cwd, repos)
 }
 
-// hookRepoHasSpecChanges is the change-gate detection (R-5.11). It reuses the
-// EXACT same primitives as the query-time incremental path
-// (applyIncrementalUpdate): the last indexed commit from meta git_commit_<name>
-// and git.ChangedFiles, which already covers committed/staged/unstaged/untracked
-// spec files. No diffing is reimplemented here. On any read/detection failure it
+// hookRepoHasSpecChanges is the change-gate detection (R-5.11). It compares the
+// last indexed commit from meta git_commit_<name> against git.ChangedFiles,
+// which already covers committed/staged/unstaged/untracked spec files. No diffing is reimplemented here. On any read/detection failure it
 // returns true (scan) so automation errs toward freshness, never silent staleness.
 func hookRepoHasSpecChanges(repo repoEntry) bool {
 	db, err := localdb.Open(dbFile)

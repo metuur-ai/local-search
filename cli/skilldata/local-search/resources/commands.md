@@ -142,7 +142,7 @@ local-search scan all          # full rebuild: delete the DB and re-index every 
 With no argument, `scan` resolves the one registered repo your current directory
 is inside (deepest match if nested) and re-indexes only that repo. If you are not
 inside any registered repo it exits non-zero and suggests `cd`-ing into one or
-running `scan all`. Naming an unknown repo errors with `unknown repo <name>`.
+running `scan all`. Naming an unknown repo exits non-zero and lists every registered repo name.
 
 Surgical scans are atomic and never delete the database or touch other repos'
 rows; `scan all` is the only full-rebuild path (deletes the DB file, recreates

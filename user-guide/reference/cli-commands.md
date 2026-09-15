@@ -360,10 +360,10 @@ $ local-search scan examples
 Done. 8 specs indexed. Run 'local-search search <keyword>' to find specs.
 ```
 
-`local-search` also opportunistically incremental-scans on its own before most
-commands run, when it detects git changes since the last scan — you'll see a
-`(git changes detected — incremental update…)` line when this happens. `scan`
-itself always does a full rebuild.
+`scan` is the only command that writes to the index. Every other command —
+`search`, `find`, `read`, `code`, `json`, `scope`, `ui` — reads what the last
+scan produced and never re-indexes. Re-run `scan` (for one repo or all) after
+specs change on disk.
 
 ## Web UI
 

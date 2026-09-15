@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"local-search/scope"
 )
@@ -24,7 +25,7 @@ const (
 //
 //	args == ["all"]                     -> (modeFullRebuild, all repos, nil)   [R-1.6]
 //	args == ["<name>"] name known       -> (modeSurgical,   [named repo], nil) [R-1.4]
-//	args == ["<name>"] name unknown     -> error "unknown repo <name>"         [R-1.5]
+//	args == ["<name>"] name unknown     -> error naming the registered repos    [R-1.5]
 //	args == [] cwd inside one repo      -> (modeSurgical,   [that repo], nil)  [R-1.1]
 //	args == [] cwd under several repos  -> deepest enclosing wins              [R-1.2]
 //	args == [] cwd outside any repo     -> error "not inside a registered repo"[R-1.3]
@@ -46,7 +47,7 @@ func resolveScanTarget(args []string, cwd string, repos []repoEntry) (scanMode, 
 				return modeSurgical, []repoEntry{r}, nil // R-1.4
 			}
 		}
-		return 0, nil, fmt.Errorf("unknown repo %s", target) // R-1.5
+		return 0, nil, unknownRepoError(target, repos) // R-1.5
 	}
 
 	// No argument: resolve the repo enclosing the current working directory.
@@ -66,4 +67,30 @@ func resolveScanTarget(args []string, cwd string, repos []repoEntry) (scanMode, 
 	}
 	// NearestRepoForCWD returned a name not in repos — should be unreachable.
 	return 0, nil, fmt.Errorf("not inside a registered repo; cd into one or run 'scan all'")
+}
+
+// unknownRepoError builds the message shown when a command is given a repo name
+// that is not registered. A bare "unknown repo <name>" leaves the user guessing
+// at the valid names, which is the most common way to hit this error: a typo, a
+// half-remembered name, or a command copied from somewhere else. Naming the
+// registered repos and the three commands that act on them makes it
+// self-service.
+//
+// Both call sites reject an empty repo set before reaching here, so the list is
+// never empty in practice.
+func unknownRepoError(name string, repos []repoEntry) error {
+	names := make([]string, 0, len(repos))
+	for _, r := range repos {
+		names = append(names, r.Name)
+	}
+	plural := "repos"
+	if len(names) == 1 {
+		plural = "repo"
+	}
+	return fmt.Errorf("unknown repo — %q isn't registered yet.\n\n"+
+		"You have %d %s registered:\n  %s\n\n"+
+		"Scan one of those:  local-search scan <name>\n"+
+		"Scan everything:    local-search scan all\n"+
+		"Register this one:  local-search repo add /path/to/%s %s",
+		name, len(names), plural, strings.Join(names, "\n  "), name, name)
 }

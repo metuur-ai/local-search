@@ -94,11 +94,11 @@ Requirements: Go 1.25+ to build. No runtime dependencies — SQLite is compiled 
 local-search repo add ./product-specs product
 local-search repo add ./platform-docs platform
 
-# 2. Search — no manual scan needed, it just works
+# 2. Search
 local-search search refund
 ```
 
-The index auto-rebuilds when you add/remove repos, and auto-detects when files change on your next search.
+The index is built when you add a repo and refreshed when you run `local-search scan`. Searches never rebuild it, so they stay fast and predictable.
 
 ## Example output
 
@@ -610,21 +610,26 @@ The Web UI also hosts an interactive knowledge-graph explorer at
 
 ## Change detection
 
-`local-search` automatically detects file changes before every query. It uses two strategies depending on whether your repo is a git repository.
+`local-search` updates the index **only when you run `local-search scan`**. Read
+commands — `search`, `find`, `read`, `code`, `json`, `scope`, `ui` — never probe
+git and never write to the index. What you query is exactly what the last scan
+produced.
 
-### Git repos (default)
+This is deliberate. Auto-updating before every query meant a repo with any
+uncommitted or untracked spec file was reported as "changed" on every single
+command, since re-indexing a dirty file does not make git consider it clean.
 
-When a registered repo has git initialized, `local-search` uses git to detect changes. This is faster and smarter than filesystem scanning — git already knows exactly what changed.
+`scan` works on one repo or all of them:
 
-**How it works:**
+```bash
+local-search scan            # rebuild every registered repo
+local-search scan product    # rebuild just one
+```
 
-1. On the first full scan (`local-search scan` or `repo add`), the current `HEAD` commit hash is stored in the database
-2. On every subsequent query, the tool compares the stored commit against the current `HEAD`
-3. If commits differ, it asks git for the exact list of changed spec and media files
-4. It also checks for uncommitted changes (staged, unstaged, and untracked files)
-5. Only the changed files are re-indexed — no full rebuild needed
+### What a scan detects
 
-**What gets detected:**
+Inside a git repo, `scan` uses git to work out what changed rather than walking
+the filesystem.
 
 | Change type | Detected? | How |
 |---|---|---|
@@ -635,38 +640,23 @@ When a registered repo has git initialized, `local-search` uses git to detect ch
 | Deleted files | Yes | Removed from the index automatically |
 | Files in `.gitignore` | No | Ignored, same as git |
 
-**Incremental updates** mean that if you edited 2 files out of 500, only those 2 get re-indexed. The rest of the index stays untouched.
+When a registered repo is **not** a git repository, `local-search` falls back to
+filesystem timestamp comparison using `find -newer`. It can't tell which files
+changed, so it rebuilds that repo's index entirely.
 
-```
-$ local-search search refund
-(product: git changes detected — incremental update...)
+### When the index changes
 
-  product: 2 files updated (incremental)
+| Event | Effect |
+|---|---|
+| `repo add` | Full scan of the new repo + store commit hash |
+| `repo remove` | Full rescan of the remaining repos |
+| `local-search scan [repo]` | Rebuild + store commit hash |
+| Repo registered but never indexed | One-time first scan on next query |
+| Commits, edits, staged or untracked specs | **Nothing** until you run `scan` |
+| Any read command (`search`, `find`, `read`, …) | **Nothing** — index untouched |
 
-Results for "refund":
-  ...
-```
-
-### Non-git repos (fallback)
-
-When a registered repo is **not** a git repository, `local-search` falls back to filesystem timestamp comparison using `find -newer`. If any spec file has a modification time newer than the database file, a full rebuild is triggered.
-
-This works reliably but is less efficient — it can't tell which files changed, so it rebuilds the entire index.
-
-### Auto-rebuild triggers
-
-| Event | Git repo | Non-git repo |
-|---|---|---|
-| `repo add` | Full scan + store commit hash | Full scan |
-| `repo remove` | Full rescan remaining repos | Full rescan remaining repos |
-| New commits since last query | Incremental update (changed files only) | N/A |
-| Uncommitted/staged edits | Incremental update | Full rebuild |
-| New untracked spec files | Incremental update | Full rebuild |
-| Deleted spec files | Removed from index | Full rebuild |
-| No changes at all | Skipped (zero cost) | Skipped (zero cost) |
-| `local-search scan` | Full rebuild + store commit hash | Full rebuild |
-
-You never have to think about the index.
+Automating the scan is up to you — a git `post-commit` hook, a file watcher, or
+just running it when you know specs moved.
 
 ## How it works
 
@@ -675,8 +665,8 @@ You never have to think about the index.
 3. For images and PDFs, the companion `.md` sidecar is what gets indexed; the asset path is stored so agents can open it
 4. The `.db` file is a **disposable cache** at `~/.local-search/specs.db`
 5. Searches use Porter stemming + BM25 ranking
-6. Delete the `.db` anytime — it auto-rebuilds on next use
-7. For git repos, commit hashes are stored in the database to enable incremental updates
+6. Delete the `.db` anytime — the next command rebuilds it from scratch
+7. For git repos, the scanned commit hash is stored in the database so the next `scan` only re-indexes what changed
 
 ## Performance
 
@@ -697,7 +687,7 @@ CPU at rest: zero. Memory at rest: zero. Disk: one small `.db` file.
 |---|---|
 | "No repos added yet" | `local-search repo add /path/to/specs` |
 | Search returns nothing | Check `local-search repo list` — is the path correct? |
-| Index seems stale | Should auto-rebuild. Force with `local-search scan` |
+| Index seems stale | Run `local-search scan` (or `local-search scan <repo>`) — reads never rebuild |
 | Something is broken | `rm ~/.local-search/specs.db && local-search scan` |
 | Nuclear reset | `local-search reset` |
 
@@ -706,8 +696,8 @@ CPU at rest: zero. Memory at rest: zero. Disk: one small `.db` file.
 | Problem | Fix |
 |---|---|
 | Git changes not detected | Make sure the repo has at least one commit. Bare `git init` with no commits won't have a `HEAD` to compare against |
-| Incremental update missed a file | Run `local-search scan` to force a full rebuild. The git commit hash will be re-stored |
-| "incremental update" on every query | You have uncommitted changes to spec files. Commit them or the tool will keep detecting them as dirty |
+| A scan missed a file | Check it isn't excluded by `.gitignore`/`.graphifyignore`, then re-run `local-search scan <repo>` |
+| Search results are out of date | Expected: reads never update the index. Run `local-search scan <repo>` |
 | Repo is git but using timestamp fallback | Check that `git` is on your `$PATH`. Run `git -C /path/to/repo status` to verify |
 | Submodule or worktree repo not recognized | The tool checks for `.git` directory or runs `git rev-parse --git-dir`. Both submodules and worktrees are supported |
 
@@ -716,7 +706,7 @@ CPU at rest: zero. Memory at rest: zero. Disk: one small `.db` file.
 If anything feels off, the database is disposable:
 
 ```bash
-# Option 1: delete and let it auto-rebuild on next query
+# Option 1: delete it, then rebuild
 rm ~/.local-search/specs.db
 
 # Option 2: force rebuild now
@@ -742,16 +732,16 @@ local-search stats
 ## FAQ
 
 **Q: Do I need git installed for this to work?**
-No. Git is optional. If a registered repo has git, the tool uses it for faster incremental updates. If not, it falls back to filesystem timestamp comparison. Both work automatically.
+No. Git is optional. If a registered repo has git, `scan` uses it to re-index only what changed. If not, it falls back to filesystem timestamp comparison and rebuilds that repo.
 
 **Q: What happens if I add a non-git folder?**
 It works the same as before — `find -newer` checks if any spec file was modified since the last scan. If so, the entire index is rebuilt.
 
 **Q: Will it detect changes I haven't committed yet?**
-Yes. For git repos, the tool checks committed changes (via `git diff`), staged changes (`git diff --cached`), unstaged edits (`git diff`), and new untracked files (`git ls-files --others`). Everything is covered.
+Yes, when you run `scan`. For git repos it checks committed changes (via `git diff`), staged changes (`git diff --cached`), unstaged edits (`git diff`), and new untracked files (`git ls-files --others`). Everything is covered — but nothing is detected until you scan.
 
-**Q: How does incremental update differ from a full scan?**
-A full scan (`local-search scan`) drops the entire database and re-indexes everything from scratch. An incremental update only touches the files that changed — deleting removed entries, updating modified ones, and adding new ones. The rest of the index stays untouched.
+**Q: Does searching update the index?**
+No. Only `local-search scan` writes to the index. This is the one rule worth remembering: if specs changed on disk and you want them searchable, scan. The one exception is a repo that is registered but has never been indexed — that gets a one-time first scan so it isn't silently empty.
 
 **Q: Can I mix git and non-git repos?**
 Yes. Each repo is evaluated independently. You can have three git repos and two plain folders registered at the same time. Each uses the appropriate change detection strategy.
@@ -760,16 +750,16 @@ Yes. Each repo is evaluated independently. You can have three git repos and two 
 For git repos, yes. Untracked file detection uses `git ls-files --others --exclude-standard`, which honors `.gitignore`. For non-git repos, all supported file types are indexed regardless.
 
 **Q: What if I rebase, amend, or force-push?**
-The tool stores the last scanned commit hash. If `HEAD` changes for any reason (rebase, amend, reset, force-push), it detects the difference and incrementally updates. If the old commit hash no longer exists in history, git's `diff` may fail gracefully and the tool falls back to treating all spec files as changed.
+The tool stores the last scanned commit hash. On your next `scan`, if `HEAD` changed for any reason (rebase, amend, reset, force-push), it re-indexes the difference. If the old commit hash no longer exists in history, git's `diff` may fail gracefully and the tool falls back to treating all spec files as changed.
 
 **Q: What if I switch branches?**
-Switching branches changes `HEAD`, so the tool detects it and incrementally updates the index with the files that differ between the old and new branch. This happens automatically on your next query.
+Switching branches changes `HEAD`, but the index does not follow on its own. Run `local-search scan <repo>` after switching and it re-indexes the files that differ between the two branches.
 
 **Q: How much faster is git detection vs filesystem scanning?**
 For large repos with thousands of files, git detection is significantly faster because `git diff` is O(changed files) while `find -newer` must stat every file. For small repos (< 100 files), the difference is negligible.
 
 **Q: Can I force a full rebuild even if git is available?**
-Yes. `local-search scan` always does a full rebuild regardless of git status. It also re-stores the current commit hash for future incremental updates.
+Yes. `local-search scan` always does a full rebuild regardless of git status. It also re-stores the current commit hash for the next scan.
 
 **Q: Where is the commit hash stored?**
 In the SQLite database's `meta` table, keyed as `git_commit_<reponame>`. It's part of the disposable cache — deleting the `.db` file clears it, and the next full scan re-stores it.

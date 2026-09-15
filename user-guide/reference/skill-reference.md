@@ -449,9 +449,8 @@ local-search json context "payment" --scope platform,docs
 ```
 
 **Why.** You never invoke these — the skill does, on every search. They exist
-because the human output is deliberately chatty (`(git changes detected —
-incremental update…)`, confirmation prompts, status headers), and that chatter
-would corrupt a parse. Splitting them lets the human output stay friendly while
+because the human output is deliberately chatty (progress lines, confirmation
+prompts, status headers), and that chatter would corrupt a parse. Splitting them lets the human output stay friendly while
 the machine contract stays stable. `json context` is the efficient one: `find`
 results *plus* the inlined blast radius of the top code-graph hit, so the common
 "find it, then find what it touches" workflow is one call instead of two.

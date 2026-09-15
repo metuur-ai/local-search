@@ -35,28 +35,25 @@ var (
 	dbFile    = filepath.Join(appDir, "specs.db")
 )
 
-// skipIndexUpdate disables the query-time incremental index pass entirely
-// (no git probing, no IncrementalScan, no last_index_update_<name> stamp).
-// Set by the global --no-index-update flag, which is stripped from os.Args in
-// main() before command dispatch so every subcommand accepts it.
+// Index writes happen ONLY in `scan` (and its rebuild/index aliases). Read
+// commands — search, find, code, read, json, scope, ui — never probe git and
+// never re-index; the index is exactly what the last scan left it.
 //
-// Intended for callers that query in a tight loop and index out-of-band — the
-// embedded web UI spawns the binary once per keystroke-level search, and
-// re-probing every repo each time is pure overhead there.
-var skipIndexUpdate bool
-
-// indexCheckTTL suppresses repeated query-time git probes of the same repo.
-// Within this window a repo is assumed unchanged and skipped without shelling
-// out to git at all. Tracked per repo in meta as last_index_check_<name>.
-const indexCheckTTL = 10 * time.Second
+// The sole exception is a repo that is registered but has never been indexed at
+// all: that gets a one-time first scan, because otherwise a hand-edited repos
+// file would silently return zero results forever.
 
 // stripGlobalFlags removes flags that are valid for every subcommand from the
 // raw argv, so per-command flag parsers never see them.
+//
+// --no-index-update is accepted and ignored: read commands no longer update the
+// index at all, so the flag is a no-op. It stays accepted because the embedded
+// web UI passes it on every spawn; rejecting it would break those callers for
+// no benefit.
 func stripGlobalFlags(args []string) []string {
 	out := args[:0:0]
 	for _, a := range args {
 		if a == "--no-index-update" {
-			skipIndexUpdate = true
 			continue
 		}
 		out = append(out, a)
@@ -1051,7 +1048,7 @@ func indexWasReset(knownInDB, listedInConfig int) bool {
 const indexResetHint = "index is empty — it was reset by a schema upgrade.\n" +
 	"Run `local-search scan all` to rebuild it."
 
-// ensureDB opens the DB (creating it if needed) and reconciles three states:
+// ensureDB opens the DB (creating it if needed) and reconciles two states:
 //
 //  1. DB file missing → cmdScan("all") builds it from scratch.
 //  2. Repo present in repos file but missing from the SQLite repos table →
@@ -1059,8 +1056,10 @@ const indexResetHint = "index is empty — it was reset by a schema upgrade.\n" 
 //     This covers the auto-bootstrap path where autoBootstrapFromCWD just
 //     appended a new entry, plus any manual edit / backup restore that adds
 //     a repo behind the binary's back.
-//  3. Already-known git repo with new commits → IncrementalScan to pick up
-//     the changes.
+//
+// It deliberately does NOT refresh already-indexed repos. Keeping an index
+// current is `scan`'s job; a read command must never re-index behind the user's
+// back.
 func ensureDB() *sql.DB {
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
 		cmdScan([]string{"all"})
@@ -1089,9 +1088,8 @@ func ensureDB() *sql.DB {
 
 	for _, r := range repos {
 		// Catch up newly-added repos (file says yes, table says no) with a
-		// FullScan so the repos row + code_graph_* metadata get created. We
-		// fall through to IncrementalScan after — but IncrementalScan is a
-		// no-op when there's nothing to do, so the order is harmless.
+		// FullScan so the repos row + code_graph_* metadata get created.
+		// Already-known repos are left exactly as the last scan indexed them.
 		if !knownNames[r.Name] {
 			if !reset {
 				fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
@@ -1106,10 +1104,6 @@ func ensureDB() *sql.DB {
 				}
 			}
 			continue
-		}
-
-		if _, err := applyIncrementalUpdate(db, r); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: incremental scan failed: %v\n", err)
 		}
 	}
 	return db
@@ -2084,10 +2078,10 @@ func resolveScope(flagValue string) (scope.Scope, []localdb.RepoRow, *sql.DB) {
 		}
 	}
 
-	// Now run ensureDB's incremental-update pass for already-known git repos.
-	// We deferred this until after auto-bootstrap so a freshly-registered
-	// external graph doesn't trigger any scans.
-	runIncrementalUpdates(db, repos)
+	// Now run ensureDB's first-scan pass for repos that have never been
+	// indexed. We deferred this until after auto-bootstrap so a freshly-
+	// registered external graph doesn't trigger any scans.
+	indexNewRepos(db, repos)
 
 	res := scope.Resolver{
 		CWD:            cwd,
@@ -2236,12 +2230,15 @@ func openDBForResolve() *sql.DB {
 	return db
 }
 
-// runIncrementalUpdates is the post-bootstrap half of what ensureDB used to
-// do: walk every registered git repo, detect commits since the last scan,
-// run IncrementalScan. Called explicitly by resolveScope after auto-bootstrap
-// so a freshly-registered external graph doesn't accidentally trigger an
-// indexing pass.
-func runIncrementalUpdates(db *sql.DB, repos []localdb.RepoRow) {
+// indexNewRepos is the post-bootstrap half of what ensureDB used to do: it
+// gives a FullScan to any repo listed in the repos file that has no row in the
+// SQLite repos table yet. Called explicitly by resolveScope after
+// auto-bootstrap so a freshly-registered external graph doesn't accidentally
+// trigger an indexing pass.
+//
+// It does NOT refresh already-indexed repos. Read commands never re-index;
+// `local-search scan [repo|all]` is the only thing that updates an index.
+func indexNewRepos(db *sql.DB, repos []localdb.RepoRow) {
 	configured := loadRepos()
 
 	// The schema-reset case never reaches here: ensureDB runs first on every
@@ -2249,10 +2246,6 @@ func runIncrementalUpdates(db *sql.DB, repos []localdb.RepoRow) {
 	// repos table is already repopulated by now. Commands that open the DB
 	// directly (openDB, not ensureDB) are the ones that must diagnose a reset
 	// themselves — see graphcmd.go's indexResetHint check.
-	if skipIndexUpdate {
-		return
-	}
-
 	knownNames := make(map[string]bool, len(repos))
 	for _, r := range repos {
 		knownNames[r.Name] = true
@@ -2264,73 +2257,24 @@ func runIncrementalUpdates(db *sql.DB, repos []localdb.RepoRow) {
 	}
 
 	for _, r := range configured {
-		// New repos in the file (not yet in the table) get a FullScan first
-		// so their row appears with code_graph_* metadata.
-		if !knownNames[r.Name] {
-			if !reset {
-				fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
-			}
-			if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r), r.IncludeExtensions); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: scan of %s failed: %v\n", r.Name, err)
-				continue
-			}
-			if git.IsRepo(r.Path) {
-				if commit := git.CurrentCommit(r.Path); commit != "" {
-					localdb.SetMeta(db, "git_commit_"+r.Name, commit) //nolint:errcheck
-				}
-			}
+		if knownNames[r.Name] {
 			continue
 		}
-		if _, err := applyIncrementalUpdate(db, r); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: incremental scan failed: %v\n", err)
+		// New repos in the file (not yet in the table) get a FullScan so their
+		// row appears with code_graph_* metadata.
+		if !reset {
+			fmt.Fprintf(os.Stderr, "(%s: new repo — running first scan…)\n", r.Name)
+		}
+		if _, err := localdb.FullScan(db, r.Name, r.Path, effectiveSkipDirs(r), r.IncludeExtensions); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: scan of %s failed: %v\n", r.Name, err)
+			continue
+		}
+		if git.IsRepo(r.Path) {
+			if commit := git.CurrentCommit(r.Path); commit != "" {
+				localdb.SetMeta(db, "git_commit_"+r.Name, commit) //nolint:errcheck
+			}
 		}
 	}
-}
-
-// applyIncrementalUpdate runs an incremental index update for a single already-
-// known repo. It is the shared body previously duplicated in ensureDB and
-// runIncrementalUpdates, so both incremental sites behave identically.
-//
-// Behavior (unchanged from the old inline code): non-git repos and git repos
-// with no new/changed spec files are no-ops. When files actually change it runs
-// localdb.IncrementalScan, rewrites git_commit_<name> to the new HEAD (R-6.5),
-// and additionally stamps last_index_update_<name> with the current UTC time
-// (R-3.4). The timestamp is written ONLY when an update changed files — never on
-// a no-op query. Returns whether any files changed.
-func applyIncrementalUpdate(db *sql.DB, repo repoEntry) (changed bool, err error) {
-	if !git.IsRepo(repo.Path) {
-		return false, nil
-	}
-	// Within indexCheckTTL of the last probe, assume the repo is unchanged and
-	// skip shelling out to git entirely.
-	checkKey := "last_index_check_" + repo.Name
-	if ts := localdb.GetMeta(db, checkKey); ts != "" {
-		if last, perr := time.Parse(time.RFC3339, ts); perr == nil && time.Since(last) < indexCheckTTL {
-			return false, nil
-		}
-	}
-	localdb.SetMeta(db, checkKey, time.Now().UTC().Format(time.RFC3339)) //nolint:errcheck
-	lastCommit := localdb.GetMeta(db, "git_commit_"+repo.Name)
-	changedFiles, err := git.ChangedFiles(repo.Path, lastCommit)
-	if err != nil || len(changedFiles) == 0 {
-		// Preserve the original silent skip on ChangedFiles errors.
-		return false, nil
-	}
-	fmt.Fprintf(os.Stderr, "(%s: git changes detected — incremental update…)\n\n", repo.Name)
-	n, newCommit, err := localdb.IncrementalScan(db, repo.Name, repo.Path, lastCommit, effectiveSkipDirs(repo), repo.IncludeExtensions)
-	if err != nil {
-		return false, err
-	}
-	if n > 0 {
-		fmt.Fprintf(os.Stderr, "(%s: %d file(s) updated)\n\n", repo.Name, n)
-	}
-	if newCommit != "" {
-		localdb.SetMeta(db, "git_commit_"+repo.Name, newCommit) //nolint:errcheck
-	}
-	if n > 0 {
-		localdb.SetMeta(db, "last_index_update_"+repo.Name, time.Now().UTC().Format(time.RFC3339)) //nolint:errcheck
-	}
-	return n > 0, nil
 }
 
 // autoInitLocalConfig writes .agents/local-search-config.yaml in cwd. Seeding

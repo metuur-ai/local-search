@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
 	localdb "local-search/db"
 	"local-search/git"
@@ -34,134 +33,97 @@ func writeSpec(t *testing.T, path, content string) {
 	}
 }
 
-// expireIndexCheck backdates the query-time probe stamp so the next
-// applyIncrementalUpdate actually shells out to git instead of short-circuiting
-// on indexCheckTTL.
-func expireIndexCheck(db *sql.DB, name string) {
-	localdb.SetMeta(db, "last_index_check_"+name, //nolint:errcheck
-		time.Now().Add(-2*indexCheckTTL).UTC().Format(time.RFC3339))
+// useTempReposFile points the package-level reposFile at a temp path holding
+// the given entries, so loadRepos() inside the code under test sees them.
+func useTempReposFile(t *testing.T, entries []repoEntry) {
+	t.Helper()
+	orig := reposFile
+	t.Cleanup(func() { reposFile = orig })
+	reposFile = filepath.Join(t.TempDir(), "repos")
+	saveRepos(entries)
 }
 
-// TestApplyIncrementalUpdate_StampsLastIndexUpdateOnlyWhenChanged verifies the
-// shared incremental helper (Story 3.2, R-3.4/R-6.5): a real update stamps
-// last_index_update_<name>, while a no-op query neither re-indexes nor writes
-// the timestamp.
-func TestApplyIncrementalUpdate_StampsLastIndexUpdateOnlyWhenChanged(t *testing.T) {
+func newTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := localdb.Open(filepath.Join(t.TempDir(), "index.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	if err := localdb.CreateSchema(db); err != nil {
+		t.Fatalf("create schema: %v", err)
+	}
+	return db
+}
+
+// TestIndexNewRepos_LeavesKnownRepoUntouched is the regression test for the
+// read-path freeze: a repo that is already in the index is never re-probed or
+// re-indexed, even when git reports dirty spec files (uncommitted, staged, or
+// untracked). Only `scan` may update an index.
+func TestIndexNewRepos_LeavesKnownRepoUntouched(t *testing.T) {
 	repoDir := t.TempDir()
 	gitRun(t, repoDir, "init")
-
 	writeSpec(t, filepath.Join(repoDir, "a.md"), "# A\n\ninitial spec\n")
 	gitRun(t, repoDir, "add", ".")
 	gitRun(t, repoDir, "commit", "-m", "init")
 
-	dbPath := filepath.Join(t.TempDir(), "index.db")
-	db, err := localdb.Open(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	defer db.Close()
-	if err := localdb.CreateSchema(db); err != nil {
-		t.Fatalf("create schema: %v", err)
-	}
-
+	db := newTestDB(t)
 	repo := repoEntry{Name: "docs", Path: repoDir}
+	useTempReposFile(t, []repoEntry{repo})
 
-	// Baseline: full scan + record HEAD, mirroring the bootstrap path.
 	if _, err := localdb.FullScan(db, repo.Name, repo.Path, nil, nil); err != nil {
 		t.Fatalf("full scan: %v", err)
 	}
-	localdb.SetMeta(db, "git_commit_"+repo.Name, git.CurrentCommit(repo.Path)) //nolint:errcheck
+	baseCommit := git.CurrentCommit(repo.Path)
+	localdb.SetMeta(db, "git_commit_"+repo.Name, baseCommit) //nolint:errcheck
 
-	const stampKey = "last_index_update_docs"
+	// Make the repo dirty in all three ways git reports as "changed":
+	// an untracked file, an unstaged edit, and a staged edit.
+	writeSpec(t, filepath.Join(repoDir, "untracked.md"), "# U\n\nuntracked\n")
+	writeSpec(t, filepath.Join(repoDir, "a.md"), "# A\n\nedited\n")
+	writeSpec(t, filepath.Join(repoDir, "staged.md"), "# S\n\nstaged\n")
+	gitRun(t, repoDir, "add", "staged.md")
 
-	// 1. No changes yet → no-op, no timestamp written.
-	changed, err := applyIncrementalUpdate(db, repo)
+	known, err := localdb.Repos(db)
 	if err != nil {
-		t.Fatalf("unexpected error on no-op: %v", err)
-	}
-	if changed {
-		t.Fatalf("expected no change on unmodified repo")
-	}
-	if ts := localdb.GetMeta(db, stampKey); ts != "" {
-		t.Fatalf("timestamp spuriously written for no-op update: %q", ts)
+		t.Fatalf("repos: %v", err)
 	}
 
-	// 2. Commit a new spec file → incremental update should apply and stamp.
-	writeSpec(t, filepath.Join(repoDir, "b.md"), "# B\n\nnew spec\n")
-	gitRun(t, repoDir, "add", ".")
-	gitRun(t, repoDir, "commit", "-m", "add b")
+	before := countSpecs(t, db, "docs")
 
-	expireIndexCheck(db, repo.Name)
-	changed, err = applyIncrementalUpdate(db, repo)
-	if err != nil {
-		t.Fatalf("unexpected error on real update: %v", err)
-	}
-	if !changed {
-		t.Fatalf("expected change after committing a new spec file")
-	}
-	stamp := localdb.GetMeta(db, stampKey)
-	if stamp == "" {
-		t.Fatalf("last_index_update was not written after a real update")
-	}
-	if _, perr := time.Parse(time.RFC3339, stamp); perr != nil {
-		t.Fatalf("last_index_update is not RFC3339: %q (%v)", stamp, perr)
-	}
+	indexNewRepos(db, known)
 
-	// 3. A subsequent no-op query must NOT re-index or bump the timestamp.
-	expireIndexCheck(db, repo.Name)
-	changed, err = applyIncrementalUpdate(db, repo)
-	if err != nil {
-		t.Fatalf("unexpected error on second no-op: %v", err)
+	if got := countSpecs(t, db, "docs"); got != before {
+		t.Fatalf("known repo was re-indexed by a read path: %d specs before, %d after", before, got)
 	}
-	if changed {
-		t.Fatalf("expected no change on second no-op query")
+	if got := localdb.GetMeta(db, "git_commit_"+repo.Name); got != baseCommit {
+		t.Fatalf("git_commit was rewritten by a read path: was %q now %q", baseCommit, got)
 	}
-	if got := localdb.GetMeta(db, stampKey); got != stamp {
-		t.Fatalf("timestamp changed on no-op: was %q now %q", stamp, got)
+	if ts := localdb.GetMeta(db, "last_index_update_"+repo.Name); ts != "" {
+		t.Fatalf("last_index_update stamped by a read path: %q", ts)
 	}
 }
 
-// TestApplyIncrementalUpdate_ConvergesOnUntrackedFiles verifies repeated updates
-// converge: an untracked spec file (which git reports as "changed" forever) is
-// indexed once, and a subsequent run with nothing changed on disk is a no-op.
-func TestApplyIncrementalUpdate_ConvergesOnUntrackedFiles(t *testing.T) {
+// TestIndexNewRepos_FirstScansUnknownRepo keeps the one deliberate exception:
+// a repo registered but never indexed still gets its initial FullScan, so a
+// hand-edited repos file does not silently return zero results forever.
+func TestIndexNewRepos_FirstScansUnknownRepo(t *testing.T) {
 	repoDir := t.TempDir()
 	gitRun(t, repoDir, "init")
-	writeSpec(t, filepath.Join(repoDir, "a.md"), "# A\n\ninitial\n")
+	writeSpec(t, filepath.Join(repoDir, "a.md"), "# A\n\ninitial spec\n")
 	gitRun(t, repoDir, "add", ".")
 	gitRun(t, repoDir, "commit", "-m", "init")
 
-	dbPath := filepath.Join(t.TempDir(), "index.db")
-	db, err := localdb.Open(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	defer db.Close()
-	if err := localdb.CreateSchema(db); err != nil {
-		t.Fatalf("schema: %v", err)
-	}
-	repo := repoEntry{Name: "docs", Path: repoDir}
-	if _, err := localdb.FullScan(db, repo.Name, repo.Path, nil, nil); err != nil {
-		t.Fatalf("full scan: %v", err)
-	}
-	localdb.SetMeta(db, "git_commit_"+repo.Name, git.CurrentCommit(repo.Path)) //nolint:errcheck
+	db := newTestDB(t)
+	useTempReposFile(t, []repoEntry{{Name: "docs", Path: repoDir}})
 
-	// Untracked spec file (never committed): git reports it changed on every run.
-	writeSpec(t, filepath.Join(repoDir, "untracked.md"), "# U\n\nuntracked body\n")
+	// Nothing known yet.
+	indexNewRepos(db, nil)
 
-	changed1, err := applyIncrementalUpdate(db, repo)
-	if err != nil {
-		t.Fatalf("update1: %v", err)
+	if got := countSpecs(t, db, "docs"); got == 0 {
+		t.Fatalf("never-indexed repo was not first-scanned")
 	}
-	if !changed1 {
-		t.Fatalf("first update should index the untracked file")
-	}
-	expireIndexCheck(db, repo.Name)
-	changed2, err := applyIncrementalUpdate(db, repo)
-	if err != nil {
-		t.Fatalf("update2: %v", err)
-	}
-	if changed2 {
-		t.Fatalf("did not converge: untracked file re-indexed though unchanged on disk")
+	if got := localdb.GetMeta(db, "git_commit_docs"); got == "" {
+		t.Fatalf("git_commit not recorded after first scan")
 	}
 }

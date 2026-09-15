@@ -190,14 +190,12 @@ $ local-search scan examples
 Done. 8 specs indexed. Run 'local-search search <keyword>' to find specs.
 ```
 
-**Why.** You mostly won't need it. Local Search opportunistically
-incremental-scans on its own before most commands when it notices git changes
-since the last scan — you'll see `(git changes detected — incremental update…)`
-when that happens. `scan` is the manual override for the cases that detection
-can't cover: files changed outside git, an interrupted scan, or a schema
-upgrade after a version bump. The full-rebuild form is safe to reach for
-whenever something looks wrong, because rebuilding costs seconds and risks
-nothing.
+**Why.** This is the only command that writes to the index. Searches, reads,
+and scope resolution never re-index — they return exactly what the last scan
+produced. So whenever specs change on disk (new commits, edits, untracked
+files, files moved outside git), `scan` is how those changes become
+searchable. The full-rebuild form is safe to reach for whenever something looks
+wrong, because rebuilding costs seconds and risks nothing.
 
 ### `init` / `setup`
 

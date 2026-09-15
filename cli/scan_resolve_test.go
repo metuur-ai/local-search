@@ -57,7 +57,7 @@ func TestResolveScanTarget(t *testing.T) {
 			args:    []string{"ghost"},
 			cwd:     "/Users/me/work",
 			repos:   all,
-			wantErr: "unknown repo ghost",
+			wantErr: `unknown repo`,
 		},
 		{
 			name:      "all selects full rebuild over every repo",
@@ -109,5 +109,30 @@ func TestResolveScanTarget(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestUnknownRepoError_ListsRegisteredNames asserts the unknown-repo message is
+// self-service: it names every registered repo and the commands that act on
+// them, so the user never has to guess at a valid name.
+func TestUnknownRepoError_ListsRegisteredNames(t *testing.T) {
+	repos := []repoEntry{
+		{Name: "outer", Path: "/Users/me/work"},
+		{Name: "inner", Path: "/Users/me/work/inner"},
+	}
+
+	msg := unknownRepoError("ghost", repos).Error()
+
+	for _, want := range []string{
+		`"ghost" isn't registered yet`,
+		"You have 2 repos registered",
+		"outer",
+		"inner",
+		"local-search scan all",
+		"local-search repo add",
+	} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("error message missing %q:\n%s", want, msg)
+		}
 	}
 }
